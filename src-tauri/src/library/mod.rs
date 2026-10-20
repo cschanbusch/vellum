@@ -11,6 +11,8 @@ use serde::{Deserialize, Serialize};
 
 pub use entry::Entry;
 
+use crate::art::ArtCandidate;
+
 use crate::providers::model::ProviderGame;
 use crate::userdata::games::UserData;
 
@@ -37,6 +39,9 @@ pub struct ProviderRecords {
     pub capabilities: Vec<String>,
     pub scanned_at: String,
     pub games: Vec<ProviderGame>,
+    /// Validated art candidates by source id, from the provider's `art()`.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub art: BTreeMap<String, Vec<ArtCandidate>>,
 }
 
 /// The cache is disposable: anything unreadable or from another schema starts empty.
@@ -102,7 +107,7 @@ mod tests {
         let mut s = LibrarySnapshot::default();
         s.providers.insert(
             "steam".into(),
-            ProviderRecords { provider_name: "Steam".into(), capabilities: vec!["launch".into()], scanned_at: String::new(), games },
+            ProviderRecords { provider_name: "Steam".into(), capabilities: vec!["launch".into()], games, ..Default::default() },
         );
         s.providers.insert("mock".into(), ProviderRecords { provider_name: "Mock".into(), ..Default::default() });
         s

@@ -1,0 +1,16 @@
+{
+	"FormatVersion": 0,
+	"bIsIncompleteInstall": false,
+	"DisplayName": "Fowl Escape 2",
+	"AppName": "Fowl",
+	"CatalogNamespace": "115577f4ef1e4055aaf0da534fdfe81e",
+	"CatalogItemId": "481004e1785e4a2eb98e63b11797aa9a",
+	"InstallLocation": "C:\\Program Files\\Epic Games\\FowlEscape2",
+	"InstallSize": 1873264640,
+	"AppCategories": [ "public", "games", "applications" ],
+	"MainGameAppName": "",
+	"MainGameCatalogItemId": "",
+	"MainGameCatalogNamespace": "",
+	"bIsExecutable": true,
+	"LaunchExecutable": "FowlEscape2.exe"
+}

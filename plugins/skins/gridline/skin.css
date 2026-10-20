@@ -1,0 +1,228 @@
+/* Gridline: neon on black, angled panels, glowing edges. The neon color is an option, so the
+   whole skin can be red, cyan or anything else. */
+
+@font-face { font-family: "Orbitron"; src: url("fonts/orbitron-latin-500-normal.woff2") format("woff2"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "Orbitron"; src: url("fonts/orbitron-latin-800-normal.woff2") format("woff2"); font-weight: 800; font-display: swap; }
+@font-face { font-family: "Rajdhani"; src: url("fonts/rajdhani-latin-500-normal.woff2") format("woff2"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "Rajdhani"; src: url("fonts/rajdhani-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+
+:root {
+  --gl-glow: 1;
+  --v-accent: #ff2020;
+  --gl-dim: color-mix(in srgb, var(--v-accent) 35%, black);
+  --gl-faint: color-mix(in srgb, var(--v-accent) 14%, transparent);
+  --v-bg: #030303;
+  --v-surface: rgb(16 4 4 / 0.82);
+  --v-surface-raised: rgb(34 8 8 / 0.92);
+  --v-text: #ffe4e1;
+  --v-text-muted: color-mix(in srgb, var(--v-accent) 45%, #bba);
+  --v-accent-text: #000;
+  --v-focus-ring: color-mix(in srgb, var(--v-accent) 60%, white);
+  --v-radius: 0px;
+  --v-gap: 20px;
+  --v-font-body: "Rajdhani", "Inter", sans-serif;
+  --v-font-display: "Orbitron", "Inter", sans-serif;
+  --v-cover-width: 170px;
+  --v-list-row-height: 42px;
+  --v-hero-overlay: linear-gradient(0deg, rgb(3 3 3 / 0.6), transparent 50%), linear-gradient(90deg, rgb(3 3 3 / 0.5), transparent 60%);
+  --v-spot-scrim: radial-gradient(120% 110% at 0% 100%, rgb(3 3 3 / 0.94) 0%, rgb(3 3 3 / 0.65) 42%, transparent 72%);
+  --gl-cut: 12px;
+  --gl-neon: 0 0 calc(4px * var(--gl-glow)) var(--v-accent), 0 0 calc(16px * var(--gl-glow)) color-mix(in srgb, var(--v-accent) 60%, transparent);
+  font-size: 17px;
+}
+
+body { background: transparent; letter-spacing: 0.02em; }
+
+/* ---- backdrop ------------------------------------------------------------------------------- */
+
+.gl-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background: radial-gradient(120% 60% at 50% 58%, color-mix(in srgb, var(--v-accent) 16%, transparent), transparent 60%), #030303;
+}
+.gl-floor {
+  position: absolute;
+  left: -50%;
+  right: -50%;
+  top: 58%;
+  bottom: -40%;
+  perspective: 320px;
+  perspective-origin: 50% 0;
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 25%);
+  mask-image: linear-gradient(180deg, transparent, #000 25%);
+}
+.gl-plane {
+  position: absolute;
+  inset: 0 0 -100% 0;
+  transform-origin: 50% 0;
+  transform: rotateX(70deg);
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--v-accent) 70%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--v-accent) 70%, transparent) 1px, transparent 1px);
+  background-size: 80px 80px;
+  animation: gl-forward 2.4s linear infinite;
+}
+:root:not([data-opt-grid]) .gl-floor { display: none; }
+.gl-horizon {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 58%;
+  height: 1px;
+  background: var(--v-accent);
+  box-shadow: 0 0 calc(30px * var(--gl-glow)) calc(6px * var(--gl-glow)) var(--v-accent);
+  opacity: 0.9;
+}
+.gl-cycles { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.85; }
+@keyframes gl-forward { to { background-position: 0 80px, 0 0; } }
+@media (prefers-reduced-motion: reduce) { .gl-plane { animation: none; } }
+
+/* ---- frame and top bar ---------------------------------------------------------------------- */
+
+vellum-app .v-topbar {
+  background: linear-gradient(180deg, rgb(0 0 0 / 0.92), rgb(0 0 0 / 0.65));
+  border-bottom: 1px solid var(--v-accent);
+  box-shadow: var(--gl-neon);
+}
+vellum-app .v-brand { font-size: 0; }
+vellum-app .v-brand::after {
+  content: "GRIDLINE";
+  font: 800 1.1rem var(--v-font-display);
+  letter-spacing: 0.42em;
+  color: var(--v-accent);
+  text-shadow: var(--gl-neon);
+}
+vellum-app .v-count { font: 500 0.7rem var(--v-font-display); letter-spacing: 0.2em; text-transform: uppercase; }
+vellum-app .v-count::before { content: "// "; color: var(--v-accent); }
+
+vellum-view-switcher::part(tabs) { background: transparent; gap: 4px; }
+vellum-view-switcher::part(tab) {
+  font: 500 0.72rem var(--v-font-display);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  border-radius: 0;
+  clip-path: polygon(var(--gl-cut) 0, 100% 0, 100% calc(100% - var(--gl-cut)), calc(100% - var(--gl-cut)) 100%, 0 100%, 0 var(--gl-cut));
+  --gl-cut: 7px;
+  color: var(--v-text-muted);
+  background: var(--gl-faint);
+}
+vellum-view-switcher::part(tab-selected) { color: #000; background: var(--v-accent); }
+
+vellum-search::part(box) {
+  border-radius: 0;
+  background: rgb(0 0 0 / 0.7);
+  border: 1px solid var(--gl-dim);
+  clip-path: polygon(var(--gl-cut) 0, 100% 0, 100% calc(100% - var(--gl-cut)), calc(100% - var(--gl-cut)) 100%, 0 100%, 0 var(--gl-cut));
+  --gl-cut: 9px;
+}
+vellum-search::part(input) { font-family: var(--v-font-body); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+
+vellum-filter-bar::part(trigger),
+vellum-sort-menu::part(trigger),
+vellum-group-menu::part(trigger),
+.v-button,
+.v-icon-button {
+  border-radius: 0;
+  border: 1px solid var(--gl-dim);
+  background: rgb(0 0 0 / 0.7);
+  clip-path: polygon(var(--gl-cut) 0, 100% 0, 100% calc(100% - var(--gl-cut)), calc(100% - var(--gl-cut)) 100%, 0 100%, 0 var(--gl-cut));
+  --gl-cut: 8px;
+  font: 700 0.85rem var(--v-font-body);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+:is(vellum-filter-bar, vellum-sort-menu, vellum-group-menu)::part(panel) {
+  border-radius: 0;
+  border: 1px solid var(--v-accent);
+  background: rgb(6 0 0 / 0.96);
+  box-shadow: var(--gl-neon);
+  font-family: var(--v-font-body);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+vellum-window-controls::part(close):hover { background: var(--v-accent); color: #000; }
+
+.v-view[data-view="list"] { background: rgb(3 3 3 / 0.88); }
+.v-view[data-view="covers"] { background: linear-gradient(180deg, rgb(3 3 3 / 0.85), rgb(3 3 3 / 0.5)); }
+
+/* ---- covers: angled frames that light up --------------------------------------------------- */
+
+vellum-grid::part(art),
+vellum-cover-row::part(art) {
+  border-radius: 0;
+  clip-path: polygon(var(--gl-cut) 0, 100% 0, 100% calc(100% - var(--gl-cut)), calc(100% - var(--gl-cut)) 100%, 0 100%, 0 var(--gl-cut));
+  --gl-cut: 14px;
+  box-shadow: none;
+}
+vellum-grid::part(cell),
+vellum-cover-row::part(cell) { filter: drop-shadow(0 0 0 transparent); transition: filter 140ms ease; }
+vellum-grid::part(cell-selected),
+vellum-cover-row::part(cell-selected) {
+  filter: drop-shadow(0 0 1px var(--v-accent)) drop-shadow(0 0 1px var(--v-accent)) drop-shadow(0 0 calc(12px * var(--gl-glow)) var(--v-accent));
+}
+vellum-grid::part(art-focused),
+vellum-cover-row::part(art-focused) { transform: translateY(-4px); box-shadow: none; }
+vellum-grid::part(caption) {
+  font: 700 0.78rem var(--v-font-body);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+vellum-grid::part(favorite) { background: #000; color: var(--v-accent); border-radius: 0; text-shadow: var(--gl-neon); }
+
+vellum-shelf::part(label) { font: 800 0.85rem var(--v-font-display); letter-spacing: 0.28em; text-transform: uppercase; }
+vellum-shelf::part(count) { color: var(--v-accent); }
+
+/* ---- list ----------------------------------------------------------------------------------- */
+
+vellum-list::part(header) { border-bottom-color: var(--v-accent); }
+vellum-list::part(column) { font-family: var(--v-font-display); color: var(--v-accent); }
+vellum-list::part(row) { border-bottom-color: var(--gl-faint); }
+vellum-list::part(title) { font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+vellum-list::part(row-selected) {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--v-accent) 30%, transparent), transparent 75%);
+  box-shadow: inset 4px 0 0 var(--v-accent), inset 0 1px 0 var(--v-accent), inset 0 -1px 0 var(--v-accent);
+}
+
+/* ---- spotlight ------------------------------------------------------------------------------ */
+
+.v-spot-hero::part(hero) { filter: grayscale(0.35) contrast(1.15); }
+.v-spot-hero::part(overlay) {
+  background:
+    linear-gradient(0deg, rgb(3 3 3 / 0.55), transparent 50%),
+    repeating-linear-gradient(0deg, rgb(0 0 0 / 0.18) 0 1px, transparent 1px 4px),
+    linear-gradient(135deg, color-mix(in srgb, var(--v-accent) 18%, transparent), transparent 60%);
+}
+.v-spot-stage::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 1px;
+  background: var(--v-accent);
+  box-shadow: var(--gl-neon);
+}
+.v-spot-logo::part(title) {
+  font: 800 clamp(1.8rem, 4vw, 3.6rem) var(--v-font-display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: var(--gl-neon);
+}
+.v-spot-meta { font: 700 0.95rem var(--v-font-body); letter-spacing: 0.2em; text-transform: uppercase; color: var(--v-accent); }
+.v-spot-desc { font-size: 1.05rem; }
+vellum-source-badges::part(badge) { border-radius: 0; background: var(--gl-faint); color: var(--v-accent); font-family: var(--v-font-display); font-size: 0.65rem; letter-spacing: 0.16em; }
+vellum-play-button::part(button) {
+  border-radius: 0;
+  clip-path: polygon(var(--gl-cut) 0, 100% 0, 100% calc(100% - var(--gl-cut)), calc(100% - var(--gl-cut)) 100%, 0 100%, 0 var(--gl-cut));
+  --gl-cut: 12px;
+  background: var(--v-accent);
+  color: #000;
+  font: 800 0.95rem var(--v-font-display);
+  letter-spacing: 0.24em;
+  padding: 0.85em 2.2em;
+}
+.v-spot-rows { background: linear-gradient(180deg, rgb(3 3 3 / 0.75), rgb(3 3 3 / 0.95)); }
+.v-spot-row-label { font: 800 0.75rem var(--v-font-display); letter-spacing: 0.3em; text-transform: uppercase; color: var(--v-accent); }
+
+:focus-visible { outline-offset: 3px; }

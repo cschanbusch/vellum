@@ -1,0 +1,22 @@
+{
+  "id": "gridline",
+  "type": "skin",
+  "name": "Gridline",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "author": "Vellum",
+  "description": "Neon red on black: a digital frontier of light cycles, angled panels and glowing edges",
+  "entry": "index.html",
+  "skin": {
+    "preview": "preview.jpg",
+    "defaultView": "covers",
+    "window": { "frameless": true, "minWidth": 960, "minHeight": 600, "background": "#030303" },
+    "options": [
+      { "id": "neon", "label": "Neon color", "type": "color", "default": "#ff2020", "cssVar": "--v-accent" },
+      { "id": "glow", "label": "Glow strength", "type": "range", "min": 0, "max": 2, "step": 0.1, "default": 1, "cssVar": "--gl-glow" },
+      { "id": "cycles", "label": "Light cycles", "type": "toggle", "default": true },
+      { "id": "grid", "label": "Grid floor", "type": "toggle", "default": true },
+      { "id": "coverSize", "label": "Cover size", "type": "range", "min": 130, "max": 300, "step": 10, "default": 170, "cssVar": "--v-cover-width", "unit": "px" }
+    ]
+  }
+}

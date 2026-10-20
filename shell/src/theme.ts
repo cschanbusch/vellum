@@ -1,26 +1,37 @@
 import { css } from "lit";
 
-// Default token values. The shell draws settings with the active skin's tokens from Phase 3
-// on; until then (and whenever a skin is broken) these keep it readable.
+// Shell tokens: the active skin's colors when it has reported them (applySkinTheme), with
+// these defaults whenever a skin is broken or still loading, so settings always stay readable.
 export const tokens = css`
   :host {
-    --v-bg: #0b0d12;
-    --v-surface: #141824;
-    --v-surface-raised: #1c2131;
-    --v-text: #e6e8ee;
-    --v-text-muted: #9aa3b5;
-    --v-accent: #7cc4ff;
-    --v-accent-text: #06121f;
-    --v-focus-ring: #7cc4ff;
+    --v-bg: var(--skin-bg, #0b0d12);
+    --v-surface: var(--skin-surface, #141824);
+    --v-surface-raised: var(--skin-surface-raised, #1c2131);
+    --v-text: var(--skin-text, #e6e8ee);
+    --v-text-muted: var(--skin-text-muted, #9aa3b5);
+    --v-accent: var(--skin-accent, #7cc4ff);
+    --v-accent-text: var(--skin-accent-text, #06121f);
+    --v-focus-ring: var(--skin-focus-ring, #7cc4ff);
     --v-danger: #ff7a7a;
     --v-warning: #f5c76b;
     --v-ok: #6fdc8c;
-    --v-radius: 8px;
+    --v-radius: var(--skin-radius, 8px);
     --v-gap: 16px;
-    --v-font-body: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    --v-font-body: var(--skin-font-body, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif);
     --v-transition: 120ms ease;
   }
 `;
+
+/** Applies the active skin's reported tokens (bridge `ui.theme`) to every shell component. */
+export function applySkinTheme(tokensFromSkin: Record<string, string>) {
+  const root = document.documentElement.style;
+  for (const [k, v] of Object.entries(tokensFromSkin)) {
+    // Fonts the skin bundles don't exist in the shell's document; keep the shell's own.
+    if (k === "--v-font-body") continue;
+    root.setProperty(k.replace(/^--v-/, "--skin-"), v);
+  }
+  if (tokensFromSkin["--v-bg"]) document.documentElement.style.background = tokensFromSkin["--v-bg"];
+}
 
 export const controls = css`
   button {

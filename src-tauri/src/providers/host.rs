@@ -18,7 +18,7 @@ use serde_json::{json, Value};
 
 use super::locations::Registry;
 use super::model::ProviderSpec;
-use super::scope::{simplify, Scope};
+use super::scope::{canonical, simplify, Scope, ScopeError};
 use crate::formats;
 use crate::platform::{self, Hive};
 
@@ -87,6 +87,7 @@ pub enum Method {
     Uninstall,
     OpenStore,
     Watch,
+    Art,
 }
 
 impl Method {
@@ -98,12 +99,14 @@ impl Method {
             Method::Uninstall => "uninstall",
             Method::OpenStore => "openStore",
             Method::Watch => "watch",
+            Method::Art => "art",
         }
     }
 
     pub fn timeout(self) -> Duration {
         match self {
-            Method::Scan => Duration::from_secs(30),
+            // `art` runs once per game in a single runtime, so it gets the scan budget.
+            Method::Scan | Method::Art => Duration::from_secs(30),
             _ => Duration::from_secs(10),
         }
     }
@@ -160,9 +163,22 @@ struct HostState {
     derived: Mutex<Vec<PathBuf>>,
     logs: Mutex<Vec<LogLine>>,
     provider: String,
+    /// The provider's own folder: readable (for bundled data and art), never runnable.
+    own_dir: Option<PathBuf>,
 }
 
 impl HostState {
+    /// Reads may also touch the provider's own folder.
+    fn check_read(&self, path: &str) -> Result<PathBuf, ScopeError> {
+        match self.scope.check(path) {
+            Err(ScopeError::Outside(p)) => match (canonical(Path::new(path)), &self.own_dir) {
+                (Some(c), Some(own)) if c.starts_with(own) && !self.scope.is_denied(&c) => Ok(c),
+                _ => Err(ScopeError::Outside(p)),
+            },
+            r => r,
+        }
+    }
+
     fn log(&self, level: &'static str, message: String) {
         match level {
             "error" => tracing::error!(provider = %self.provider, "{message}"),
@@ -227,6 +243,7 @@ globalThis.__ctx = Object.freeze({
   openUri: (uri) => h.openUri(str(uri)),
   run: (exe, args = [], cwd = null) => h.run(str(exe), JSON.stringify((args ?? []).map(str)), cwd == null ? "" : str(cwd)),
   settings: Object.freeze(JSON.parse(h.settingsJson)),
+  pluginDir: h.pluginDir,
   log: Object.freeze({ info: level("info"), warn: level("warn"), error: level("error") }),
 });
 "#;
@@ -236,12 +253,13 @@ fn install_host<'js>(ctx: &Ctx<'js>, st: &Arc<HostState>, locations_json: String
     let throw = |ctx: &Ctx<'js>, msg: String| Exception::throw_message(ctx, &msg);
     h.set("locationsJson", locations_json)?;
     h.set("settingsJson", settings_json)?;
+    h.set("pluginDir", st.own_dir.as_deref().map(|d| simplify(d).to_string_lossy().into_owned()).unwrap_or_default())?;
 
     let s = st.clone();
     h.set(
         "readText",
         Function::new(ctx.clone(), move |ctx: Ctx<'js>, path: String| -> rquickjs::Result<String> {
-            let p = s.scope.check(&path).map_err(|e| throw(&ctx, e.to_string()))?;
+            let p = s.check_read(&path).map_err(|e| throw(&ctx, e.to_string()))?;
             let bytes = std::fs::read(p).map_err(|e| throw(&ctx, format!("{path}: {e}")))?;
             let text = String::from_utf8_lossy(&bytes);
             Ok(text.strip_prefix('\u{feff}').unwrap_or(&text).to_string())
@@ -251,7 +269,7 @@ fn install_host<'js>(ctx: &Ctx<'js>, st: &Arc<HostState>, locations_json: String
     h.set(
         "readBytes",
         Function::new(ctx.clone(), move |ctx: Ctx<'js>, path: String| -> rquickjs::Result<TypedArray<'js, u8>> {
-            let p = s.scope.check(&path).map_err(|e| throw(&ctx, e.to_string()))?;
+            let p = s.check_read(&path).map_err(|e| throw(&ctx, e.to_string()))?;
             let bytes = std::fs::read(p).map_err(|e| throw(&ctx, format!("{path}: {e}")))?;
             TypedArray::new(ctx, bytes)
         })?,
@@ -260,7 +278,7 @@ fn install_host<'js>(ctx: &Ctx<'js>, st: &Arc<HostState>, locations_json: String
     h.set(
         "list",
         Function::new(ctx.clone(), move |ctx: Ctx<'js>, dir: String| -> rquickjs::Result<String> {
-            let d = s.scope.check(&dir).map_err(|e| throw(&ctx, e.to_string()))?;
+            let d = s.check_read(&dir).map_err(|e| throw(&ctx, e.to_string()))?;
             let rd = std::fs::read_dir(&d).map_err(|e| throw(&ctx, format!("{dir}: {e}")))?;
             let mut items: Vec<Value> = rd
                 .filter_map(Result::ok)
@@ -282,7 +300,7 @@ fn install_host<'js>(ctx: &Ctx<'js>, st: &Arc<HostState>, locations_json: String
     h.set(
         "glob",
         Function::new(ctx.clone(), move |ctx: Ctx<'js>, dir: String, pattern: String| -> rquickjs::Result<String> {
-            let d = s.scope.check(&dir).map_err(|e| throw(&ctx, e.to_string()))?;
+            let d = s.check_read(&dir).map_err(|e| throw(&ctx, e.to_string()))?;
             let found: Vec<String> = super::scope::glob(&d, &pattern)
                 .into_iter()
                 .filter(|p| !s.scope.is_denied(p))
@@ -440,13 +458,29 @@ fn classify(message: String, timeout: Duration) -> HostError {
 
 /// Calls `method` on the provider's default export with `(ctx, arg)`.
 pub fn invoke(inv: &Invocation, method: Method, arg: Option<&Value>) -> Result<Output, HostError> {
+    let batch = invoke_each(inv, method, &[arg.cloned()])?;
+    let value = batch.values.into_iter().next().expect("one call")?;
+    Ok(Output { value, derived: batch.derived, logs: batch.logs })
+}
+
+/// Results of several calls made in one runtime.
+pub struct Batch {
+    /// One result per argument, in order. A call that throws doesn't stop the others.
+    pub values: Vec<Result<Value, HostError>>,
+    pub derived: Vec<PathBuf>,
+    pub logs: Vec<LogLine>,
+}
+
+/// Calls `method` once per argument in a single runtime (used for `art`, once per game).
+/// Loading failures and a missing function fail the whole batch.
+pub fn invoke_each(inv: &Invocation, method: Method, args: &[Option<Value>]) -> Result<Batch, HostError> {
     let spec = inv.spec;
     let roots = inv.locations.values().cloned().chain(inv.derived.iter().cloned());
-    let install_dir = arg
-        .and_then(|g| g.get("installDir"))
-        .and_then(Value::as_str)
-        .map(PathBuf::from)
-        .filter(|d| d.is_dir());
+    // ctx.run may also start exes in the game's install folder (single-game calls only).
+    let install_dir = match args {
+        [Some(g)] => g.get("installDir").and_then(Value::as_str).map(PathBuf::from).filter(|d| d.is_dir()),
+        _ => None,
+    };
     let st = Arc::new(HostState {
         scope: Scope::new(roots, &spec.deny_files),
         env: inv.env.clone(),
@@ -457,6 +491,7 @@ pub fn invoke(inv: &Invocation, method: Method, arg: Option<&Value>) -> Result<O
         derived: Mutex::new(Vec::new()),
         logs: Mutex::new(Vec::new()),
         provider: spec.id.clone(),
+        own_dir: canonical(&spec.dir),
     });
 
     let rt = Runtime::new().map_err(|e| HostError::Load(e.to_string()))?;
@@ -473,11 +508,10 @@ pub fn invoke(inv: &Invocation, method: Method, arg: Option<&Value>) -> Result<O
     )
     .unwrap();
     let settings_json = Value::Object(spec.settings.clone()).to_string();
-    let arg_json = arg.map(Value::to_string);
     let source = std::fs::read(spec.dir.join(&spec.entry)).map_err(|e| HostError::Load(format!("{}: {e}", spec.entry)))?;
     let entry_name = spec.entry.replace('\\', "/");
 
-    let value = context.with(|ctx| -> Result<Value, HostError> {
+    let values = context.with(|ctx| -> Result<Vec<Result<Value, HostError>>, HostError> {
         let caught = |e: rquickjs::CaughtError| classify(e.to_string(), timeout);
         install_host(&ctx, &st, locations_json, settings_json)
             .catch(&ctx)
@@ -497,31 +531,35 @@ pub fn invoke(inv: &Invocation, method: Method, arg: Option<&Value>) -> Result<O
             .map_err(|_| HostError::Load("the entry file has no default export".into()))?;
         let func: Function = default.get(method.js_name()).map_err(|_| HostError::Missing(method.js_name()))?;
         let pctx: Object = ctx.globals().get("__ctx").map_err(|e| HostError::Load(e.to_string()))?;
-        let jarg = match &arg_json {
-            Some(j) => ctx.json_parse(j.as_str()).catch(&ctx).map_err(caught)?,
-            None => rquickjs::Value::new_undefined(ctx.clone()),
+
+        let call_one = |arg: &Option<Value>| -> Result<Value, HostError> {
+            let jarg = match arg {
+                Some(j) => ctx.json_parse(j.to_string()).catch(&ctx).map_err(caught)?,
+                None => rquickjs::Value::new_undefined(ctx.clone()),
+            };
+            let mut result: rquickjs::Value = func.call((pctx.clone(), jarg)).catch(&ctx).map_err(caught)?;
+            if let Some(p) = result.as_promise() {
+                result = p.finish::<rquickjs::Value>().catch(&ctx).map_err(caught)?;
+            }
+            if result.is_undefined() {
+                return Ok(Value::Null);
+            }
+            let text = ctx
+                .json_stringify(result)
+                .catch(&ctx)
+                .map_err(caught)?
+                .map(|s| s.to_string())
+                .transpose()
+                .map_err(|e| HostError::Script(e.to_string()))?;
+            match text {
+                Some(t) => serde_json::from_str(&t).map_err(|e| HostError::Script(format!("returned invalid data: {e}"))),
+                None => Ok(Value::Null),
+            }
         };
-        let mut result: rquickjs::Value = func.call((pctx, jarg)).catch(&ctx).map_err(caught)?;
-        if let Some(p) = result.as_promise() {
-            result = p.finish::<rquickjs::Value>().catch(&ctx).map_err(caught)?;
-        }
-        if result.is_undefined() {
-            return Ok(Value::Null);
-        }
-        let text = ctx
-            .json_stringify(result)
-            .catch(&ctx)
-            .map_err(caught)?
-            .map(|s| s.to_string())
-            .transpose()
-            .map_err(|e| HostError::Script(e.to_string()))?;
-        match text {
-            Some(t) => serde_json::from_str(&t).map_err(|e| HostError::Script(format!("returned invalid data: {e}"))),
-            None => Ok(Value::Null),
-        }
+        Ok(args.iter().map(call_one).collect())
     })?;
 
     let derived = std::mem::take(&mut *st.derived.lock().unwrap());
     let logs = std::mem::take(&mut *st.logs.lock().unwrap());
-    Ok(Output { value, derived, logs })
+    Ok(Batch { values, derived, logs })
 }

@@ -2,10 +2,10 @@
   "id": "mock",
   "type": "provider",
   "name": "Mock library",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "apiVersion": 1,
   "author": "Vellum",
-  "description": "Deterministic fake games for skin development and tests (art arrives in Phase 3)",
+  "description": "Deterministic fake games with art, for skin development and tests",
   "entry": "provider.js",
   "settings": [
     { "id": "count", "label": "Number of games", "type": "range", "min": 10, "max": 5000, "step": 10, "default": 80 }

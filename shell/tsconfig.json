@@ -12,5 +12,5 @@
     "noUnusedParameters": true,
     "isolatedModules": true
   },
-  "include": ["src"]
+  "include": ["src", "harness"]
 }

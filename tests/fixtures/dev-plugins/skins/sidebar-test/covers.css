@@ -1,0 +1,8 @@
+/* Loaded only while the Covers view is shown (manifest "styles"). */
+.v-view[data-view="covers"] vellum-grid::part(art) {
+  border-radius: 4px;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 0.45);
+}
+.v-view[data-view="covers"] .v-view-bar {
+  display: none;
+}

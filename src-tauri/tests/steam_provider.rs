@@ -21,9 +21,25 @@ fn scans_installed_games_across_libraries_with_collections() {
     assert!(scan.skipped.is_empty(), "{:?}", scan.skipped);
 
     let ids: Vec<&str> = scan.games.iter().map(|g| g.source_id.as_str()).collect();
-    assert_eq!(ids, ["620", "413150"], "tools, uninstalled and corrupt manifests are excluded");
+    assert_eq!(ids, ["1003800", "228980", "620", "1493710", "2642680", "413150"], "uninstalled and corrupt manifests are excluded");
+    let kinds: Vec<(&str, GameKind, Vec<String>)> = scan.games.iter().map(|g| (g.title.as_str(), g.kind, g.labels.clone())).collect();
+    assert_eq!(
+        kinds[..5],
+        [
+            ("Gang Beasts Soundtrack", GameKind::Other, vec!["Soundtrack".to_string()]),
+            ("Steamworks Common Redistributables", GameKind::Tool, vec![]),
+            ("Portal 2", GameKind::Game, vec![]),
+            ("Proton Experimental", GameKind::Tool, vec![]),
+            ("Half Sword Demo", GameKind::Game, vec!["Demo".to_string()]),
+        ],
+        "everything installed is reported; filters decide what is shown"
+    );
+    let soundtrack = &scan.games[0];
+    assert!(soundtrack.install_dir.as_deref().unwrap().replace('\\', "/").ends_with("steamapps/music/Gang Beasts Soundtrack"));
+    let scan = { let mut g = scan; g.games.retain(|x| x.kind == GameKind::Game && x.labels.is_empty()); g };
 
     let portal = &scan.games[0];
+    assert_eq!(portal.source_id, "620");
     assert_eq!(portal.title, "Portal 2");
     assert_eq!(portal.kind, GameKind::Game);
     assert_eq!(portal.size_bytes, Some(12_000_000_000));
@@ -49,15 +65,12 @@ fn scans_installed_games_across_libraries_with_collections() {
 }
 
 #[test]
-fn settings_show_tools_and_ignore_hidden() {
+fn respect_hidden_setting_can_be_turned_off() {
     let fx = steam_fixture();
     let mut settings = Map::new();
-    settings.insert("showTools".into(), json!(true));
     settings.insert("respectHidden".into(), json!(false));
     let mut h = harness(&fx, settings);
     let scan = parse_scan(h.call(Method::Scan, None).unwrap().value).unwrap();
-    let tools: Vec<&str> = scan.games.iter().filter(|g| g.kind == GameKind::Tool).map(|g| g.title.as_str()).collect();
-    assert_eq!(tools, ["Steamworks Common Redistributables", "Proton Experimental"]);
     assert!(scan.games.iter().all(|g| !g.hidden));
 }
 
@@ -68,7 +81,8 @@ fn chosen_account_overrides_most_recent() {
     settings.insert("account".into(), json!("11111"));
     let mut h = harness(&fx, settings);
     let scan = parse_scan(h.call(Method::Scan, None).unwrap().value).unwrap();
-    assert_eq!(scan.games[0].categories, ["Other account's collection"]);
+    let portal = scan.games.iter().find(|g| g.source_id == "620").unwrap();
+    assert_eq!(portal.categories, ["Other account's collection"]);
 }
 
 #[test]
@@ -104,4 +118,54 @@ fn login_files_stay_unreadable_even_inside_the_root() {
         let p = fx.root.join(f);
         assert!(scope.check(&p.to_string_lossy()).is_err(), "{f} must be denied");
     }
+}
+
+/// Art candidates, in priority order: custom grid art, Steam's nested per-app cache, the older
+/// flat cache names, the low-resolution capsule, then CDN URLs (downloaded from Phase 4 on).
+#[test]
+fn art_candidates_follow_the_documented_order() {
+    let fx = steam_fixture();
+    let mut h = harness(&fx, Map::new());
+    let scan = parse_scan(h.call(Method::Scan, None).unwrap().value).unwrap();
+    let art = |h: &mut Harness, id: &str| -> Vec<(String, String)> {
+        let game = serde_json::to_value(scan.games.iter().find(|g| g.source_id == id).unwrap()).unwrap();
+        let out = h.call(Method::Art, Some(&game)).unwrap().value;
+        out.as_array()
+            .unwrap()
+            .iter()
+            .map(|c| {
+                let kind = c["kind"].as_str().unwrap().to_string();
+                let at = c["file"].as_str().or(c["url"].as_str()).unwrap().replace('\\', "/");
+                (kind, at)
+            })
+            .collect()
+    };
+    let ends = |list: &[(String, String)]| -> Vec<String> {
+        list.iter().map(|(k, at)| format!("{k}={}", at.rsplit('/').next().unwrap())).collect()
+    };
+
+    let portal = art(&mut h, "620");
+    assert_eq!(
+        ends(&portal),
+        [
+            "cover=620p.png",
+            "hero=620_hero.jpg",
+            "cover=library_600x900.jpg",
+            "hero=library_hero.jpg",
+            "logo=logo.png",
+            "icon=0d3db87fafbdd4b67437dea28d104ec8f2a2b0a0.jpg",
+            "cover=library_600x900_2x.jpg",
+            "hero=library_hero.jpg",
+            "logo=logo.png",
+            "header=header.jpg",
+        ]
+    );
+    assert!(portal[0].1.contains("/userdata/22222/config/grid/"), "the active account's grid folder");
+    assert!(portal[6].1.starts_with("https://cdn.cloudflare.steamstatic.com/steam/apps/620/"));
+
+    let stardew = art(&mut h, "413150");
+    assert_eq!(
+        &ends(&stardew)[..4],
+        ["header=library_header.jpg", "cover=413150_library_600x900.jpg", "header=413150_header.jpg", "cover=library_capsule.jpg"]
+    );
 }

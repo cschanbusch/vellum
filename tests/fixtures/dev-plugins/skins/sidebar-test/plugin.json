@@ -1,0 +1,18 @@
+{
+  "id": "sidebar-test",
+  "type": "skin",
+  "name": "Sidebar test",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "author": "Vellum tests",
+  "description": "Rearranges the kit: a sidebar with views, search and filters; frameless window",
+  "entry": "index.html",
+  "skin": {
+    "defaultView": "covers",
+    "window": { "frameless": true, "background": "#101418" },
+    "styles": { "covers": "covers.css" },
+    "options": [
+      { "id": "sidebarWidth", "label": "Sidebar width", "type": "range", "min": 200, "max": 320, "step": 10, "default": 240, "cssVar": "--sidebar-width", "unit": "px" }
+    ]
+  }
+}

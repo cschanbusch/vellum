@@ -38,6 +38,11 @@ try {
     # Builds the shell (beforeBuildCommand) and the exe with the shell embedded; no installer.
     npx tauri build --no-bundle
     if ($LASTEXITCODE) { throw "tauri build failed ($LASTEXITCODE)" }
+    # The mock provider's art is generated, not committed.
+    if (-not (Test-Path (Join-Path $repo 'plugins\providers\mock\art'))) {
+      cargo run --manifest-path src-tauri/Cargo.toml --release --example make_mock_art
+      if ($LASTEXITCODE) { throw "mock art generation failed ($LASTEXITCODE)" }
+    }
     $ErrorActionPreference = 'Stop'
   }
   if (-not (Test-Path $exe)) { throw "Release binary not found at $exe" }

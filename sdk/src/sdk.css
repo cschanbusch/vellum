@@ -1,0 +1,428 @@
+/* Vellum SDK stylesheet, served at /__vellum/sdk.css.
+   Tokens (all --v-*), base styles, and the light-DOM parts of <vellum-app> and the built-in
+   views. Kit components draw their insides in shadow DOM using only these tokens, so a skin
+   that only sets tokens restyles everything. */
+
+@font-face {
+  font-family: "Inter";
+  src: url("/__vellum/fonts/InterVariable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* Color */
+  --v-bg: #0b0d12;
+  --v-surface: #141824;
+  --v-surface-raised: #1c2131;
+  --v-text: #e8eaf0;
+  --v-text-muted: #9aa3b5;
+  --v-accent: #7cc4ff;
+  --v-accent-text: #06121f;
+  --v-focus-ring: #a8d8ff;
+
+  /* Shape and spacing */
+  --v-radius: 8px;
+  --v-gap: 16px;
+
+  /* Type */
+  --v-font-body: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --v-font-display: "Inter", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+
+  /* Sizes */
+  --v-cover-width: 180px;
+  --v-list-row-height: 44px;
+
+  /* Effects */
+  --v-hero-overlay: linear-gradient(90deg, rgb(8 10 14 / 0.55) 0%, rgb(8 10 14 / 0.2) 45%, transparent 75%);
+  --v-blur: 0px;
+  /* Spotlight: what sits behind the title and text, and an optional panel around them. */
+  --v-spot-scrim: radial-gradient(130% 110% at 0% 100%, color-mix(in srgb, var(--v-bg) 88%, transparent) 0%,
+      color-mix(in srgb, var(--v-bg) 62%, transparent) 38%, transparent 72%),
+    linear-gradient(0deg, var(--v-bg) 0%, transparent 22%);
+  --v-spot-panel: none;
+  --v-transition: 140ms ease;
+
+  /* Couch mode multiplies sizes by this. */
+  --v-couch-scale: 1.25;
+
+  color-scheme: dark;
+}
+
+/* Couch mode: everything sized in rem grows; collections also scale their cover sizes. */
+:root[data-couch] {
+  font-size: calc(16px * var(--v-couch-scale));
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--v-bg);
+  color: var(--v-text);
+  font-family: var(--v-font-body);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-size: 0.9375rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+:focus-visible {
+  outline: 2px solid var(--v-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Collections draw focus on their selected item instead of around themselves. */
+vellum-cover-row {
+  scrollbar-width: none;
+}
+
+vellum-grid:focus-visible,
+vellum-cover-row:focus-visible,
+vellum-list:focus-visible {
+  outline: none;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--v-accent) 40%, transparent);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--v-text) 22%, transparent) transparent;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* A plain button that matches the kit. */
+.v-button,
+.v-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4em;
+  font: inherit;
+  color: var(--v-text);
+  background: var(--v-surface-raised);
+  border: 1px solid color-mix(in srgb, var(--v-text) 12%, transparent);
+  border-radius: var(--v-radius);
+  padding: 0.45em 0.95em;
+  cursor: pointer;
+  transition: background var(--v-transition);
+}
+.v-button:hover,
+.v-icon-button:hover {
+  background: color-mix(in srgb, var(--v-surface-raised) 80%, var(--v-text));
+}
+.v-icon-button {
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  font-size: 1.05rem;
+  background: transparent;
+  border-color: transparent;
+}
+
+/* ---- <vellum-app> --------------------------------------------------------------------- */
+
+vellum-app {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  container: vellum-app / inline-size;
+}
+/* Narrow windows: drop the counter first, then shorten the search box. */
+@container vellum-app (max-width: 1180px) {
+  .v-topbar .v-count { display: none; }
+}
+@container vellum-app (max-width: 1040px) {
+  .v-topbar vellum-search { flex-basis: 9rem; }
+  .v-topbar { gap: 0.6rem; }
+}
+@container vellum-app (max-width: 1000px) {
+  /* Sorting stays available from List's column headers. */
+  .v-topbar vellum-sort-menu { display: none; }
+}
+
+vellum-app .v-topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.6rem 0 0.6rem var(--v-gap);
+  min-height: 3.5rem;
+  background: color-mix(in srgb, var(--v-bg) 85%, var(--v-surface));
+  border-bottom: 1px solid color-mix(in srgb, var(--v-text) 6%, transparent);
+  position: relative;
+  z-index: 2;
+  user-select: none;
+}
+vellum-app .v-brand {
+  font: 650 1.15rem var(--v-font-display);
+  letter-spacing: -0.01em;
+}
+vellum-app .v-count {
+  white-space: nowrap;
+  color: var(--v-text-muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+vellum-app .v-spacer {
+  flex: 1;
+}
+vellum-app .v-topbar > * {
+  flex-shrink: 0;
+}
+vellum-app .v-topbar > .v-spacer {
+  flex: 1 1 0;
+  min-width: 0;
+}
+/* When space runs out, the tools shrink (search first) so the window controls stay visible. */
+vellum-app .v-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 1;
+  min-width: 0;
+  /* Clip rather than push: whatever doesn't fit is cut here, never the window controls. */
+  overflow: hidden;
+  padding: 4px 4px 4px 4px;
+  margin: -4px 0;
+}
+vellum-app vellum-search {
+  flex: 0 1 clamp(12rem, 22vw, 20rem);
+  min-width: 6rem;
+}
+vellum-app .v-count {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+vellum-app .v-settings {
+  flex: none;
+  margin-right: var(--v-gap);
+}
+vellum-app vellum-window-controls {
+  flex: none;
+  margin: -0.6rem 0;
+}
+
+/* Added by the SDK when a frameless skin isn't showing window controls of its own. */
+vellum-window-controls.v-window-controls-fallback {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 2147483000;
+  height: 2.25rem;
+  background: color-mix(in srgb, var(--v-bg) 70%, transparent);
+  border-bottom-left-radius: var(--v-radius);
+  backdrop-filter: blur(8px);
+}
+
+vellum-view-outlet {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.v-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.v-view-error {
+  margin: 3rem auto;
+  color: var(--v-text-muted);
+}
+
+.v-view-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem var(--v-gap) 0;
+}
+
+.v-view-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ---- Built-in views ------------------------------------------------------------------- */
+
+.v-view[data-view="list"] vellum-list,
+.v-view-body > vellum-grid {
+  flex: 1;
+  min-height: 0;
+}
+
+.v-shelves {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.5rem 0 2rem;
+}
+.v-shelves vellum-shelf + vellum-shelf {
+  margin-top: 0.25rem;
+}
+
+.v-view[data-view="spotlight"] {
+  position: relative;
+  overflow: hidden;
+}
+/* The hero fills the stage, which ends where the covers begin. */
+.v-spot-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.v-spot-hero {
+  position: absolute;
+  inset: 0;
+}
+/* Keeps text readable on any art: dark (or, for light skins, light) behind the text corner. */
+.v-spot-scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--v-spot-scrim);
+}
+.v-spot-tools {
+  position: absolute;
+  top: 0.8rem;
+  right: var(--v-gap);
+  z-index: 1;
+}
+.v-spot-content {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: flex-end;
+  padding: 2rem calc(var(--v-gap) * 3) 1.4rem;
+  overflow: hidden;
+}
+.v-spot-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.85rem;
+  max-width: min(46rem, 60%);
+  padding: var(--v-spot-panel-padding, 0);
+  border-radius: var(--v-radius);
+  background: var(--v-spot-panel);
+  text-shadow: 0 1px 3px color-mix(in srgb, var(--v-bg) 70%, transparent);
+}
+.v-spot-logo {
+  max-width: min(32rem, 100%);
+  --v-logo-max-height: 10rem;
+  margin-bottom: 0.4rem;
+}
+.v-spot-meta {
+  margin: 0;
+  color: var(--v-text);
+  font-weight: 500;
+}
+.v-spot-badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.v-spot-label {
+  padding: 0.15rem 0.6rem;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--v-accent);
+  color: var(--v-accent-text);
+  text-shadow: none;
+}
+.v-spot-desc {
+  margin: 0;
+  color: color-mix(in srgb, var(--v-text) 88%, transparent);
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.v-spot-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+  text-shadow: none;
+}
+.v-spot-actions .v-button {
+  padding: 0.7em 1.1em;
+  background: color-mix(in srgb, var(--v-surface-raised) 75%, transparent);
+  backdrop-filter: blur(8px);
+}
+.v-spot-actions .v-button[aria-pressed="true"] {
+  color: var(--v-accent);
+}
+.v-spot-facts {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--v-text-muted);
+}
+
+/* Covers below the stage: one strip, or one row per group. */
+.v-spot-rows {
+  flex: none;
+  position: relative;
+  background: var(--v-bg);
+  --v-cover-width: 104px;
+  --v-cover-caption: none;
+}
+.v-spot-rows[data-grouped] {
+  max-height: min(46vh, 30rem);
+  overflow-y: auto;
+  scrollbar-width: none;
+  scroll-snap-type: y proximity;
+  padding-top: 0.3rem;
+}
+.v-spot-row {
+  scroll-snap-align: start;
+}
+.v-spot-row-label {
+  margin: 0.4rem 0 -0.4rem;
+  padding: 0 var(--v-gap);
+  font: 600 0.95rem var(--v-font-display);
+  color: var(--v-text);
+}
+.v-spot-row-count {
+  margin-left: 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--v-text-muted);
+}
+.v-spot-strip {
+  position: relative;
+  mask-image: linear-gradient(90deg, transparent, black 6%, black 94%, transparent);
+}

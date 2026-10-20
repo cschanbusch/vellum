@@ -1,0 +1,23 @@
+{
+  "id": "calling-card",
+  "type": "skin",
+  "name": "Calling Card",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "author": "Vellum",
+  "description": "Red, black and white menus with ransom-note type, in the style of Persona 5 (fan-made; no original assets)",
+  "entry": "index.html",
+  "skin": {
+    "preview": "preview.jpg",
+    "defaultView": "covers",
+    "window": { "frameless": true, "minWidth": 960, "minHeight": 600, "background": "#d0001a" },
+    "options": [
+      { "id": "red", "label": "Red", "type": "color", "default": "#e3001b", "cssVar": "--cc-red" },
+      { "id": "tilt", "label": "Tilt", "type": "range", "min": 0, "max": 6, "step": 0.5, "default": 2.5, "cssVar": "--cc-tilt", "unit": "deg" },
+      { "id": "card", "label": "Show the calling card", "type": "toggle", "default": true },
+      { "id": "halftone", "label": "Halftone background", "type": "toggle", "default": true },
+      { "id": "motion", "label": "Animated background", "type": "toggle", "default": true },
+      { "id": "coverSize", "label": "Cover size", "type": "range", "min": 130, "max": 300, "step": 10, "default": 170, "cssVar": "--v-cover-width", "unit": "px" }
+    ]
+  }
+}

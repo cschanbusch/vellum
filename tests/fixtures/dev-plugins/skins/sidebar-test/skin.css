@@ -1,0 +1,71 @@
+:root {
+  --v-bg: #101418;
+  --v-surface: #171d23;
+  --v-surface-raised: #222a32;
+  --v-accent: #4fd1a5;
+  --v-accent-text: #04140e;
+  --v-focus-ring: #8cf0cd;
+  --sidebar-width: 240px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  flex: 1;
+  min-height: 0;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 14px;
+  background: var(--v-surface);
+}
+
+.brand {
+  font: 700 1.3rem var(--v-font-display);
+  letter-spacing: 0.04em;
+  color: var(--v-accent);
+}
+
+/* Kit internals are reached through their parts. */
+.sidebar vellum-view-switcher::part(tabs) {
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  background: transparent;
+}
+.sidebar vellum-view-switcher::part(tab) {
+  justify-content: flex-start;
+}
+.sidebar vellum-view-switcher {
+  display: block;
+}
+
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.settings {
+  margin-top: auto;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+  padding-left: 16px;
+  color: var(--v-text-muted);
+  font-size: 0.85rem;
+}

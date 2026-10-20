@@ -1,62 +1,27 @@
-// Shell-owned state: the library, UI state and provider statuses. Skins get copies through
-// the bridge; only the shell writes.
+// Provider statuses and location notices, for the notice bar and the Plugins page.
+// The library and UI state live in the skin host controller (host/controller.ts).
 import { api, type Notice, type ProviderStatus } from "./api";
-import { DEFAULT_STATE, type Entry, type ProviderInfo, type UiState } from "../../sdk/src/types";
 
 type Listener = () => void;
 
 class Store {
-  entries: Entry[] = [];
-  state: UiState = { ...DEFAULT_STATE };
   statuses: ProviderStatus[] = [];
   notices: Notice[] = [];
-  private listeners = { library: new Set<Listener>(), state: new Set<Listener>(), providers: new Set<Listener>() };
+  private listeners = new Set<Listener>();
 
-  on(kind: keyof Store["listeners"], cb: Listener): () => void {
-    this.listeners[kind].add(cb);
-    return () => this.listeners[kind].delete(cb);
-  }
-
-  private emit(kind: keyof Store["listeners"]) {
-    this.listeners[kind].forEach((cb) => cb());
+  on(_kind: "providers", cb: Listener): () => void {
+    this.listeners.add(cb);
+    return () => this.listeners.delete(cb);
   }
 
   async start() {
-    await Promise.all([this.loadLibrary(), this.loadProviders()]);
-    api.onLibraryChanged(() => this.loadLibrary());
+    await this.loadProviders();
     api.onProvidersChanged(() => this.loadProviders());
-  }
-
-  async loadLibrary() {
-    this.entries = await api.libraryEntries();
-    if (this.state.selectedId && !this.entries.some((e) => e.id === this.state.selectedId)) {
-      this.setState({ selectedId: null });
-    }
-    this.emit("library");
   }
 
   async loadProviders() {
     [this.statuses, this.notices] = await Promise.all([api.providerStatuses(), api.notices()]);
-    this.emit("providers");
-  }
-
-  setState(partial: Partial<UiState>) {
-    this.state = { ...this.state, ...partial };
-    this.emit("state");
-  }
-
-  providerInfo(names: Map<string, string>): ProviderInfo[] {
-    return this.statuses.map((s) => ({
-      id: s.id,
-      name: names.get(s.id) ?? s.id,
-      state: s.state,
-      message: s.message,
-      games: s.games,
-    }));
-  }
-
-  entry(id: string): Entry | undefined {
-    return this.entries.find((e) => e.id === id);
+    this.listeners.forEach((cb) => cb());
   }
 }
 

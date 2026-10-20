@@ -1,0 +1,13 @@
+{
+	"FormatVersion": 0,
+	"bIsIncompleteInstall": false,
+	"DisplayName": "Fowl Escape 2 - Soundtrack Pack",
+	"AppName": "FowlSoundtrack",
+	"CatalogNamespace": "115577f4ef1e4055aaf0da534fdfe81e",
+	"CatalogItemId": "c0ffee00000000000000000000000001",
+	"InstallLocation": "C:\\Program Files\\Epic Games\\FowlEscape2",
+	"InstallSize": 1024,
+	"AppCategories": [ "public", "addons", "games" ],
+	"MainGameAppName": "Fowl",
+	"bIsExecutable": false
+}

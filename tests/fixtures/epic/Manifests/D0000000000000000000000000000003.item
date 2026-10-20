@@ -1,0 +1,13 @@
+{
+	"FormatVersion": 0,
+	"bIsIncompleteInstall": false,
+	"DisplayName": "Unreal Engine",
+	"AppName": "UE_5.4",
+	"CatalogNamespace": "ue",
+	"CatalogItemId": "ue54",
+	"InstallLocation": "D:\\Epic\\UE_5.4",
+	"InstallSize": 50000000000,
+	"AppCategories": [ "engines" ],
+	"MainGameAppName": "UE_5.4",
+	"bIsExecutable": true
+}

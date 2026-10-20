@@ -1,0 +1,300 @@
+/* Calling Card: red, black and white; halftone; everything skewed; ransom-note letters.
+   A style homage to Persona 5's menus. Fan-made: no original assets, logos or fonts. */
+
+@font-face { font-family: "Anton"; src: url("fonts/anton-latin-400-normal.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Archivo Black"; src: url("fonts/archivo-black-latin-400-normal.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Bebas Neue"; src: url("fonts/bebas-neue-latin-400-normal.woff2") format("woff2"); font-display: swap; }
+
+:root {
+  --cc-red: #e3001b;
+  --cc-tilt: 2.5deg;
+  --cc-ink: #0a0a0a;
+  --cc-paper: #fbfbf6;
+  --v-bg: #0a0a0a;
+  --v-surface: #141414;
+  --v-surface-raised: #1f1f1f;
+  --v-text: #fbfbf6;
+  --v-text-muted: #c9c9c0;
+  --v-accent: var(--cc-red);
+  --v-accent-text: #fff;
+  --v-focus-ring: #ffffff;
+  --v-radius: 0px;
+  --v-gap: 22px;
+  --v-font-body: "Archivo Black", "Inter", sans-serif;
+  --v-font-display: "Anton", "Archivo Black", sans-serif;
+  --v-cover-width: 170px;
+  --v-list-row-height: 44px;
+  --v-hero-overlay: linear-gradient(100deg, rgb(10 10 10 / 0.75) 0%, rgb(10 10 10 / 0.35) 40%, transparent 65%);
+  --v-spot-scrim: none;
+  --cc-shadow: 6px 6px 0 var(--cc-ink);
+  font-size: 16px;
+}
+
+body { background: transparent; }
+
+/* ---- backdrop: red field, halftone, black shards --------------------------------------------- */
+
+.cc-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background: var(--cc-red);
+}
+.cc-rays {
+  position: absolute;
+  inset: -50%;
+  background: repeating-conic-gradient(from 0deg at 70% 45%, rgb(0 0 0 / 0.13) 0deg 9deg, transparent 9deg 18deg);
+  animation: cc-spin 90s linear infinite;
+}
+.cc-dots {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgb(0 0 0 / 0.38) 28%, transparent 30%);
+  background-size: 14px 14px;
+  -webkit-mask-image: linear-gradient(115deg, transparent 20%, #000 75%);
+  mask-image: linear-gradient(115deg, transparent 20%, #000 75%);
+}
+:root:not([data-opt-halftone]) .cc-dots { display: none; }
+.cc-shard { position: absolute; background: var(--cc-ink); }
+.cc-shard.s1 { inset: -10% auto -10% -12%; width: 46%; clip-path: polygon(0 0, 100% 0, 62% 100%, 0 100%); }
+.cc-shard.s2 { right: -6%; top: 52%; width: 38%; height: 70%; clip-path: polygon(30% 0, 100% 12%, 100% 100%, 0 100%); animation: cc-sway 7s ease-in-out infinite alternate; }
+.cc-shard.s3 { right: 22%; top: -8%; width: 14%; height: 34%; background: var(--cc-paper); clip-path: polygon(0 0, 100% 0, 40% 100%); opacity: 0.92; animation: cc-sway 9s ease-in-out infinite alternate-reverse; }
+@keyframes cc-spin { to { transform: rotate(360deg); } }
+@keyframes cc-sway { from { transform: translateX(0) rotate(0); } to { transform: translateX(-2%) rotate(-2deg); } }
+:root[data-cc-still] .cc-bg * { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .cc-bg * { animation: none !important; } }
+
+/* ---- ransom letters ------------------------------------------------------------------------ */
+
+cc-ransom { display: inline-flex; flex-wrap: wrap; gap: 0.12em 0.45em; align-items: center; }
+.cc-word { display: inline-flex; gap: 0.04em; }
+.cc-letter {
+  display: inline-block;
+  padding: 0.02em 0.12em 0;
+  line-height: 1.05;
+  transform: translateY(var(--lift)) rotate(var(--rot)) scale(var(--scale));
+  box-shadow: 2px 2px 0 rgb(0 0 0 / 0.55);
+}
+.cc-letter.p0 { background: var(--cc-paper); color: var(--cc-ink); }
+.cc-letter.p1 { background: var(--cc-ink); color: var(--cc-paper); }
+.cc-letter.p2 { background: var(--cc-red); color: var(--cc-paper); }
+
+/* ---- top bar: a skewed black band ---------------------------------------------------------- */
+
+vellum-app .v-topbar {
+  position: relative;
+  background: var(--cc-ink);
+  border: 0;
+  clip-path: polygon(0 0, 100% 0, 100% 72%, 62% 100%, 0 86%);
+  padding-bottom: 1.1rem;
+  min-height: 4.2rem;
+}
+vellum-app .v-brand { font-size: 1.45rem; transform: rotate(-4deg); }
+vellum-app .v-count {
+  font: 400 0.95rem "Bebas Neue", sans-serif;
+  letter-spacing: 0.12em;
+  color: var(--cc-ink);
+  background: var(--cc-paper);
+  padding: 0 0.5em;
+  transform: skewX(-12deg) rotate(-3deg);
+}
+
+vellum-view-switcher::part(tabs) { background: transparent; gap: 0.6rem; }
+vellum-view-switcher::part(tab) {
+  font: 400 1.35rem "Anton", sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cc-paper);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  transform: skewX(-10deg) rotate(-3deg);
+  transition: transform 120ms cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+vellum-view-switcher::part(tab):hover { transform: skewX(-10deg) rotate(-6deg) scale(1.08); }
+vellum-view-switcher::part(tab-selected) {
+  color: var(--cc-red);
+  background: var(--cc-paper);
+  box-shadow: 5px 5px 0 var(--cc-red);
+  transform: skewX(-10deg) rotate(4deg) scale(1.1);
+}
+
+vellum-search::part(box) {
+  border-radius: 0;
+  background: var(--cc-paper);
+  border: 0;
+  transform: skewX(-12deg);
+  box-shadow: 4px 4px 0 var(--cc-red);
+}
+vellum-search::part(input) { color: var(--cc-ink); font-family: "Archivo Black", sans-serif; text-transform: uppercase; }
+vellum-filter-bar::part(trigger),
+vellum-sort-menu::part(trigger),
+vellum-group-menu::part(trigger),
+.v-button,
+.v-icon-button {
+  border-radius: 0;
+  border: 2px solid var(--cc-paper);
+  background: var(--cc-ink);
+  color: var(--cc-paper);
+  font: 400 1rem "Bebas Neue", sans-serif;
+  letter-spacing: 0.12em;
+  transform: skewX(-12deg);
+}
+:is(vellum-filter-bar, vellum-sort-menu, vellum-group-menu)::part(trigger):hover,
+.v-button:hover { background: var(--cc-red); }
+:is(vellum-filter-bar, vellum-sort-menu, vellum-group-menu)::part(panel) {
+  border-radius: 0;
+  border: 3px solid var(--cc-paper);
+  background: var(--cc-ink);
+  box-shadow: 8px 8px 0 var(--cc-red);
+  font: 400 1.1rem "Bebas Neue", sans-serif;
+  letter-spacing: 0.08em;
+}
+vellum-window-controls::part(close):hover { background: var(--cc-paper); color: var(--cc-red); }
+
+/* ---- covers: tilted cut-outs that slam forward when picked --------------------------------- */
+
+.v-view-bar { padding-top: 0.2rem; }
+vellum-grid::part(art),
+vellum-cover-row::part(art) {
+  border-radius: 0;
+  border: 3px solid var(--cc-paper);
+  box-shadow: var(--cc-shadow);
+  transform: rotate(calc(var(--cc-tilt) * -1));
+  transition: transform 160ms cubic-bezier(0.3, 1.8, 0.5, 1), box-shadow 120ms ease;
+}
+vellum-grid::part(art-selected),
+vellum-cover-row::part(art-selected) {
+  border-color: var(--cc-ink);
+  box-shadow: 8px 8px 0 var(--cc-paper), 14px 14px 0 var(--cc-ink);
+  transform: rotate(var(--cc-tilt)) scale(1.05);
+}
+vellum-grid::part(art-focused),
+vellum-cover-row::part(art-focused) {
+  border-color: var(--cc-paper);
+  box-shadow: 8px 8px 0 var(--cc-ink), 14px 14px 0 var(--cc-paper);
+  transform: rotate(calc(var(--cc-tilt) * 1.6)) scale(1.1);
+}
+vellum-grid::part(caption) {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 0.35rem;
+  padding: 0 0.35em;
+  font: 400 1rem "Bebas Neue", sans-serif;
+  letter-spacing: 0.08em;
+  color: var(--cc-paper);
+  background: var(--cc-ink);
+  transform: skewX(-12deg);
+}
+vellum-grid::part(favorite) { border-radius: 0; background: var(--cc-paper); color: var(--cc-red); }
+
+vellum-shelf::part(label) {
+  font: 400 1.7rem "Anton", sans-serif;
+  text-transform: uppercase;
+  color: var(--cc-paper);
+  text-shadow: 3px 3px 0 var(--cc-ink);
+}
+vellum-shelf::part(count) { font-family: "Bebas Neue"; font-size: 1.1rem; color: var(--cc-ink); }
+
+/* ---- list: a black slab with red slashes for the selection --------------------------------- */
+
+.v-view[data-view="list"] {
+  margin: 0.6rem 1.2rem 1.2rem;
+  background: var(--cc-ink);
+  box-shadow: 10px 10px 0 rgb(0 0 0 / 0.45);
+  transform: rotate(-0.4deg);
+}
+vellum-list::part(column) { font: 400 1.05rem "Bebas Neue", sans-serif; color: var(--cc-red); }
+vellum-list::part(title) { font: 400 1.35rem "Anton", sans-serif; letter-spacing: 0.02em; }
+vellum-list::part(row) { border-bottom-color: rgb(255 255 255 / 0.08); }
+vellum-list::part(row-selected) {
+  background: linear-gradient(100deg, var(--cc-red) 0 62%, transparent 62.5%);
+  box-shadow: none;
+  color: var(--cc-paper);
+}
+
+/* ---- spotlight ----------------------------------------------------------------------------- */
+
+.v-spot-stage { clip-path: polygon(0 0, 100% 0, 100% 88%, 0 100%); }
+.v-spot-hero::part(hero) { filter: contrast(1.15) saturate(0.9); }
+.v-spot-info { gap: 1rem; }
+.v-spot-logo::part(title) {
+  font: 400 clamp(2.6rem, 6vw, 5.4rem) "Anton", sans-serif;
+  text-transform: uppercase;
+  color: var(--cc-paper);
+  -webkit-text-stroke: 2px var(--cc-ink);
+  text-shadow: 6px 6px 0 var(--cc-red), 10px 10px 0 var(--cc-ink);
+  transform: rotate(-3deg) skewX(-8deg);
+  transform-origin: left bottom;
+}
+.v-spot-logo::part(logo) { filter: drop-shadow(5px 5px 0 var(--cc-ink)) drop-shadow(4px 4px 0 var(--cc-red)); transform: rotate(-3deg); }
+.v-spot-meta {
+  width: fit-content;
+  padding: 0.1em 0.6em;
+  font: 400 1.3rem "Bebas Neue", sans-serif;
+  letter-spacing: 0.1em;
+  color: var(--cc-ink);
+  background: var(--cc-paper);
+  transform: skewX(-12deg) rotate(-1.5deg);
+  text-shadow: none;
+  box-shadow: 5px 5px 0 var(--cc-red);
+}
+.v-spot-desc {
+  max-width: 34rem;
+  padding: 0.7rem 0.9rem;
+  font: 400 0.95rem "Archivo Black", sans-serif;
+  background: var(--cc-ink);
+  border-left: 6px solid var(--cc-red);
+  text-shadow: none;
+}
+vellum-source-badges::part(badge) { border-radius: 0; background: var(--cc-red); color: #fff; font-family: "Bebas Neue"; font-size: 1rem; letter-spacing: 0.1em; }
+vellum-play-button::part(button) {
+  border-radius: 0;
+  font: 400 1.7rem "Anton", sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cc-ink);
+  background: var(--cc-paper);
+  box-shadow: 6px 6px 0 var(--cc-red), 11px 11px 0 var(--cc-ink);
+  transform: skewX(-12deg) rotate(-2deg);
+  transition: transform 120ms cubic-bezier(0.3, 1.8, 0.5, 1);
+}
+vellum-play-button::part(button):hover,
+vellum-play-button::part(button):focus-visible { transform: skewX(-12deg) rotate(-5deg) scale(1.08); background: var(--cc-red); color: var(--cc-paper); }
+.v-spot-facts { color: var(--cc-paper); font: 400 1rem "Bebas Neue"; letter-spacing: 0.1em; }
+.v-spot-rows { background: transparent; }
+.v-spot-row-label { font: 400 1.5rem "Anton"; text-transform: uppercase; color: var(--cc-paper); text-shadow: 3px 3px 0 var(--cc-ink); }
+
+/* ---- the calling card ---------------------------------------------------------------------- */
+
+.cc-card {
+  position: fixed;
+  right: 2.2rem;
+  bottom: 1.8rem;
+  z-index: 20;
+  max-width: min(30rem, 42vw);
+  padding: 0.9rem 1.2rem 1rem;
+  background: var(--cc-paper);
+  color: var(--cc-ink);
+  border: 4px solid var(--cc-ink);
+  box-shadow: 10px 10px 0 var(--cc-red), 16px 16px 0 var(--cc-ink);
+  transform: rotate(-4deg);
+  pointer-events: none;
+}
+.cc-card[hidden] { display: none; }
+.cc-card.slam { animation: cc-slam 380ms cubic-bezier(0.2, 1.6, 0.4, 1); }
+.cc-card-kicker {
+  font: 400 1rem "Bebas Neue", sans-serif;
+  letter-spacing: 0.3em;
+  color: var(--cc-red);
+}
+.cc-card-title { font-size: 2rem; margin: 0.2rem 0 0.4rem; }
+.cc-card-meta { font: 400 1rem "Bebas Neue", sans-serif; letter-spacing: 0.12em; }
+@keyframes cc-slam {
+  0% { transform: translate(40%, 30%) rotate(18deg) scale(0.6); opacity: 0; }
+  60% { transform: translate(0, 0) rotate(-7deg) scale(1.06); opacity: 1; }
+  100% { transform: rotate(-4deg); }
+}
+@media (prefers-reduced-motion: reduce) { .cc-card.slam { animation: none; } }

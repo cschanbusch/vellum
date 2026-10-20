@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 use serde::Serialize;
 
 use super::{record_id, ProviderRecords};
+use crate::art;
 use crate::providers::model::{GameKind, Metadata, ProviderGame};
 use crate::userdata::games::UserData;
 
@@ -39,6 +40,8 @@ pub struct Entry {
     pub sources: Vec<Source>,
     pub preferred_source: String,
     pub categories: Vec<Category>,
+    /// The store's labels for this game, such as "Demo" or "Soundtrack".
+    pub labels: Vec<String>,
     pub tags: Vec<String>,
     pub favorite: bool,
     pub hidden: bool,
@@ -47,7 +50,7 @@ pub struct Entry {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub size_bytes: Option<u64>,
     pub metadata: Metadata,
-    /// Art URLs on the skin's own origin; resolved and served from Phase 3 on.
+    /// Art URLs on the skin's own origin, versioned so they can be cached as immutable.
     pub art: BTreeMap<&'static str, String>,
     pub art_status: BTreeMap<&'static str, &'static str>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -73,6 +76,7 @@ impl Entry {
     pub fn single(provider: &str, recs: &ProviderRecords, g: &ProviderGame, ud: &UserData) -> Entry {
         let id = record_id(provider, &g.source_id);
         let user = ud.games.get(&id).cloned().unwrap_or_default();
+        let cands = recs.art.get(&g.source_id).map(Vec::as_slice).unwrap_or(&[]);
         Entry {
             title: g.title.clone(),
             sort_title: sort_title(&g.title),
@@ -86,6 +90,7 @@ impl Entry {
             }],
             preferred_source: provider.to_string(),
             categories: g.categories.iter().map(|c| Category { provider: provider.to_string(), name: c.clone() }).collect(),
+            labels: g.labels.clone(),
             tags: user.tags,
             favorite: user.favorite,
             hidden: user.hidden.unwrap_or(g.hidden),
@@ -93,8 +98,8 @@ impl Entry {
             added_at: user.first_seen.unwrap_or_default(),
             size_bytes: g.size_bytes,
             metadata: g.metadata.clone(),
-            art: ART_KINDS.iter().map(|k| (*k, format!("/__vellum/art/{id}/{k}"))).collect(),
-            art_status: ART_KINDS.iter().map(|k| (*k, "placeholder")).collect(),
+            art: ART_KINDS.iter().map(|k| (*k, art::url(&id, k, &art::version(art::pick(cands, k), &g.title)))).collect(),
+            art_status: ART_KINDS.iter().map(|k| (*k, if art::pick(cands, k).is_some() { "local" } else { "placeholder" })).collect(),
             notes: user.notes,
             id,
         }

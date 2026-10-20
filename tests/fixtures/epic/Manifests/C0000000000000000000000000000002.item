@@ -1,0 +1,11 @@
+{
+	"FormatVersion": 0,
+	"bIsIncompleteInstall": true,
+	"DisplayName": "Half Downloaded",
+	"AppName": "Halfway",
+	"CatalogNamespace": "aaaa",
+	"CatalogItemId": "bbbb",
+	"InstallLocation": "D:\\Epic\\Halfway",
+	"AppCategories": [ "games" ],
+	"MainGameAppName": "Halfway"
+}

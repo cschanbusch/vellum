@@ -1,112 +1,52 @@
-/* Basis: Phase 2 plain list. Tokens move to sdk.css in Phase 3. */
+/* Basis, the default skin: the SDK's own layout and tokens, with a few refinements.
+   Every option in plugin.json maps to a token here (or directly via its cssVar). */
+
 :root {
   --v-bg: #0b0d12;
   --v-surface: #141824;
-  --v-surface-raised: #1c2131;
-  --v-text: #e6e8ee;
-  --v-text-muted: #9aa3b5;
+  --v-surface-raised: #1d2232;
+  --v-text: #e8eaf0;
+  --v-text-muted: #969fb2;
   --v-accent: #7cc4ff;
   --v-accent-text: #06121f;
-  --v-focus-ring: #7cc4ff;
-  --v-radius: 8px;
-  --v-list-row-height: 40px;
-  --v-font-body: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
-  color-scheme: dark;
+  --v-focus-ring: #b9e0ff;
+  --v-radius: 10px;
+  --v-cover-width: 180px;
+  --v-list-row-height: 44px;
 }
 
-* { box-sizing: border-box; }
-
-html, body {
-  margin: 0;
-  height: 100%;
-  background: var(--v-bg);
-  color: var(--v-text);
-  font: 14px/1.4 var(--v-font-body);
+/* Option "Background blur" (toggle → data-opt-hero-blur on :root). */
+:root[data-opt-hero-blur] {
+  --v-blur: 18px;
 }
 
-body { display: flex; flex-direction: column; }
-
-.bar {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  padding: 16px 24px 8px;
+/* Option "Show titles under covers". */
+:root:not([data-opt-captions]) {
+  --v-cover-caption: none;
 }
 
-h1 { margin: 0; font-size: 22px; font-weight: 600; }
-
-.muted { color: var(--v-text-muted); }
-
-main { flex: 1; overflow: auto; padding: 0 24px 24px; }
-
-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-
-th {
-  position: sticky;
-  top: 0;
-  background: var(--v-bg);
-  text-align: left;
-  font-weight: 500;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--v-text-muted);
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--v-surface-raised);
+/* A soft wash of the accent behind the top bar. */
+vellum-app .v-topbar {
+  background:
+    radial-gradient(120% 220% at 0% 0%, color-mix(in srgb, var(--v-accent) 9%, transparent), transparent 55%),
+    color-mix(in srgb, var(--v-bg) 88%, var(--v-surface));
 }
 
-th:nth-child(1) { width: auto; }
-th:nth-child(2) { width: 140px; }
-th:nth-child(3) { width: 100px; }
-th:nth-child(4) { width: 170px; }
-th:nth-child(5) { width: 90px; }
-
-td {
-  height: var(--v-list-row-height);
-  padding: 0 10px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  border-bottom: 1px solid #ffffff08;
-}
-
-.num { text-align: right; font-variant-numeric: tabular-nums; }
-
-tbody tr { cursor: default; }
-tbody tr:hover { background: var(--v-surface); }
-tbody tr[aria-selected="true"] { background: var(--v-surface-raised); }
-tbody tr[aria-selected="true"] td:first-child { box-shadow: inset 3px 0 0 var(--v-accent); }
-
-.title { font-weight: 500; }
-.tag {
+vellum-app .v-brand::before {
+  content: "";
   display: inline-block;
-  margin-left: 8px;
-  padding: 0 6px;
-  border-radius: 99px;
-  font-size: 11px;
-  background: var(--v-surface-raised);
-  color: var(--v-text-muted);
-}
-
-.play {
-  font: inherit;
-  font-weight: 600;
-  padding: 4px 14px;
-  border: 0;
-  border-radius: var(--v-radius);
+  width: 0.55em;
+  height: 0.55em;
+  margin-right: 0.5em;
+  border-radius: 3px;
   background: var(--v-accent);
-  color: var(--v-accent-text);
-  cursor: pointer;
-  visibility: hidden;
-}
-tbody tr:hover .play,
-tbody tr[aria-selected="true"] .play { visibility: visible; }
-
-:focus-visible { outline: 2px solid var(--v-focus-ring); outline-offset: -2px; }
-
-.sr-only {
-  position: absolute; width: 1px; height: 1px; overflow: hidden;
-  clip: rect(0 0 0 0); white-space: nowrap;
+  vertical-align: 0.08em;
+  transform: rotate(45deg);
 }
 
-#empty { padding: 40px 0; text-align: center; font-size: 15px; }
+/* Couch mode: drop the dense controls, keep views and search. */
+:root[data-couch] vellum-app vellum-sort-menu,
+:root[data-couch] vellum-app vellum-filter-bar,
+:root[data-couch] vellum-app .v-count {
+  display: none;
+}

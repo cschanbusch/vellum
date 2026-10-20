@@ -1,0 +1,227 @@
+[
+ {
+  "title": "Hollow Knight",
+  "kind": "cover",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 600 900\" width=\"600\" height=\"900\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(67,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(145,55%,36%)\"/></linearGradient></defs><rect width=\"600\" height=\"900\" fill=\"url(#g)\"/><circle cx=\"233\" cy=\"858\" r=\"540\" fill=\"hsl(145,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"64\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"300\" y=\"472\">Hollow Knight</text></g></svg>"
+ },
+ {
+  "title": "Hollow Knight",
+  "kind": "hero",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1920 620\" width=\"1920\" height=\"620\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(67,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(145,55%,36%)\"/></linearGradient></defs><rect width=\"1920\" height=\"620\" fill=\"url(#g)\"/><circle cx=\"1193\" cy=\"38\" r=\"1152\" fill=\"hsl(145,60%,60%)\" fill-opacity=\"0.12\"/></svg>"
+ },
+ {
+  "title": "Hollow Knight",
+  "kind": "logo",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1280 400\" width=\"1280\" height=\"400\"><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"96\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"640\" y=\"234\">Hollow Knight</text></g></svg>"
+ },
+ {
+  "title": "Hollow Knight",
+  "kind": "header",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 920 430\" width=\"920\" height=\"430\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(67,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(145,55%,36%)\"/></linearGradient></defs><rect width=\"920\" height=\"430\" fill=\"url(#g)\"/><circle cx=\"753\" cy=\"228\" r=\"552\" fill=\"hsl(145,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"54\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"460\" y=\"234\">Hollow Knight</text></g></svg>"
+ },
+ {
+  "title": "Hollow Knight",
+  "kind": "icon",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(67,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(145,55%,36%)\"/></linearGradient></defs><rect width=\"256\" height=\"256\" fill=\"url(#g)\"/><circle cx=\"41\" cy=\"250\" r=\"153\" fill=\"hsl(145,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"110\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"128\" y=\"167\">HK</text></g></svg>"
+ },
+ {
+  "title": "The Elder Scrolls V: Skyrim Special Edition",
+  "kind": "cover",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 600 900\" width=\"600\" height=\"900\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(136,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(171,55%,36%)\"/></linearGradient></defs><rect width=\"600\" height=\"900\" fill=\"url(#g)\"/><circle cx=\"572\" cy=\"585\" r=\"540\" fill=\"hsl(171,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"64\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"300\" y=\"361\">The Elder</text><text x=\"300\" y=\"435\">Scrolls V:</text><text x=\"300\" y=\"509\">Skyrim Special</text><text x=\"300\" y=\"583\">Edition</text></g></svg>"
+ },
+ {
+  "title": "The Elder Scrolls V: Skyrim Special Edition",
+  "kind": "hero",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1920 620\" width=\"1920\" height=\"620\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(136,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(171,55%,36%)\"/></linearGradient></defs><rect width=\"1920\" height=\"620\" fill=\"url(#g)\"/><circle cx=\"332\" cy=\"305\" r=\"1152\" fill=\"hsl(171,60%,60%)\" fill-opacity=\"0.12\"/></svg>"
+ },
+ {
+  "title": "The Elder Scrolls V: Skyrim Special Edition",
+  "kind": "logo",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1280 400\" width=\"1280\" height=\"400\"><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"96\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"640\" y=\"179\">The Elder Scrolls V:</text><text x=\"640\" y=\"289\">Skyrim Special Edition</text></g></svg>"
+ },
+ {
+  "title": "The Elder Scrolls V: Skyrim Special Edition",
+  "kind": "header",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 920 430\" width=\"920\" height=\"430\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(136,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(171,55%,36%)\"/></linearGradient></defs><rect width=\"920\" height=\"430\" fill=\"url(#g)\"/><circle cx=\"172\" cy=\"75\" r=\"552\" fill=\"hsl(171,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"54\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"460\" y=\"203\">The Elder Scrolls V:</text><text x=\"460\" y=\"265\">Skyrim Special Edition</text></g></svg>"
+ },
+ {
+  "title": "The Elder Scrolls V: Skyrim Special Edition",
+  "kind": "icon",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(136,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(171,55%,36%)\"/></linearGradient></defs><rect width=\"256\" height=\"256\" fill=\"url(#g)\"/><circle cx=\"76\" cy=\"125\" r=\"153\" fill=\"hsl(171,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"110\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"128\" y=\"167\">TE</text></g></svg>"
+ },
+ {
+  "title": "Tom & <Jerry>",
+  "kind": "cover",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 600 900\" width=\"600\" height=\"900\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(239,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(310,55%,36%)\"/></linearGradient></defs><rect width=\"600\" height=\"900\" fill=\"url(#g)\"/><circle cx=\"599\" cy=\"92\" r=\"540\" fill=\"hsl(310,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"64\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"300\" y=\"472\">Tom &#38; &#60;Jerry&#62;</text></g></svg>"
+ },
+ {
+  "title": "Tom & <Jerry>",
+  "kind": "hero",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1920 620\" width=\"1920\" height=\"620\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(239,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(310,55%,36%)\"/></linearGradient></defs><rect width=\"1920\" height=\"620\" fill=\"url(#g)\"/><circle cx=\"719\" cy=\"592\" r=\"1152\" fill=\"hsl(310,60%,60%)\" fill-opacity=\"0.12\"/></svg>"
+ },
+ {
+  "title": "Tom & <Jerry>",
+  "kind": "logo",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1280 400\" width=\"1280\" height=\"400\"><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"96\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"640\" y=\"234\">Tom &#38; &#60;Jerry&#62;</text></g></svg>"
+ },
+ {
+  "title": "Tom & <Jerry>",
+  "kind": "header",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 920 430\" width=\"920\" height=\"430\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(239,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(310,55%,36%)\"/></linearGradient></defs><rect width=\"920\" height=\"430\" fill=\"url(#g)\"/><circle cx=\"679\" cy=\"102\" r=\"552\" fill=\"hsl(310,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"54\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"460\" y=\"234\">Tom &#38; &#60;Jerry&#62;</text></g></svg>"
+ },
+ {
+  "title": "Tom & <Jerry>",
+  "kind": "icon",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(239,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(310,55%,36%)\"/></linearGradient></defs><rect width=\"256\" height=\"256\" fill=\"url(#g)\"/><circle cx=\"79\" cy=\"96\" r=\"153\" fill=\"hsl(310,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"110\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"128\" y=\"167\">T</text></g></svg>"
+ },
+ {
+  "title": "Ōkami HD",
+  "kind": "cover",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 600 900\" width=\"600\" height=\"900\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(134,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(215,55%,36%)\"/></linearGradient></defs><rect width=\"600\" height=\"900\" fill=\"url(#g)\"/><circle cx=\"181\" cy=\"329\" r=\"540\" fill=\"hsl(215,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"64\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"300\" y=\"472\">Ōkami HD</text></g></svg>"
+ },
+ {
+  "title": "Ōkami HD",
+  "kind": "hero",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1920 620\" width=\"1920\" height=\"620\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(134,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(215,55%,36%)\"/></linearGradient></defs><rect width=\"1920\" height=\"620\" fill=\"url(#g)\"/><circle cx=\"1381\" cy=\"29\" r=\"1152\" fill=\"hsl(215,60%,60%)\" fill-opacity=\"0.12\"/></svg>"
+ },
+ {
+  "title": "Ōkami HD",
+  "kind": "logo",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1280 400\" width=\"1280\" height=\"400\"><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"96\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"640\" y=\"234\">Ōkami HD</text></g></svg>"
+ },
+ {
+  "title": "Ōkami HD",
+  "kind": "header",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 920 430\" width=\"920\" height=\"430\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(134,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(215,55%,36%)\"/></linearGradient></defs><rect width=\"920\" height=\"430\" fill=\"url(#g)\"/><circle cx=\"101\" cy=\"299\" r=\"552\" fill=\"hsl(215,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"54\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"460\" y=\"234\">Ōkami HD</text></g></svg>"
+ },
+ {
+  "title": "Ōkami HD",
+  "kind": "icon",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(134,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(215,55%,36%)\"/></linearGradient></defs><rect width=\"256\" height=\"256\" fill=\"url(#g)\"/><circle cx=\"229\" cy=\"113\" r=\"153\" fill=\"hsl(215,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"110\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"128\" y=\"167\">ŌH</text></g></svg>"
+ },
+ {
+  "title": "ゼルダの伝説 ブレス オブ ザ ワイルド",
+  "kind": "cover",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 600 900\" width=\"600\" height=\"900\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(106,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(180,55%,36%)\"/></linearGradient></defs><rect width=\"600\" height=\"900\" fill=\"url(#g)\"/><circle cx=\"463\" cy=\"640\" r=\"540\" fill=\"hsl(180,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"64\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"300\" y=\"435\">ゼルダの伝説 ブレス オブ</text><text x=\"300\" y=\"509\">ザ ワイルド</text></g></svg>"
+ },
+ {
+  "title": "ゼルダの伝説 ブレス オブ ザ ワイルド",
+  "kind": "hero",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1920 620\" width=\"1920\" height=\"620\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(106,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(180,55%,36%)\"/></linearGradient></defs><rect width=\"1920\" height=\"620\" fill=\"url(#g)\"/><circle cx=\"943\" cy=\"460\" r=\"1152\" fill=\"hsl(180,60%,60%)\" fill-opacity=\"0.12\"/></svg>"
+ },
+ {
+  "title": "ゼルダの伝説 ブレス オブ ザ ワイルド",
+  "kind": "logo",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1280 400\" width=\"1280\" height=\"400\"><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"96\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"640\" y=\"234\">ゼルダの伝説 ブレス オブ ザ ワイルド</text></g></svg>"
+ },
+ {
+  "title": "ゼルダの伝説 ブレス オブ ザ ワイルド",
+  "kind": "header",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 920 430\" width=\"920\" height=\"430\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(106,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(180,55%,36%)\"/></linearGradient></defs><rect width=\"920\" height=\"430\" fill=\"url(#g)\"/><circle cx=\"23\" cy=\"400\" r=\"552\" fill=\"hsl(180,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"54\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"460\" y=\"234\">ゼルダの伝説 ブレス オブ ザ ワイルド</text></g></svg>"
+ },
+ {
+  "title": "ゼルダの伝説 ブレス オブ ザ ワイルド",
+  "kind": "icon",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(106,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(180,55%,36%)\"/></linearGradient></defs><rect width=\"256\" height=\"256\" fill=\"url(#g)\"/><circle cx=\"47\" cy=\"148\" r=\"153\" fill=\"hsl(180,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"110\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"128\" y=\"167\">ゼブ</text></g></svg>"
+ },
+ {
+  "title": "A",
+  "kind": "cover",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 600 900\" width=\"600\" height=\"900\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(12,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(81,55%,36%)\"/></linearGradient></defs><rect width=\"600\" height=\"900\" fill=\"url(#g)\"/><circle cx=\"1\" cy=\"103\" r=\"540\" fill=\"hsl(81,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"64\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"300\" y=\"472\">A</text></g></svg>"
+ },
+ {
+  "title": "A",
+  "kind": "hero",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1920 620\" width=\"1920\" height=\"620\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(12,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(81,55%,36%)\"/></linearGradient></defs><rect width=\"1920\" height=\"620\" fill=\"url(#g)\"/><circle cx=\"601\" cy=\"363\" r=\"1152\" fill=\"hsl(81,60%,60%)\" fill-opacity=\"0.12\"/></svg>"
+ },
+ {
+  "title": "A",
+  "kind": "logo",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1280 400\" width=\"1280\" height=\"400\"><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"96\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"640\" y=\"234\">A</text></g></svg>"
+ },
+ {
+  "title": "A",
+  "kind": "header",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 920 430\" width=\"920\" height=\"430\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(12,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(81,55%,36%)\"/></linearGradient></defs><rect width=\"920\" height=\"430\" fill=\"url(#g)\"/><circle cx=\"81\" cy=\"313\" r=\"552\" fill=\"hsl(81,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"54\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"460\" y=\"234\">A</text></g></svg>"
+ },
+ {
+  "title": "A",
+  "kind": "icon",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(12,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(81,55%,36%)\"/></linearGradient></defs><rect width=\"256\" height=\"256\" fill=\"url(#g)\"/><circle cx=\"217\" cy=\"95\" r=\"153\" fill=\"hsl(81,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"110\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"128\" y=\"167\">A</text></g></svg>"
+ },
+ {
+  "title": "Supercalifragilisticexpialidocious Adventures",
+  "kind": "cover",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 600 900\" width=\"600\" height=\"900\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(87,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(124,55%,36%)\"/></linearGradient></defs><rect width=\"600\" height=\"900\" fill=\"url(#g)\"/><circle cx=\"580\" cy=\"292\" r=\"540\" fill=\"hsl(124,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"64\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"300\" y=\"361\">Supercalifragi</text><text x=\"300\" y=\"435\">listicexpialid</text><text x=\"300\" y=\"509\">ocious</text><text x=\"300\" y=\"583\">Adventures</text></g></svg>"
+ },
+ {
+  "title": "Supercalifragilisticexpialidocious Adventures",
+  "kind": "hero",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1920 620\" width=\"1920\" height=\"620\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(87,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(124,55%,36%)\"/></linearGradient></defs><rect width=\"1920\" height=\"620\" fill=\"url(#g)\"/><circle cx=\"460\" cy=\"52\" r=\"1152\" fill=\"hsl(124,60%,60%)\" fill-opacity=\"0.12\"/></svg>"
+ },
+ {
+  "title": "Supercalifragilisticexpialidocious Adventures",
+  "kind": "logo",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1280 400\" width=\"1280\" height=\"400\"><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"96\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"640\" y=\"179\">Supercalifragilisticexpi</text><text x=\"640\" y=\"289\">alidocious Adventures</text></g></svg>"
+ },
+ {
+  "title": "Supercalifragilisticexpialidocious Adventures",
+  "kind": "header",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 920 430\" width=\"920\" height=\"430\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(87,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(124,55%,36%)\"/></linearGradient></defs><rect width=\"920\" height=\"430\" fill=\"url(#g)\"/><circle cx=\"420\" cy=\"312\" r=\"552\" fill=\"hsl(124,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"54\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"460\" y=\"172\">Supercalifragilisticex</text><text x=\"460\" y=\"234\">pialidocious</text><text x=\"460\" y=\"296\">Adventures</text></g></svg>"
+ },
+ {
+  "title": "Supercalifragilisticexpialidocious Adventures",
+  "kind": "icon",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(87,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(124,55%,36%)\"/></linearGradient></defs><rect width=\"256\" height=\"256\" fill=\"url(#g)\"/><circle cx=\"204\" cy=\"44\" r=\"153\" fill=\"hsl(124,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"110\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"128\" y=\"167\">SA</text></g></svg>"
+ },
+ {
+  "title": "7 Days to Die",
+  "kind": "cover",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 600 900\" width=\"600\" height=\"900\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(324,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(46,55%,36%)\"/></linearGradient></defs><rect width=\"600\" height=\"900\" fill=\"url(#g)\"/><circle cx=\"505\" cy=\"877\" r=\"540\" fill=\"hsl(46,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"64\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"300\" y=\"472\">7 Days to Die</text></g></svg>"
+ },
+ {
+  "title": "7 Days to Die",
+  "kind": "hero",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1920 620\" width=\"1920\" height=\"620\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(324,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(46,55%,36%)\"/></linearGradient></defs><rect width=\"1920\" height=\"620\" fill=\"url(#g)\"/><circle cx=\"1465\" cy=\"77\" r=\"1152\" fill=\"hsl(46,60%,60%)\" fill-opacity=\"0.12\"/></svg>"
+ },
+ {
+  "title": "7 Days to Die",
+  "kind": "logo",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1280 400\" width=\"1280\" height=\"400\"><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"96\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"640\" y=\"234\">7 Days to Die</text></g></svg>"
+ },
+ {
+  "title": "7 Days to Die",
+  "kind": "header",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 920 430\" width=\"920\" height=\"430\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(324,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(46,55%,36%)\"/></linearGradient></defs><rect width=\"920\" height=\"430\" fill=\"url(#g)\"/><circle cx=\"105\" cy=\"387\" r=\"552\" fill=\"hsl(46,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"54\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"460\" y=\"234\">7 Days to Die</text></g></svg>"
+ },
+ {
+  "title": "7 Days to Die",
+  "kind": "icon",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(324,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(46,55%,36%)\"/></linearGradient></defs><rect width=\"256\" height=\"256\" fill=\"url(#g)\"/><circle cx=\"57\" cy=\"109\" r=\"153\" fill=\"hsl(46,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"110\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"128\" y=\"167\">7D</text></g></svg>"
+ },
+ {
+  "title": "\"Quoted\" 'Name'",
+  "kind": "cover",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 600 900\" width=\"600\" height=\"900\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(344,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(40,55%,36%)\"/></linearGradient></defs><rect width=\"600\" height=\"900\" fill=\"url(#g)\"/><circle cx=\"508\" cy=\"620\" r=\"540\" fill=\"hsl(40,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"64\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"300\" y=\"435\">&#34;Quoted&#34;</text><text x=\"300\" y=\"509\">&#39;Name&#39;</text></g></svg>"
+ },
+ {
+  "title": "\"Quoted\" 'Name'",
+  "kind": "hero",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1920 620\" width=\"1920\" height=\"620\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(344,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(40,55%,36%)\"/></linearGradient></defs><rect width=\"1920\" height=\"620\" fill=\"url(#g)\"/><circle cx=\"1708\" cy=\"40\" r=\"1152\" fill=\"hsl(40,60%,60%)\" fill-opacity=\"0.12\"/></svg>"
+ },
+ {
+  "title": "\"Quoted\" 'Name'",
+  "kind": "logo",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1280 400\" width=\"1280\" height=\"400\"><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"96\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"640\" y=\"234\">&#34;Quoted&#34; &#39;Name&#39;</text></g></svg>"
+ },
+ {
+  "title": "\"Quoted\" 'Name'",
+  "kind": "header",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 920 430\" width=\"920\" height=\"430\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(344,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(40,55%,36%)\"/></linearGradient></defs><rect width=\"920\" height=\"430\" fill=\"url(#g)\"/><circle cx=\"788\" cy=\"350\" r=\"552\" fill=\"hsl(40,60%,60%)\" fill-opacity=\"0.12\"/><g font-family=\"Inter, 'Segoe UI', system-ui, sans-serif\" font-weight=\"700\" font-size=\"54\" fill=\"#ffffff\" fill-opacity=\"0.92\" text-anchor=\"middle\"><text x=\"460\" y=\"234\">&#34;Quoted&#34; &#39;Name&#39;</text></g></svg>"
+ },
+ {
+  "title": "\"Quoted\" 'Name'",
+  "kind": "icon",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\"><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"hsl(344,45%,20%)\"/><stop offset=\"1\" stop-color=\"hsl(40,55%,36%)\"/></linearGradient></defs><rect width=\"256\" height=\"256\" fill=\"url(#g)\"/><circle cx=\"172\" cy=\"0\" r=\"153\" fill=\"hsl(40,60%,60%)\" fill-opacity=\"0.12\"/></svg>"
+ }
+]

@@ -6,17 +6,19 @@ use std::borrow::Cow;
 use std::path::{Component, Path, PathBuf};
 
 use tauri::http::{header, Request, Response, StatusCode};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, UriSchemeResponder};
 
 use crate::plugins::PluginKind;
 use crate::userdata::settings::DEFAULT_SKIN;
-use crate::AppState;
+use crate::{art, AppState};
 
 pub const SKIN_SCHEME: &str = "skin";
 
 pub const SKIN_CSP: &str = "default-src 'self'; img-src 'self' data: blob:; media-src 'self'; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-src 'none'";
 
 const SDK_JS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/sdk.js"));
+const SDK_CSS: &[u8] = include_bytes!("../../sdk/src/sdk.css");
+const FONT_INTER: &[u8] = include_bytes!("../../sdk/assets/fonts/InterVariable.woff2");
 
 type Resp = Response<Cow<'static, [u8]>>;
 
@@ -54,7 +56,7 @@ pub fn content_type(p: &Path) -> &'static str {
     }
 }
 
-fn percent_decode(s: &str) -> Option<String> {
+pub fn percent_decode(s: &str) -> Option<String> {
     let b = s.as_bytes();
     let mut out = Vec::with_capacity(b.len());
     let mut i = 0;
@@ -96,27 +98,75 @@ pub fn serve_file(root: &Path, path: &str) -> Resp {
 
 /// The active skin's folder; falls back to the default skin when the active one is invalid.
 pub fn active_skin_dir(state: &AppState) -> Option<PathBuf> {
-    let active = state.settings.read(|s| s.active_skin.clone());
+    let active = state.active_skin_id();
     let plugins = state.plugins.read().unwrap();
     let find = |id: &str| plugins.iter().find(|p| p.kind == PluginKind::Skin && p.id == id && p.is_valid()).map(|p| p.dir.clone());
     find(&active).or_else(|| find(DEFAULT_SKIN))
 }
 
-pub fn handle_skin(app: &AppHandle, req: &Request<Vec<u8>>) -> Resp {
-    let path = req.uri().path();
+fn with_cache(mut r: Resp, value: &'static str) -> Resp {
+    r.headers_mut().insert(header::CACHE_CONTROL, header::HeaderValue::from_static(value));
+    r
+}
+
+const IMMUTABLE: &str = "public, max-age=31536000, immutable";
+
+/// Everything on the skin origin. Art is decoded and resized on the art worker pool; all
+/// other requests are answered immediately.
+pub fn handle_skin(app: &AppHandle, req: Request<Vec<u8>>, responder: UriSchemeResponder) {
+    let path = req.uri().path().to_string();
+    let query = req.uri().query().map(str::to_string);
+    if let Some(rest) = path.strip_prefix("/__vellum/art/") {
+        let Some((id, kind, width)) = art::parse_route(rest, query.as_deref()) else {
+            return responder.respond(text(StatusCode::NOT_FOUND, "not found"));
+        };
+        let state = app.state::<AppState>();
+        let Some(request) = state.art_request(&id, &kind, width) else {
+            return responder.respond(text(StatusCode::NOT_FOUND, "no such entry"));
+        };
+        let cache_dir = art::variants_dir(&state.paths.data_dir);
+        let versioned = query.as_deref().is_some_and(|q| q.split('&').any(|p| p.starts_with("v=")));
+        art::spawn(move || {
+            let out = art::serve(&request, &cache_dir);
+            let r = respond(StatusCode::OK, out.content_type, out.body);
+            responder.respond(if versioned { with_cache(r, IMMUTABLE) } else { r });
+        });
+        return;
+    }
+    responder.respond(handle_sync(app, &path));
+}
+
+fn handle_sync(app: &AppHandle, path: &str) -> Resp {
     if let Some(reserved) = path.strip_prefix("/__vellum/") {
         return match reserved {
             "sdk.js" => respond(StatusCode::OK, "text/javascript; charset=utf-8", Cow::Borrowed(SDK_JS)),
-            // Tokens, base styles and kit arrive in Phase 3; an empty sheet keeps skins valid now.
-            "sdk.css" => respond(StatusCode::OK, "text/css; charset=utf-8", Cow::Borrowed(b"")),
-            // Art is resolved and served from Phase 3 on.
-            _ => text(StatusCode::NOT_FOUND, "not found"),
+            "sdk.css" => respond(StatusCode::OK, "text/css; charset=utf-8", Cow::Borrowed(SDK_CSS)),
+            "fonts/InterVariable.woff2" => with_cache(respond(StatusCode::OK, "font/woff2", Cow::Borrowed(FONT_INTER)), IMMUTABLE),
+            _ => match reserved.strip_prefix("provider-icon/") {
+                Some(id) => provider_icon(app, id),
+                None => text(StatusCode::NOT_FOUND, "not found"),
+            },
         };
     }
     let state = app.state::<AppState>();
     match active_skin_dir(&state) {
         Some(dir) => serve_file(&dir, path),
         None => text(StatusCode::NOT_FOUND, "no skin installed"),
+    }
+}
+
+/// A provider's manifest icon, for source badges and filters.
+fn provider_icon(app: &AppHandle, id: &str) -> Resp {
+    let state = app.state::<AppState>();
+    let plugins = state.plugins.read().unwrap();
+    let found = plugins
+        .iter()
+        .find(|p| p.kind == PluginKind::Provider && p.id == id && p.is_valid())
+        .and_then(|p| Some((p.dir.clone(), p.manifest.as_ref()?.icon.clone()?)));
+    drop(plugins);
+    match found {
+        Some((dir, icon)) => serve_file(&dir, &icon),
+        None => text(StatusCode::NOT_FOUND, "no icon"),
     }
 }
 

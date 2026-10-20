@@ -1,0 +1,25 @@
+{
+  "id": "aero",
+  "type": "skin",
+  "name": "Aero",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "author": "Vellum",
+  "description": "Frutiger Aero: glossy glass, sky, grass and drifting bubbles",
+  "entry": "index.html",
+  "skin": {
+    "preview": "preview.jpg",
+    "defaultView": "covers",
+    "window": { "frameless": false, "minWidth": 960, "minHeight": 600, "background": "#bfe7fb" },
+    "options": [
+      { "id": "accent", "label": "Aqua", "type": "color", "default": "#1aa0f0", "cssVar": "--v-accent" },
+      { "id": "sky", "label": "Sky", "type": "select", "default": "day", "choices": [
+        { "value": "day", "label": "Clear day" }, { "value": "dusk", "label": "Golden hour" }, { "value": "aurora", "label": "Aurora night" }
+      ] },
+      { "id": "bubbles", "label": "Drifting bubbles", "type": "toggle", "default": true },
+      { "id": "glass", "label": "Glass opacity", "type": "range", "min": 0.3, "max": 0.9, "step": 0.05, "default": 0.55, "cssVar": "--aero-glass" },
+      { "id": "reflections", "label": "Cover reflections in Spotlight", "type": "toggle", "default": true },
+      { "id": "coverSize", "label": "Cover size", "type": "range", "min": 130, "max": 300, "step": 10, "default": 170, "cssVar": "--v-cover-width", "unit": "px" }
+    ]
+  }
+}

@@ -14,6 +14,8 @@ pub struct Args {
     pub diagnose: bool,
     /// Output file for report-style flags.
     pub out: Option<PathBuf>,
+    /// Developer mode for this run (skin file watching, DevTools, error overlay).
+    pub dev: bool,
 }
 
 impl Args {
@@ -26,6 +28,7 @@ impl Args {
                 "--print-plugins" => args.print_plugins = true,
                 "--diagnose" => args.diagnose = true,
                 "--out" => args.out = it.next().map(PathBuf::from),
+                "--dev" => args.dev = true,
                 _ => {}
             }
         }
@@ -48,5 +51,6 @@ mod tests {
         assert!(a.print_plugins);
         assert_eq!(a.out, Some(PathBuf::from("x.json")));
         assert!(a.plugins_dir.is_none());
+        assert!(a.dev);
     }
 }

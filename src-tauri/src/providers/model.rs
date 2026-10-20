@@ -51,6 +51,9 @@ pub struct ProviderGame {
     pub launch_data: Value,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub categories: Vec<String>,
+    /// Short labels shown with the title, such as "Demo", "Playtest" or "Soundtrack".
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub labels: Vec<String>,
     #[serde(default)]
     pub metadata: Metadata,
     /// The store itself hides this game (e.g. Steam's hidden collection).
@@ -83,6 +86,10 @@ pub fn parse_scan(v: Value) -> Result<ScanResult, String> {
                 if !game.launch_data.is_object() {
                     game.launch_data = Value::Object(Map::new());
                 }
+                // Labels are badges: a few, short, no blanks.
+                game.labels.retain(|l| !l.trim().is_empty());
+                game.labels.iter_mut().for_each(|l| *l = l.trim().chars().take(20).collect());
+                game.labels.truncate(3);
                 out.games.push(game);
             }
             Err(e) => out.skipped.push(format!("game {i}: {e}")),
@@ -166,10 +173,12 @@ mod tests {
             { "title": "no id" },
             { "sourceId": "620", "title": "dupe" },
             { "sourceId": "  ", "title": "blank" },
-            { "sourceId": "2", "title": "Bad kind", "kind": "spaceship" }
+            { "sourceId": "2", "title": "Bad kind", "kind": "spaceship" },
+            { "sourceId": "3", "title": "Labelled", "labels": ["Demo", " ", "A very long label indeed, too long", "x", "y"] }
         ]}))
         .unwrap();
-        assert_eq!(r.games.len(), 2);
+        assert_eq!(r.games[2].labels, ["Demo", "A very long label in", "x"], "blank dropped, trimmed to 20, at most 3");
+        assert_eq!(r.games.len(), 3);
         assert_eq!(r.games[1].kind, GameKind::Tool);
         assert!(r.games[1].launch_data.is_object());
         assert_eq!(r.skipped.len(), 4, "{:?}", r.skipped);

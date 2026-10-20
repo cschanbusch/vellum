@@ -22,6 +22,7 @@ pub struct Settings {
     pub schema_version: u32,
     pub active_skin: String,
     pub plugins: PluginSettings,
+    pub ui: UiSettings,
     /// Keys this version doesn't know (written by a newer Vellum) are kept, not dropped.
     #[serde(flatten)]
     pub other: Map<String, Value>,
@@ -33,8 +34,63 @@ impl Default for Settings {
             schema_version: SCHEMA_VERSION,
             active_skin: DEFAULT_SKIN.into(),
             plugins: PluginSettings::default(),
+            ui: UiSettings::default(),
             other: Map::new(),
         }
+    }
+}
+
+/// Views, the remembered library state, shelves and developer mode. The shell owns the
+/// shapes of the free-form parts (`last`, `views`, `shelves`); the backend only stores them.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", default)]
+pub struct UiSettings {
+    /// "last" (the last used view) or a view id.
+    pub start_view: String,
+    /// The library state when Vellum last ran: view, selectedId, sort, groupBy, filters.
+    pub last: Value,
+    /// `{ order: [viewId], hidden: [viewId] }`
+    pub views: Value,
+    /// `{ order: { <groupBy>: [label] }, collapsed: [key] }`
+    pub shelves: Value,
+    /// Skins whose `defaultView` has already been applied once.
+    pub skins_seen: Vec<String>,
+    pub dev_mode: bool,
+}
+
+impl Default for UiSettings {
+    fn default() -> Self {
+        UiSettings {
+            start_view: "last".into(),
+            last: Value::Object(Map::new()),
+            views: Value::Object(Map::new()),
+            shelves: Value::Object(Map::new()),
+            skins_seen: Vec::new(),
+            dev_mode: false,
+        }
+    }
+}
+
+/// Keys of `UiSettings` the shell may patch, and the most JSON each may hold.
+const UI_PATCH_LIMIT: usize = 256 * 1024;
+
+impl UiSettings {
+    /// Merges a shell-supplied patch (top-level keys only). Unknown keys and wrong types are
+    /// rejected with a message.
+    pub fn apply_patch(&mut self, patch: &Value) -> Result<(), String> {
+        let obj = patch.as_object().ok_or("the patch must be an object")?;
+        if patch.to_string().len() > UI_PATCH_LIMIT {
+            return Err("the patch is too large".into());
+        }
+        let mut next = serde_json::to_value(&*self).map_err(|e| e.to_string())?;
+        for (k, v) in obj {
+            if next.get(k).is_none() {
+                return Err(format!("unknown UI setting {k:?}"));
+            }
+            next[k] = v.clone();
+        }
+        *self = serde_json::from_value(next).map_err(|e| format!("invalid UI settings: {e}"))?;
+        Ok(())
     }
 }
 
@@ -183,6 +239,19 @@ mod tests {
         let back = load(Path::new("x"), Some(serde_json::to_vec(&s).unwrap()));
         assert!(back.plugin_enabled(PluginKind::Provider, "mock"));
         assert!(!back.plugin_enabled(PluginKind::Module, "random-pick"));
+    }
+
+    #[test]
+    fn ui_patches_merge_and_validate() {
+        let mut ui = UiSettings::default();
+        ui.apply_patch(&serde_json::json!({ "devMode": true, "views": { "hidden": ["list"] } })).unwrap();
+        assert!(ui.dev_mode);
+        assert_eq!(ui.views["hidden"][0], "list");
+        assert_eq!(ui.start_view, "last", "untouched keys stay");
+        assert!(ui.apply_patch(&serde_json::json!({ "devMode": "yes" })).is_err());
+        assert!(ui.apply_patch(&serde_json::json!({ "nope": 1 })).is_err());
+        assert!(ui.apply_patch(&serde_json::json!([1])).is_err());
+        assert!(ui.dev_mode, "a rejected patch changes nothing");
     }
 
     #[test]

@@ -1,0 +1,24 @@
+{
+  "id": "synthwave",
+  "type": "skin",
+  "name": "Synthwave",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "author": "Vellum",
+  "description": "Neon sunset, chrome type and an endless grid that never stops moving",
+  "entry": "index.html",
+  "skin": {
+    "preview": "preview.jpg",
+    "defaultView": "spotlight",
+    "window": { "frameless": true, "minWidth": 960, "minHeight": 600, "background": "#0d0221" },
+    "options": [
+      { "id": "accent", "label": "Neon", "type": "color", "default": "#ff2a6d", "cssVar": "--v-accent" },
+      { "id": "glow", "label": "Second neon", "type": "color", "default": "#05d9e8", "cssVar": "--sw-cyan" },
+      { "id": "animate", "label": "Animate the grid", "type": "toggle", "default": true },
+      { "id": "gridCycle", "label": "Grid speed (seconds per line)", "type": "range", "min": 0.3, "max": 3, "step": 0.1, "default": 0.9, "cssVar": "--sw-cycle", "unit": "s" },
+      { "id": "sun", "label": "Show the sun", "type": "toggle", "default": true },
+      { "id": "scanlines", "label": "CRT scanlines", "type": "toggle", "default": true },
+      { "id": "coverSize", "label": "Cover size", "type": "range", "min": 130, "max": 300, "step": 10, "default": 180, "cssVar": "--v-cover-width", "unit": "px" }
+    ]
+  }
+}

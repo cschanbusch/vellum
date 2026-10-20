@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="/__vellum/sdk.css">
+  <link rel="stylesheet" href="skin.css">
+  <script type="module" src="/__vellum/sdk.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" data-vellum-drag>
+      <div class="brand">Vellum</div>
+      <vellum-search></vellum-search>
+      <vellum-view-switcher></vellum-view-switcher>
+      <div class="tools">
+        <vellum-filter-bar></vellum-filter-bar>
+        <vellum-sort-menu></vellum-sort-menu>
+      </div>
+      <button class="v-button settings" data-vellum-focus>Settings</button>
+    </aside>
+    <main>
+      <header class="titlebar" data-vellum-drag>
+        <span class="count"></span>
+        <vellum-window-controls></vellum-window-controls>
+      </header>
+      <vellum-view-outlet></vellum-view-outlet>
+    </main>
+  </div>
+  <script type="module" src="count.js"></script>
+</body>
+</html>

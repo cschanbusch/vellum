@@ -13,11 +13,12 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 dirs = "7.0.0"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp", "gif"] }
 notify-debouncer-mini = "0.7.0"
 rquickjs = { version = "0.14", features = ["loader"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["devtools"] }
 tauri-plugin-dialog = "2"
 thiserror = "2.0.21"
 time = { version = "0.3.55", features = ["formatting", "parsing", "macros"] }
@@ -30,4 +31,10 @@ windows-sys = { version = "0.61.2", features = ["Win32_UI_Shell", "Win32_Foundat
 winreg = "0.56.0"
 
 [dev-dependencies]
+ab_glyph = "0.2"
 tempfile = "3.27.0"
+
+# Image decoding and resizing are far too slow unoptimized; dependencies are built with
+# optimizations even in debug builds (our own crate stays fast to compile).
+[profile.dev.package."*"]
+opt-level = 2

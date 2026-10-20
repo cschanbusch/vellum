@@ -11,3 +11,9 @@ shell/dist/
 
 # Generated test covers for the perf spike; recreate with spikes/perf/make-art.ps1
 spikes/perf/skin/art/
+
+# Generated mock art; recreate with `npm run mock-art`
+plugins/providers/mock/art/
+test-results/
+playwright-report/
+test-artifacts/

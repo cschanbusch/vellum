@@ -149,6 +149,10 @@ impl AppState {
         self.library.read(|snap| self.userdata.read(|ud| library::build_entries(snap, ud, &|p| active.contains(p))))
     }
 
+    pub fn entry(&self, id: &str) -> Option<library::Entry> {
+        self.entries().into_iter().find(|e| e.id == id)
+    }
+
     pub fn provider_statuses(&self) -> Vec<ProviderStatus> {
         let rt = self.runtime.providers.lock().unwrap();
         let mut v: Vec<ProviderStatus> = rt.values().map(|r| r.status.clone()).collect();
@@ -273,6 +277,7 @@ pub fn scan_one(app: &AppHandle, id: &str) {
                 tracing::warn!(provider = id, "skipped game: {s}");
             }
             let count = scan.games.len();
+            let games = scan.games.clone();
             let now = now_iso();
             state.userdata.update(|ud| {
                 library::note_first_seen(ud, id, &scan.games, &now);
@@ -285,6 +290,8 @@ pub fn scan_one(app: &AppHandle, id: &str) {
                         capabilities: spec.capabilities.clone(),
                         scanned_at: now.clone(),
                         games: scan.games,
+                        // Keep the previous art until refresh_art replaces it.
+                        art: snap.providers.get(id).map(|r| r.art.clone()).unwrap_or_default(),
                     },
                 );
             });
@@ -301,6 +308,7 @@ pub fn scan_one(app: &AppHandle, id: &str) {
             tracing::info!(provider = id, games = count, ms = elapsed, "scan finished");
             emit_library(app);
             emit_providers(app);
+            refresh_art(app, &spec, &games, generation);
             if spec.can("watch") {
                 start_watch(app, &spec);
             }
@@ -316,6 +324,68 @@ pub fn scan_one(app: &AppHandle, id: &str) {
             });
             emit_providers(app);
         }
+    }
+}
+
+/// Asks the provider for art candidates (one `art()` call per game, in one runtime), keeps
+/// the safe ones and updates the snapshot. Providers without `art()` simply have none.
+fn refresh_art(app: &AppHandle, spec: &ProviderSpec, games: &[crate::providers::model::ProviderGame], generation: u64) {
+    let state = app.state::<AppState>();
+    let (locs, derived) = state.with_runtime(&spec.id, |r| (r.locations.clone(), r.derived.clone()));
+    let args: Vec<Option<Value>> = games.iter().map(|g| serde_json::to_value(g).ok()).collect();
+    let inv = Invocation { spec, locations: &locs, derived: &derived, env: &state.env, timeout: None };
+    let started = Instant::now();
+    let batch = match host::invoke_each(&inv, Method::Art, &args) {
+        Ok(b) => b,
+        Err(HostError::Missing(_)) => return,
+        Err(e) => {
+            tracing::warn!(provider = %spec.id, error = %e, "art() failed; keeping previous art");
+            return;
+        }
+    };
+    let scope = Scope::new(locs.values().cloned().chain(derived.iter().cloned()).chain([spec.dir.clone()]), &spec.deny_files);
+    let mut art = BTreeMap::new();
+    let (mut failed, mut problems) = (0usize, Vec::new());
+    for (g, r) in games.iter().zip(batch.values) {
+        match r {
+            Ok(v) => {
+                let (ok, p) = crate::art::validate_candidates(&v, &scope, &spec.art_hosts);
+                problems.extend(p);
+                if !ok.is_empty() {
+                    art.insert(g.source_id.clone(), ok);
+                }
+            }
+            Err(e) => {
+                failed += 1;
+                if failed <= 3 {
+                    tracing::warn!(provider = %spec.id, game = %g.source_id, error = %e, "art() threw");
+                }
+            }
+        }
+    }
+    for p in problems.iter().take(5) {
+        tracing::warn!(provider = %spec.id, "art candidate rejected: {p}");
+    }
+    if state.with_runtime(&spec.id, |r| r.generation) != generation {
+        return;
+    }
+    let changed = state.library.update(|snap| match snap.providers.get_mut(&spec.id) {
+        Some(r) if r.art != art => {
+            r.art = art;
+            true
+        }
+        _ => false,
+    });
+    tracing::info!(
+        provider = %spec.id,
+        games = games.len(),
+        rejected = problems.len(),
+        failed,
+        ms = started.elapsed().as_millis() as u64,
+        "art candidates refreshed"
+    );
+    if changed {
+        emit_library(app);
     }
 }
 

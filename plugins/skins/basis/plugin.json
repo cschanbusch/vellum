@@ -2,16 +2,23 @@
   "id": "basis",
   "type": "skin",
   "name": "Basis",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "apiVersion": 1,
   "author": "Vellum",
-  "description": "The default skin",
+  "description": "The default skin: List, Covers and Spotlight on the SDK's own layout",
   "entry": "index.html",
   "skin": {
-    "defaultView": "list",
+    "preview": "preview.jpg",
+    "defaultView": "covers",
     "window": { "frameless": false, "minWidth": 960, "minHeight": 600, "background": "#0b0d12" },
     "options": [
-      { "id": "accent", "label": "Accent color", "type": "color", "default": "#7cc4ff", "cssVar": "--v-accent" }
+      { "id": "accent", "label": "Accent color", "type": "color", "default": "#7cc4ff", "cssVar": "--v-accent" },
+      { "id": "coverSize", "label": "Cover size", "type": "range", "min": 120, "max": 320, "step": 10, "default": 180, "cssVar": "--v-cover-width", "unit": "px" },
+      { "id": "captions", "label": "Show titles under covers", "type": "toggle", "default": true },
+      { "id": "rowHeight", "label": "List row height", "type": "range", "min": 32, "max": 64, "step": 2, "default": 44, "cssVar": "--v-list-row-height", "unit": "px" },
+      { "id": "heroBlur", "label": "Blur Spotlight backgrounds", "type": "toggle", "default": false },
+      { "id": "corners", "label": "Corners", "type": "select", "default": "10px", "cssVar": "--v-radius",
+        "choices": [{ "value": "2px", "label": "Square" }, { "value": "10px", "label": "Rounded" }, { "value": "18px", "label": "Round" }] }
     ]
   }
 }

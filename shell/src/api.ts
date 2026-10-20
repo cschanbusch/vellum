@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { Entry } from "../../sdk/src/types";
+import type { SkinRecord, UiSettings, WindowState } from "./host/backend";
 
 export type PluginKind = "provider" | "skin" | "module";
 
@@ -23,6 +24,7 @@ export interface PluginView {
   version: string | null;
   author: string | null;
   description: string | null;
+  icon: string | null;
   folder: string;
   enabled: boolean;
   status: "ok" | "warning" | "error";
@@ -92,6 +94,26 @@ export const api = {
   runAction: (entryId: string, action: ActionKind, provider?: string) =>
     invoke<ActionResult>("run_action", { entryId, action, provider }),
   onLibraryChanged: (cb: () => void): Promise<UnlistenFn> => listen("vellum://library-changed", cb),
+  onSkinChanged: (cb: () => void): Promise<UnlistenFn> => listen("vellum://skin-changed", cb),
+  onSkinFileChanged: (cb: (path: string) => void): Promise<UnlistenFn> =>
+    listen<{ path: string }>("vellum://skin-file-changed", (e) => cb(e.payload.path)),
+
+  setFavorite: (entryId: string, favorite: boolean) => invoke<Entry>("set_favorite", { entryId, favorite }),
+  setHidden: (entryId: string, hidden: boolean) => invoke<Entry>("set_hidden", { entryId, hidden }),
+  setTags: (entryId: string, tags: string[]) => invoke<Entry>("set_tags", { entryId, tags }),
+  openInstallFolder: (entryId: string) => invoke<void>("open_install_folder", { entryId }),
+
+  skinInfo: () => invoke<SkinRecord | null>("skin_info"),
+  setSkinOption: (skin: string, key: string, value: unknown) => invoke<void>("set_skin_option", { skin, key, value }),
+  resetSkinOptions: (skin: string) => invoke<void>("reset_skin_options", { skin }),
+  useFallbackSkin: (reason: string) => invoke<void>("use_fallback_skin", { reason }),
+  uiSettings: () => invoke<UiSettings>("ui_settings"),
+  updateUiSettings: (patch: Partial<UiSettings>) => invoke<UiSettings>("update_ui_settings", { patch }),
+  windowAction: (action: string) => invoke<WindowState>("window_action", { action }),
+  openDevtools: () => invoke<void>("open_devtools"),
+  openLogsFolder: () => invoke<void>("open_logs_folder"),
+  runDiagnostics: () => invoke<string>("run_diagnostics"),
+  skinPreview: (id: string) => invoke<string | null>("skin_preview", { id }),
   onProvidersChanged: (cb: () => void): Promise<UnlistenFn> => listen("vellum://providers-changed", cb),
 
   /** Folder picker; resolves to null when cancelled. */

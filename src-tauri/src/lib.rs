@@ -1,4 +1,5 @@
-﻿pub mod cli;
+﻿pub mod art;
+pub mod cli;
 mod commands;
 pub mod diagnose;
 pub mod formats;
@@ -10,6 +11,7 @@ pub mod plugins;
 pub mod protocols;
 pub mod providers;
 pub mod scanner;
+pub mod skins;
 pub mod userdata;
 pub mod util;
 
@@ -41,6 +43,9 @@ pub struct AppState {
     pub plugins: RwLock<Vec<PluginRecord>>,
     pub runtime: scanner::Runtime,
     pub env: HostEnv,
+    pub skins: skins::SkinRuntime,
+    /// `--dev` on the command line (the settings toggle is `ui.devMode`).
+    pub dev_flag: bool,
 }
 
 impl AppState {
@@ -104,6 +109,8 @@ pub fn run() {
         plugins: RwLock::new(Vec::new()),
         runtime: scanner::Runtime::default(),
         env: HostEnv { registry: Arc::new(SystemRegistry), opener: Arc::new(SystemOpener) },
+        skins: skins::SkinRuntime::default(),
+        dev_flag: args.dev,
         paths,
     };
     state.rescan_plugins();
@@ -111,10 +118,14 @@ pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(state)
-        .register_uri_scheme_protocol(protocols::SKIN_SCHEME, |ctx, req| protocols::handle_skin(ctx.app_handle(), &req))
+        .register_asynchronous_uri_scheme_protocol(protocols::SKIN_SCHEME, |ctx, req, responder| {
+            protocols::handle_skin(ctx.app_handle(), req, responder)
+        })
         .setup(|app| {
             // The snapshot is already loaded; fresh results replace it as each provider finishes.
             scanner::scan_all(app.handle());
+            skins::apply_window(app.handle());
+            skins::update_dev_watch(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -132,6 +143,21 @@ pub fn run() {
             commands::set_location,
             commands::refresh_library,
             commands::run_action,
+            commands::set_favorite,
+            commands::set_hidden,
+            commands::set_tags,
+            commands::open_install_folder,
+            commands::skin_info,
+            commands::set_skin_option,
+            commands::reset_skin_options,
+            commands::use_fallback_skin,
+            commands::ui_settings,
+            commands::update_ui_settings,
+            commands::window_action,
+            commands::open_devtools,
+            commands::open_logs_folder,
+            commands::run_diagnostics,
+            commands::skin_preview,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

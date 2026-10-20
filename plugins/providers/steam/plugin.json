@@ -2,13 +2,12 @@
   "id": "steam",
   "type": "provider",
   "name": "Steam",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "apiVersion": 1,
   "author": "Vellum",
   "description": "Installed games from Steam",
   "entry": "provider.js",
   "settings": [
-    { "id": "showTools", "label": "Show tools and redistributables", "type": "toggle", "default": false },
     { "id": "respectHidden", "label": "Respect Steam's hidden collection", "type": "toggle", "default": true }
   ],
   "provider": {

@@ -1,0 +1,19 @@
+/* Tokens only: no selectors beyond :root. Every view and kit component follows. */
+:root {
+  color-scheme: light;
+  --v-bg: #f4f1ea;
+  --v-surface: #e9e4d8;
+  --v-surface-raised: #ddd6c6;
+  --v-text: #1f1a14;
+  --v-text-muted: #6b6255;
+  --v-accent: #c2185b;
+  --v-accent-text: #ffffff;
+  --v-focus-ring: #c2185b;
+  --v-radius: 2px;
+  --v-gap: 22px;
+  --v-font-body: Georgia, "Times New Roman", serif;
+  --v-font-display: Georgia, "Times New Roman", serif;
+  --v-cover-width: 150px;
+  --v-list-row-height: 36px;
+  --v-hero-overlay: linear-gradient(90deg, rgb(244 241 234 / 0.95) 0%, rgb(244 241 234 / 0.6) 45%, transparent 80%);
+}
