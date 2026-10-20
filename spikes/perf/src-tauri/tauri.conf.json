@@ -1,0 +1,17 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "vellum-spike-perf",
+  "version": "0.0.0",
+  "identifier": "dev.vellum.spike.perf",
+  "build": { "frontendDist": "../shell" },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      { "label": "main", "title": "Vellum spike: grid perf", "maximized": true, "backgroundColor": "#0b0d12" }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-src http://skin.localhost skin://localhost; connect-src ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": { "active": false, "icon": ["icons/icon.ico"] }
+}

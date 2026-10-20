@@ -1,0 +1,26 @@
+{
+  "id": "gog",
+  "type": "provider",
+  "name": "GOG",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "author": "Vellum",
+  "description": "Installed GOG games, launched through GOG Galaxy or directly",
+  "entry": "provider.js",
+  "settings": [
+    { "id": "launchViaGalaxy", "label": "Launch through GOG Galaxy", "type": "toggle", "default": true }
+  ],
+  "provider": {
+    "locations": {
+      "galaxy": {
+        "label": "GOG Galaxy folder",
+        "required": false,
+        "defaults": ["%ProgramFiles(x86)%\\GOG Galaxy"],
+        "validate": ["GalaxyClient.exe"]
+      }
+    },
+    "derivedLocations": true,
+    "registryRead": ["HKLM\\SOFTWARE\\WOW6432Node\\GOG.com\\Games"],
+    "capabilities": ["launch"]
+  }
+}

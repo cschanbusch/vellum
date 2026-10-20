@@ -1,0 +1,9 @@
+{
+  "id": "misplaced-provider",
+  "type": "provider",
+  "name": "Provider in the skins folder",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "entry": "provider.js",
+  "provider": {}
+}

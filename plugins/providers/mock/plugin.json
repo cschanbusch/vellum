@@ -1,0 +1,13 @@
+{
+  "id": "mock",
+  "type": "provider",
+  "name": "Mock library",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "author": "Vellum",
+  "description": "About 80 fake games with real-resolution art, for skin development and tests",
+  "entry": "provider.js",
+  "provider": {
+    "capabilities": ["launch"]
+  }
+}

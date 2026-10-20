@@ -1,0 +1,12 @@
+{
+  "name": "vellum-spike-origin-ipc",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "tauri": "tauri",
+    "build": "tauri build --debug --no-bundle"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

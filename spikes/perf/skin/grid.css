@@ -1,0 +1,8 @@
+:root { --v-cover-width: 200px; --v-gap: 16px; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0d12; color: #e6e8ee; font: 13px system-ui, sans-serif; }
+#scroller { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; contain: strict; }
+#spacer { position: relative; }
+.cell { position: absolute; top: 0; left: 0; width: var(--v-cover-width); contain: layout paint; will-change: transform; }
+.cell img { display: block; width: 100%; aspect-ratio: 2 / 3; border-radius: 6px; background: #1b2030; object-fit: cover; }
+.cell span { display: block; padding-top: 4px; height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #aab3c5; }
+#hud { position: fixed; top: 8px; right: 12px; z-index: 2; padding: 4px 8px; background: #000a; border-radius: 4px; font: 12px ui-monospace, monospace; }

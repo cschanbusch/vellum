@@ -1,0 +1,17 @@
+{
+  "id": "random-pick",
+  "type": "module",
+  "name": "Random pick",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "author": "Vellum",
+  "description": "Picks a random game from the current list and shows it in Spotlight",
+  "entry": "index.html",
+  "settings": [
+    { "id": "onlyFavorites", "label": "Only favorites", "type": "toggle", "default": false }
+  ],
+  "module": {
+    "overlay": "index.html",
+    "commands": [{ "id": "pick", "label": "Random pick", "couch": true }]
+  }
+}

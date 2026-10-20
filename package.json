@@ -1,0 +1,23 @@
+{
+  "name": "vellum",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tauri dev",
+    "dev:shell": "vite --config shell/vite.config.ts",
+    "build:shell": "tsc -p shell && vite build --config shell/vite.config.ts",
+    "typecheck": "tsc -p shell",
+    "test": "vitest run",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.12.4",
+    "lit": "^3.3.3"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.12.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
+  }
+}

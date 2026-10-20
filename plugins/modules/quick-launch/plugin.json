@@ -1,0 +1,15 @@
+{
+  "id": "quick-launch",
+  "type": "module",
+  "name": "Quick launch",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "author": "Vellum",
+  "description": "Ctrl+K search box over any view: type a few letters, Enter launches",
+  "entry": "index.html",
+  "module": {
+    "overlay": "index.html",
+    "commands": [{ "id": "open", "label": "Quick launch", "defaultKey": "Ctrl+K", "couch": true }],
+    "globalHotkey": { "command": "open", "defaultKey": "Ctrl+Alt+Space", "defaultEnabled": false }
+  }
+}

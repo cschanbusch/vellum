@@ -1,0 +1,13 @@
+{
+  "id": "custom",
+  "type": "provider",
+  "name": "Custom games",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "author": "Vellum",
+  "description": "Emulators, standalone programs and anything else you add by hand",
+  "entry": "provider.js",
+  "provider": {
+    "capabilities": ["launch"]
+  }
+}

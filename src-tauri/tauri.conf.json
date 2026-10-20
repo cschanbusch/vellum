@@ -1,0 +1,33 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Vellum",
+  "version": "0.1.0",
+  "identifier": "app.vellum.launcher",
+  "build": {
+    "frontendDist": "../shell/dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "npm run dev:shell",
+    "beforeBuildCommand": "npm run build:shell"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Vellum",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 960,
+        "minHeight": 600,
+        "backgroundColor": "#0b0d12"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src ipc: http://ipc.localhost",
+      "devCsp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src ipc: http://ipc.localhost ws://localhost:1420"
+    }
+  },
+  "bundle": {
+    "active": false,
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.ico"]
+  }
+}

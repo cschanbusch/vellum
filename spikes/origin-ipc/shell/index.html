@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Vellum spike: shell</title>
+  <link rel="stylesheet" href="shell.css">
+  <script src="shell.js" defer></script>
+</head>
+<body>
+  <header>Shell origin: <code id="origin"></code></header>
+  <main>
+    <section class="frames">
+      <iframe id="skin" sandbox="allow-scripts allow-same-origin" title="skin"></iframe>
+      <iframe id="module" sandbox="allow-scripts allow-same-origin" title="module"></iframe>
+    </section>
+    <section>
+      <h2>Results</h2>
+      <table><thead><tr><th>From</th><th>Check</th><th>Expected</th><th>Result</th><th>Detail</th></tr></thead>
+      <tbody id="results"></tbody></table>
+      <h2>Bridge log</h2>
+      <pre id="log"></pre>
+    </section>
+  </main>
+</body>
+</html>

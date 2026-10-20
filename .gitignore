@@ -1,0 +1,13 @@
+node_modules/
+target/
+dist/
+shell/dist/
+**/src-tauri/gen/
+*.log
+
+# Mobile icons emitted by `tauri icon`; Vellum is Windows-only.
+**/icons/android/
+**/icons/ios/
+
+# Generated test covers for the perf spike; recreate with spikes/perf/make-art.ps1
+spikes/perf/skin/art/

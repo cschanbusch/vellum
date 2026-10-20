@@ -1,0 +1,9 @@
+{
+  "id": "Broken Fields",
+  "type": "provider",
+  "name": "Broken fields",
+  "version": "1.0",
+  "apiVersion": 99,
+  "entry": "missing.js",
+  "provider": { "uriSchemes": "steam", "capabilities": ["launch", "teleport"] }
+}

@@ -1,0 +1,9 @@
+body { margin: 0; background: #0b0d12; color: #e6e8ee; font: 13px/1.4 system-ui, sans-serif; }
+header { padding: 8px 12px; background: #151924; }
+main { display: grid; grid-template-columns: 420px 1fr; gap: 12px; padding: 12px; }
+.frames { display: grid; grid-template-rows: 1fr 160px; gap: 8px; height: calc(100vh - 60px); }
+iframe { width: 100%; height: 100%; border: 1px solid #2a3142; background: #11141c; }
+table { border-collapse: collapse; width: 100%; }
+td, th { border-bottom: 1px solid #2a3142; padding: 3px 6px; text-align: left; vertical-align: top; }
+.pass { color: #6fdc8c; } .fail { color: #ff6b6b; font-weight: bold; }
+pre { background: #11141c; padding: 8px; max-height: 220px; overflow: auto; white-space: pre-wrap; }

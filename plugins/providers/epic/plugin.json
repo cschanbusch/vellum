@@ -1,0 +1,22 @@
+{
+  "id": "epic",
+  "type": "provider",
+  "name": "Epic Games",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "author": "Vellum",
+  "description": "Installed games from the Epic Games Launcher",
+  "entry": "provider.js",
+  "provider": {
+    "locations": {
+      "manifests": {
+        "label": "Epic Games Launcher manifests folder",
+        "required": true,
+        "defaults": ["%ProgramData%\\Epic\\EpicGamesLauncher\\Data\\Manifests"],
+        "validate": ["*.item"]
+      }
+    },
+    "uriSchemes": ["com.epicgames.launcher"],
+    "capabilities": ["launch", "watch"]
+  }
+}
