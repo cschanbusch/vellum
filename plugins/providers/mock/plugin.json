@@ -2,11 +2,14 @@
   "id": "mock",
   "type": "provider",
   "name": "Mock library",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "apiVersion": 1,
   "author": "Vellum",
-  "description": "About 80 fake games with real-resolution art, for skin development and tests",
+  "description": "Deterministic fake games for skin development and tests (art arrives in Phase 3)",
   "entry": "provider.js",
+  "settings": [
+    { "id": "count", "label": "Number of games", "type": "range", "min": 10, "max": 5000, "step": 10, "default": 80 }
+  ],
   "provider": {
     "capabilities": ["launch"]
   }

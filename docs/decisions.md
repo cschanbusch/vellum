@@ -1,5 +1,20 @@
 # Decisions
 
+## 2026-10-20 — Phase 2 (provider host, Steam, thin skin path) choices
+
+- **One fresh QuickJS runtime per call** (scan, launch, watch, …). Startup costs about 1 ms; scope, deadline and memory cap are per call. Folders added with `ctx.fs.allow` during a scan are kept by the host and given to later calls (launch, watch) for that provider.
+- **`ctx` is frozen** and built over a private native object that is deleted before provider code runs, so provider code can't reach unchecked host functions or swap `ctx` methods.
+- **`denyFiles`** is a new manifest field (`provider.denyFiles`): `ssfn*` matches a file name anywhere in scope; `config/loginusers.vdf` matches a path ending in those segments. Steam declares its login/account files there. Denied files can't be read, and `glob` hides them.
+- **`ProviderGame.hidden`** is a new optional field: the store hides this game (Steam's hidden collection). The user's own hide/unhide in `userdata.json` overrides it.
+- **`ctx.sqlite` is deferred.** No v1 provider needs it (GOG Galaxy's database is a "later improvement" in the spec), so it throws a clear error until then. This avoids compiling bundled SQLite now.
+- **Steam account choice** uses the most recently modified `localconfig.vdf`. A provider setting `account` overrides it, but there is no UI for it yet, because select options can't list choices that only the provider knows. Revisit with the settings work in Phase 3/6.
+- **The mock provider is one provider**, with its games spread across three fictional stores in `launchData.fakeStore`. A `count` setting (10–5000) scales it for performance work. Mock art arrives in Phase 3.
+- **A provider whose required location is missing is inactive:** its games are hidden (they can't launch) and a notice offers Browse / Skip for now / Disable. Skip lasts for the session. A provider that throws or times out keeps its last results and gets an error status.
+- **Entry ids** stay "id of the primary record" (spec). With one source per entry until Phase 5, they're stable; revisit when merging changes the primary.
+- **`--diagnose`** reduces names to patterns (`appmanifest_<n>.acf`, `<hash>`), account folders to `<account-n>`, library paths to `<library-n>`, the user profile to `%USERPROFILE%`, and file contents to key/type shapes. Verified on a real install: none of 181 identifying strings appeared in the report. Release builds attach to the parent console so the summary prints.
+- **Robustness, learned from the real library:** (1) A title starting with a multi-byte character made `sort_title` slice through a character and panic. (2) That panic happened inside a synchronous Tauri command, which runs on the WebView2 callback thread and can't unwind, so the process aborted. Fixed both, and also: data commands are `async` (a bug fails one call, not the app), JSON stores ignore lock poisoning, and every JSON reader accepts a UTF-8 BOM (Windows editors add one).
+- **Skins see entries only through the SDK.** The SDK keeps a read cache; writes go to the shell, which validates every call (origin, source window, method allowlist, argument shapes, and that the entry exists) before invoking the backend.
+
 ## 2026-10-19 — Phase 1 (Foundation) choices
 
 - **Phase order.** We follow the revised phasing (Phase 0 spikes; mock provider and a thin skin path moved into Phase 2; art v0 and keyboard focus moved into Phase 3), not the spec's milestone list verbatim. Reasons: the spec's M2 needs a skin before M3 builds the skin system, and M3's views need art before M4.

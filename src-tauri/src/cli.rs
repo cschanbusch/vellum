@@ -10,7 +10,9 @@ pub struct Args {
     pub plugins_dir: Option<PathBuf>,
     /// Print discovered plugins as JSON and exit without opening a window.
     pub print_plugins: bool,
-    /// Output file for report-style flags (release builds have no console).
+    /// Write a structure-only diagnostics report (to `--out`, default `vellum-diagnostics.json`).
+    pub diagnose: bool,
+    /// Output file for report-style flags.
     pub out: Option<PathBuf>,
 }
 
@@ -22,6 +24,7 @@ impl Args {
                 "--data-dir" => args.data_dir = it.next().map(PathBuf::from),
                 "--plugins-dir" => args.plugins_dir = it.next().map(PathBuf::from),
                 "--print-plugins" => args.print_plugins = true,
+                "--diagnose" => args.diagnose = true,
                 "--out" => args.out = it.next().map(PathBuf::from),
                 _ => {}
             }

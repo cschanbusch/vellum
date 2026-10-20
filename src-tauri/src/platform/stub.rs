@@ -8,6 +8,8 @@ pub fn registry_subkeys(_hive: Hive, _key: &str) -> Vec<String> {
     Vec::new()
 }
 
+pub fn attach_parent_console() {}
+
 pub fn shell_open(_target: &str) -> Result<(), PlatformError> {
     Err(PlatformError::Unsupported)
 }

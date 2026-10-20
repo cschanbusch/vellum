@@ -1,0 +1,8 @@
+[
+  ["user-collections.favorite", { "key": "user-collections.favorite", "timestamp": 1700000000, "value": "{\"id\":\"favorite\",\"name\":\"Favorites\",\"added\":[620],\"removed\":[]}" }],
+  ["user-collections.hidden", { "key": "user-collections.hidden", "timestamp": 1700000000, "value": "{\"id\":\"hidden\",\"name\":\"Hidden\",\"added\":[413150],\"removed\":[]}" }],
+  ["user-collections.uc-coop", { "key": "user-collections.uc-coop", "timestamp": 1700000000, "value": "{\"id\":\"uc-coop\",\"name\":\"Co-op\",\"added\":[620,413150,70],\"removed\":[70]}" }],
+  ["user-collections.uc-gone", { "key": "user-collections.uc-gone", "timestamp": 1700000000, "is_deleted": true, "value": "{\"id\":\"uc-gone\",\"name\":\"Deleted collection\",\"added\":[620],\"removed\":[]}" }],
+  ["user-collections.uc-dyn", { "key": "user-collections.uc-dyn", "timestamp": 1700000000, "value": "{\"id\":\"uc-dyn\",\"name\":\"Dynamic: Puzzle\",\"filterSpec\":{\"nFormatVersion\":2,\"filterGroups\":[]}}" }],
+  ["showcases.unrelated", { "key": "showcases.unrelated", "timestamp": 1700000000, "value": "{}" }]
+]

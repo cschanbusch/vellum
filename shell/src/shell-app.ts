@@ -1,8 +1,12 @@
 import { LitElement, css, html } from "lit";
 import { api, type AppInfo } from "./api";
+import { store } from "./store";
 import { controls, tokens } from "./theme";
+import { registerToasts, type ToastHost } from "./toasts";
+import "./library-view";
 import "./pages/plugins-page";
 import "./pages/general-page";
+import "./toasts";
 
 interface PageDef {
   id: string;
@@ -14,7 +18,7 @@ interface PageDef {
 // The settings pages from the spec, in its order.
 const PAGES: PageDef[] = [
   { id: "general", label: "General" },
-  { id: "library", label: "Library", phase: 2 },
+  { id: "library", label: "Library", phase: 5 },
   { id: "plugins", label: "Plugins" },
   { id: "skins", label: "Skins", phase: 3 },
   { id: "views", label: "Views", phase: 3 },
@@ -24,19 +28,50 @@ const PAGES: PageDef[] = [
 ];
 
 export class VellumShell extends LitElement {
-  static properties = { page: { state: true }, info: { state: true } };
+  static properties = {
+    page: { state: true },
+    info: { state: true },
+    settingsOpen: { state: true },
+    scanning: { state: true },
+  };
   declare page: string;
   declare info: AppInfo | null;
+  declare settingsOpen: boolean;
+  declare scanning: boolean;
+  private onKey = (e: KeyboardEvent) => this.hotkey(e);
 
   constructor() {
     super();
     this.page = "plugins";
     this.info = null;
+    this.settingsOpen = false;
+    this.scanning = false;
   }
 
   connectedCallback() {
     super.connectedCallback();
     api.appInfo().then((info) => (this.info = info));
+    store.on("providers", () => (this.scanning = store.statuses.some((s) => s.state === "scanning")));
+    store.start();
+    window.addEventListener("keydown", this.onKey);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    window.removeEventListener("keydown", this.onKey);
+  }
+
+  firstUpdated() {
+    registerToasts(this.renderRoot.querySelector("vellum-toasts") as ToastHost);
+  }
+
+  private hotkey(e: KeyboardEvent) {
+    if (e.ctrlKey && e.key.toLowerCase() === "r") {
+      e.preventDefault();
+      api.refreshLibrary();
+    } else if (e.key === "Escape" && this.settingsOpen) {
+      this.settingsOpen = false;
+    }
   }
 
   render() {
@@ -44,12 +79,21 @@ export class VellumShell extends LitElement {
     return html`
       <header>
         <span class="brand">${this.info?.name ?? "Vellum"}</span>
-        <span class="muted">${this.info ? `v${this.info.version}` : ""}</span>
         ${this.info?.portable ? html`<span class="pill">Portable</span>` : null}
         <span class="spacer"></span>
-        <span class="muted">Library view arrives in Phase 2 — settings below</span>
+        ${this.scanning ? html`<span class="muted">Scanning…</span>` : null}
+        <button title="Refresh library (Ctrl+R)" @click=${() => api.refreshLibrary()}>Refresh</button>
+        <button
+          class=${this.settingsOpen ? "primary" : ""}
+          aria-pressed=${this.settingsOpen}
+          @click=${() => (this.settingsOpen = !this.settingsOpen)}
+        >
+          ${this.settingsOpen ? "Back to library" : "Settings"}
+        </button>
       </header>
-      <div class="body">
+      <!-- The library stays mounted while settings are open, so the skin keeps its place. -->
+      <vellum-library-view ?hidden=${this.settingsOpen}></vellum-library-view>
+      <div class="settings" ?hidden=${!this.settingsOpen}>
         <nav aria-label="Settings">
           ${PAGES.map(
             (p) => html`<button
@@ -63,6 +107,7 @@ export class VellumShell extends LitElement {
         </nav>
         <main>${this.renderPage(current)}</main>
       </div>
+      <vellum-toasts></vellum-toasts>
     `;
   }
 
@@ -85,11 +130,14 @@ export class VellumShell extends LitElement {
         color: var(--v-text);
         font: 14px/1.45 var(--v-font-body);
       }
+      [hidden] {
+        display: none !important;
+      }
       header {
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 10px 16px;
+        padding: 8px 16px;
         background: var(--v-surface);
         border-bottom: 1px solid #222838;
       }
@@ -111,7 +159,7 @@ export class VellumShell extends LitElement {
         background: var(--v-surface-raised);
         color: var(--v-accent);
       }
-      .body {
+      .settings {
         flex: 1;
         display: grid;
         grid-template-columns: 220px 1fr;

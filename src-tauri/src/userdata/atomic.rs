@@ -17,6 +17,11 @@ pub fn write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     std::fs::rename(&tmp, path)
 }
 
+/// Drops a UTF-8 byte-order mark, which Windows editors add when users hand-edit files.
+pub fn strip_bom(bytes: &[u8]) -> &[u8] {
+    bytes.strip_prefix(b"\xEF\xBB\xBF").unwrap_or(bytes)
+}
+
 /// `settings.json` + `bak` -> `settings.json.bak`.
 pub fn sibling(path: &Path, suffix: &str) -> PathBuf {
     let mut name = path.file_name().unwrap_or_default().to_os_string();

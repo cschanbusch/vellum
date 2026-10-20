@@ -3,5 +3,5 @@
   "identifier": "shell",
   "description": "The shell's own origin only. Never add remote URLs here: skin (skin.localhost) and module (vmod*.localhost) origins must get no IPC permissions at all (see docs/decisions.md).",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": ["core:default", "dialog:allow-open"]
 }

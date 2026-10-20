@@ -29,6 +29,16 @@ pub fn registry_subkeys(hive: Hive, key: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
+/// Release builds have no console; attach to the terminal that started us so CLI flags
+/// such as `--diagnose` can print.
+pub fn attach_parent_console() {
+    use windows_sys::Win32::System::Console::{AttachConsole, ATTACH_PARENT_PROCESS};
+    // SAFETY: plain Win32 call; failure (no parent console) is harmless.
+    unsafe {
+        AttachConsole(ATTACH_PARENT_PROCESS);
+    }
+}
+
 fn wide(s: &str) -> Vec<u16> {
     std::ffi::OsStr::new(s).encode_wide().chain(std::iter::once(0)).collect()
 }

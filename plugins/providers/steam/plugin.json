@@ -2,7 +2,7 @@
   "id": "steam",
   "type": "provider",
   "name": "Steam",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "apiVersion": 1,
   "author": "Vellum",
   "description": "Installed games from Steam",
@@ -25,6 +25,7 @@
     "registryRead": ["HKCU\\Software\\Valve\\Steam"],
     "uriSchemes": ["steam"],
     "artHosts": ["cdn.cloudflare.steamstatic.com", "shared.steamstatic.com"],
-    "capabilities": ["launch", "install", "uninstall", "openStore", "watch"]
+    "capabilities": ["launch", "install", "uninstall", "openStore", "watch"],
+    "denyFiles": ["config/loginusers.vdf", "config/config.vdf", "ssfn*"]
   }
 }

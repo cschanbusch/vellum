@@ -16,9 +16,11 @@ A Windows game launcher where store providers, skins and QoL modules are all plu
 | Run the app with hot reload | `npm run dev` |
 | Rust tests | `cargo test --manifest-path src-tauri/Cargo.toml` |
 | Front-end tests | `npm test` |
-| Type-check the shell | `npm run typecheck` |
+| Type-check the SDK and shell | `npm run typecheck` |
+| Build the SDK and shell only | `npm run build:web` |
 | Build the portable folder | `./scripts/package-portable.ps1` (add `-Portable` for `portable.flag`) |
 | List plugins without a window | `Vellum.exe --print-plugins --out plugins.json` |
+| Diagnostics report (structure only) | `Vellum.exe --diagnose --out report.json` |
 
 ## Layout
 

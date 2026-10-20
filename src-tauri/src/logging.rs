@@ -10,6 +10,8 @@ const KEEP_DAYS: usize = 7;
 /// The returned guard must live until exit so buffered lines are flushed.
 pub fn init(logs_dir: &Path) -> Option<WorkerGuard> {
     let filter = EnvFilter::try_from_env("VELLUM_LOG").unwrap_or_else(|_| EnvFilter::new("info"));
+    // The appender prunes old files by reading the folder, so it must exist first.
+    let _ = std::fs::create_dir_all(logs_dir);
     let appender = Builder::new()
         .rotation(Rotation::DAILY)
         .filename_prefix("vellum")

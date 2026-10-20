@@ -1,0 +1,31 @@
+"libraryfolders"
+{
+	"0"
+	{
+		"path"		"%ROOT%"
+		"label"		""
+		"contentid"		"111"
+		"totalsize"		"0"
+		"apps"
+		{
+			"620"		"12000000000"
+			"228980"		"100"
+		}
+	}
+	"1"
+	{
+		"path"		"%LIBB%"
+		"label"		"Second drive"
+		"contentid"		"222"
+		"totalsize"		"500000000000"
+		"apps"
+		{
+			"413150"		"500000000"
+		}
+	}
+	"2"
+	{
+		"path"		"%MISSING%"
+		"label"		"Unplugged drive"
+	}
+}

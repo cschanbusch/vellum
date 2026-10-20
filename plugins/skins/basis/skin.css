@@ -1,0 +1,112 @@
+/* Basis: Phase 2 plain list. Tokens move to sdk.css in Phase 3. */
+:root {
+  --v-bg: #0b0d12;
+  --v-surface: #141824;
+  --v-surface-raised: #1c2131;
+  --v-text: #e6e8ee;
+  --v-text-muted: #9aa3b5;
+  --v-accent: #7cc4ff;
+  --v-accent-text: #06121f;
+  --v-focus-ring: #7cc4ff;
+  --v-radius: 8px;
+  --v-list-row-height: 40px;
+  --v-font-body: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--v-bg);
+  color: var(--v-text);
+  font: 14px/1.4 var(--v-font-body);
+}
+
+body { display: flex; flex-direction: column; }
+
+.bar {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 16px 24px 8px;
+}
+
+h1 { margin: 0; font-size: 22px; font-weight: 600; }
+
+.muted { color: var(--v-text-muted); }
+
+main { flex: 1; overflow: auto; padding: 0 24px 24px; }
+
+table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+
+th {
+  position: sticky;
+  top: 0;
+  background: var(--v-bg);
+  text-align: left;
+  font-weight: 500;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--v-text-muted);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--v-surface-raised);
+}
+
+th:nth-child(1) { width: auto; }
+th:nth-child(2) { width: 140px; }
+th:nth-child(3) { width: 100px; }
+th:nth-child(4) { width: 170px; }
+th:nth-child(5) { width: 90px; }
+
+td {
+  height: var(--v-list-row-height);
+  padding: 0 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid #ffffff08;
+}
+
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+tbody tr { cursor: default; }
+tbody tr:hover { background: var(--v-surface); }
+tbody tr[aria-selected="true"] { background: var(--v-surface-raised); }
+tbody tr[aria-selected="true"] td:first-child { box-shadow: inset 3px 0 0 var(--v-accent); }
+
+.title { font-weight: 500; }
+.tag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 0 6px;
+  border-radius: 99px;
+  font-size: 11px;
+  background: var(--v-surface-raised);
+  color: var(--v-text-muted);
+}
+
+.play {
+  font: inherit;
+  font-weight: 600;
+  padding: 4px 14px;
+  border: 0;
+  border-radius: var(--v-radius);
+  background: var(--v-accent);
+  color: var(--v-accent-text);
+  cursor: pointer;
+  visibility: hidden;
+}
+tbody tr:hover .play,
+tbody tr[aria-selected="true"] .play { visibility: visible; }
+
+:focus-visible { outline: 2px solid var(--v-focus-ring); outline-offset: -2px; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+#empty { padding: 40px 0; text-align: center; font-size: 15px; }

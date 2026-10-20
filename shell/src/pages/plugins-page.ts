@@ -1,7 +1,8 @@
 import { LitElement, css, html, nothing } from "lit";
 import type { UnlistenFn } from "@tauri-apps/api/event";
-import { api, type PluginKind, type PluginView } from "../api";
+import { api, browseForLocation, type LocationResolution, type PluginKind, type PluginView } from "../api";
 import { providerPermissions } from "../permissions";
+import { store } from "../store";
 import { controls, tokens } from "../theme";
 
 const TABS: { kind: PluginKind; label: string }[] = [
@@ -28,15 +29,47 @@ export class PluginsPage extends LitElement {
     this.error = null;
   }
 
+  private unsubStore?: () => void;
+
   connectedCallback() {
     super.connectedCallback();
     this.refresh();
     this.unlisten = api.onPluginsChanged(() => this.refresh());
+    this.unsubStore = store.on("providers", () => this.requestUpdate());
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this.unlisten?.then((f) => f());
+    this.unsubStore?.();
+  }
+
+  private async relocate(provider: string, loc: LocationResolution) {
+    this.error = await browseForLocation(provider, loc.key, loc.label);
+  }
+
+  private renderProviderStatus(p: PluginView) {
+    const s = store.statuses.find((x) => x.id === p.id);
+    if (!p.enabled || !s) return nothing;
+    const text =
+      s.state === "scanning"
+        ? "Scanning…"
+        : s.state === "ready"
+          ? `${s.games} game${s.games === 1 ? "" : "s"} · scanned in ${s.durationMs ?? 0} ms${s.message ? ` · ${s.message}` : ""}`
+          : s.state === "inactive"
+            ? `Inactive: ${s.message}`
+            : s.state === "error"
+              ? `Error: ${s.message}`
+              : "Waiting";
+    return html`
+      <div class="pstatus ${s.state}">${text}</div>
+      ${s.locations.map(
+        (l) => html`<div class="loc small">
+          <span><span class="muted">${l.label}:</span> ${l.path ?? "not found"}</span>
+          <button @click=${() => this.relocate(p.id, l)}>Re-locate…</button>
+        </div>`,
+      )}
+    `;
   }
 
   private async refresh() {
@@ -108,6 +141,7 @@ export class PluginsPage extends LitElement {
           </div>
           <div class="actions">${this.renderToggle(p, broken)}</div>
         </div>
+        ${p.kind === "provider" ? html`<div class="provider-runtime">${this.renderProviderStatus(p)}</div>` : nothing}
         ${p.errors.length
           ? html`<ul class="issues error">
               ${p.errors.map((e) => html`<li>${e}</li>`)}
@@ -289,6 +323,32 @@ export class PluginsPage extends LitElement {
         width: 18px;
         height: 18px;
         accent-color: var(--v-accent);
+      }
+      .provider-runtime {
+        margin: 6px 0 0 48px;
+      }
+      .pstatus {
+        font-size: 13px;
+        color: var(--v-ok);
+      }
+      .pstatus.inactive,
+      .pstatus.scanning {
+        color: var(--v-warning);
+      }
+      .pstatus.error {
+        color: var(--v-danger);
+      }
+      .loc {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 4px;
+        word-break: break-all;
+      }
+      .loc button {
+        padding: 2px 10px;
+        font-size: 12px;
+        flex: none;
       }
       .error-banner {
         background: color-mix(in srgb, var(--v-danger) 15%, transparent);

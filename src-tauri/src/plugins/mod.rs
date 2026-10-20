@@ -138,7 +138,8 @@ pub fn load(dir: &Path, kind: PluginKind) -> PluginRecord {
             return rec;
         }
     };
-    let v = manifest::validate(dir, kind, &text);
+    // Windows editors (and PowerShell 5.1) often save UTF-8 with a byte-order mark.
+    let v = manifest::validate(dir, kind, text.strip_prefix('\u{feff}').unwrap_or(&text));
     if let Some(id) = v.id {
         rec.id = id;
     }
@@ -216,6 +217,14 @@ mod tests {
         assert!(found[0].is_valid());
         assert!(!found[1].is_valid());
         assert!(found[1].errors[0].contains("already uses the id"));
+    }
+
+    #[test]
+    fn manifest_saved_with_bom_is_valid() {
+        let root = tempfile::tempdir().unwrap();
+        plugin(root.path(), PluginKind::Provider, "steam", &format!("\u{feff}{}", provider_json("steam")), &["provider.js"]);
+        let found = discover(&[root.path().to_path_buf()]);
+        assert!(found[0].is_valid(), "{:?}", found[0].errors);
     }
 
     #[test]

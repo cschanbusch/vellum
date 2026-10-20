@@ -1,17 +1,28 @@
 ﻿pub mod cli;
 mod commands;
+pub mod diagnose;
+pub mod formats;
+pub mod library;
 pub mod logging;
 pub mod paths;
 pub mod platform;
 pub mod plugins;
+pub mod protocols;
+pub mod providers;
+pub mod scanner;
 pub mod userdata;
+pub mod util;
 
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 use tauri::{Manager, RunEvent};
 
+use crate::library::LibrarySnapshot;
 use crate::paths::AppPaths;
 use crate::plugins::PluginRecord;
+use crate::providers::host::{HostEnv, SystemOpener};
+use crate::providers::locations::SystemRegistry;
+use crate::userdata::games::UserData;
 use crate::userdata::settings::Settings;
 use crate::userdata::store::JsonStore;
 
@@ -25,7 +36,11 @@ pub const EVENT_PLUGINS_CHANGED: &str = "vellum://plugins-changed";
 pub struct AppState {
     pub paths: AppPaths,
     pub settings: JsonStore<Settings>,
+    pub userdata: JsonStore<UserData>,
+    pub library: JsonStore<LibrarySnapshot>,
     pub plugins: RwLock<Vec<PluginRecord>>,
+    pub runtime: scanner::Runtime,
+    pub env: HostEnv,
 }
 
 impl AppState {
@@ -39,6 +54,32 @@ impl AppState {
     }
 }
 
+/// Handles flags that produce output and exit without a window. Returns true if one ran.
+fn run_cli(args: &cli::Args, paths: &AppPaths) -> bool {
+    if !(args.print_plugins || args.diagnose) {
+        return false;
+    }
+    platform::attach_parent_console();
+    if args.print_plugins {
+        let json = serde_json::to_string_pretty(&plugins::discover(&paths.plugin_roots())).unwrap();
+        match &args.out {
+            Some(out) => std::fs::write(out, json).expect("write --out file"),
+            None => println!("{json}"),
+        }
+    }
+    if args.diagnose {
+        let (report, summary) = diagnose::report(paths, &SystemRegistry);
+        let out = args.out.clone().unwrap_or_else(|| "vellum-diagnostics.json".into());
+        std::fs::write(&out, serde_json::to_string_pretty(&report).unwrap()).expect("write diagnostics report");
+        println!("{APP_NAME} diagnostics (structure only; review before sharing):");
+        for line in summary {
+            println!("  {line}");
+        }
+        println!("Report written to {}", out.display());
+    }
+    true
+}
+
 pub fn run() {
     let args = cli::Args::parse(std::env::args().skip(1));
     let paths = match AppPaths::resolve(&args) {
@@ -48,30 +89,34 @@ pub fn run() {
             std::process::exit(1);
         }
     };
-
-    if args.print_plugins {
-        let found = plugins::discover(&paths.plugin_roots());
-        let json = serde_json::to_string_pretty(&found).unwrap();
-        match &args.out {
-            Some(out) => std::fs::write(out, json).expect("write --out file"),
-            None => println!("{json}"),
-        }
+    if run_cli(&args, &paths) {
         return;
     }
 
     let _log_guard = logging::init(&paths.logs_dir());
     tracing::info!(version = APP_VERSION, data_dir = %paths.data_dir.display(), portable = paths.portable, "starting");
 
-    let settings = JsonStore::open(paths.data_dir.join("settings.json"), userdata::settings::load);
+    let data = |name: &str| paths.data_dir.join(name);
     let state = AppState {
-        paths,
-        settings,
+        settings: JsonStore::open(data("settings.json"), userdata::settings::load),
+        userdata: JsonStore::open(data("userdata.json"), userdata::games::load),
+        library: JsonStore::open(data("library-cache.json"), library::load_snapshot),
         plugins: RwLock::new(Vec::new()),
+        runtime: scanner::Runtime::default(),
+        env: HostEnv { registry: Arc::new(SystemRegistry), opener: Arc::new(SystemOpener) },
+        paths,
     };
     state.rescan_plugins();
 
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .manage(state)
+        .register_uri_scheme_protocol(protocols::SKIN_SCHEME, |ctx, req| protocols::handle_skin(ctx.app_handle(), &req))
+        .setup(|app| {
+            // The snapshot is already loaded; fresh results replace it as each provider finishes.
+            scanner::scan_all(app.handle());
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::app_info,
             commands::list_plugins,
@@ -80,13 +125,23 @@ pub fn run() {
             commands::reload_plugins,
             commands::open_plugins_folder,
             commands::open_data_folder,
+            commands::library_entries,
+            commands::provider_statuses,
+            commands::notices,
+            commands::dismiss_notice,
+            commands::set_location,
+            commands::refresh_library,
+            commands::run_action,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
     app.run(|handle, event| {
         if let RunEvent::Exit = event {
-            handle.state::<AppState>().settings.flush();
+            let state = handle.state::<AppState>();
+            state.settings.flush();
+            state.userdata.flush();
+            state.library.flush();
             tracing::info!("exit");
         }
     });

@@ -17,6 +17,6 @@
       }
     },
     "uriSchemes": ["com.epicgames.launcher"],
-    "capabilities": ["launch", "watch"]
+    "capabilities": ["launch"]
   }
 }

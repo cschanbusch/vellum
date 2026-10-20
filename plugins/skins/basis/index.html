@@ -1,10 +1,31 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <!-- The SDK, kit and views are served from the exe from Phase 2/3 on. -->
+  <title>Basis</title>
   <link rel="stylesheet" href="/__vellum/sdk.css">
-  <script type="module" src="/__vellum/sdk.js"></script>
+  <link rel="stylesheet" href="skin.css">
+  <script type="module" src="list.js"></script>
 </head>
-<body><vellum-app></vellum-app></body>
+<body>
+  <header class="bar">
+    <h1>Library</h1>
+    <span id="count" class="muted"></span>
+  </header>
+  <main>
+    <table id="list" aria-label="Games">
+      <thead>
+        <tr>
+          <th scope="col">Title</th>
+          <th scope="col">Store</th>
+          <th scope="col" class="num">Size</th>
+          <th scope="col">Last launched</th>
+          <th scope="col"><span class="sr-only">Play</span></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <p id="empty" class="muted" hidden></p>
+  </main>
+</body>
 </html>

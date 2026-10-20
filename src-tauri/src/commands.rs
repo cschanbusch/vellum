@@ -1,11 +1,13 @@
-//! Tauri commands. Only the shell's origin may call these (see capabilities/default.json);
+﻿//! Tauri commands. Only the shell's origin may call these (see capabilities/default.json);
 //! skins and modules reach the backend solely through the shell's validated bridge.
 
 use serde::Serialize;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, State};
 
+use crate::library::Entry;
 use crate::plugins::{PluginKind, PluginRecord, API_VERSION};
+use crate::scanner::{self, Action, ActionResult, Notice, ProviderStatus};
 use crate::userdata::settings::Settings;
 use crate::{platform, AppState, APP_NAME, APP_VERSION, EVENT_PLUGINS_CHANGED};
 
@@ -79,7 +81,7 @@ fn view(rec: &PluginRecord, settings: &Settings) -> PluginView {
     }
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn list_plugins(state: State<AppState>) -> Vec<PluginView> {
     let plugins = state.plugins.read().unwrap();
     state.settings.read(|s| plugins.iter().map(|p| view(p, s)).collect())
@@ -109,6 +111,13 @@ pub fn set_plugin_enabled(
     }
     state.settings.update(|s| s.set_plugin_enabled(kind, &id, enabled));
     tracing::info!(kind = kind.as_str(), %id, enabled, "plugin toggled");
+    if kind == PluginKind::Provider {
+        if enabled {
+            scanner::spawn_scan(&app, id.clone());
+        } else {
+            scanner::deactivate(&app, &id);
+        }
+    }
     let _ = app.emit(EVENT_PLUGINS_CHANGED, ());
     Ok(())
 }
@@ -126,6 +135,46 @@ pub fn activate_skin(app: AppHandle, state: State<AppState>, id: String) -> Resu
 pub fn reload_plugins(app: AppHandle, state: State<AppState>) {
     state.rescan_plugins();
     let _ = app.emit(EVENT_PLUGINS_CHANGED, ());
+    scanner::scan_all(&app);
+}
+
+#[tauri::command(async)]
+pub fn library_entries(state: State<AppState>) -> Vec<Entry> {
+    state.entries()
+}
+
+#[tauri::command(async)]
+pub fn provider_statuses(state: State<AppState>) -> Vec<ProviderStatus> {
+    state.provider_statuses()
+}
+
+#[tauri::command(async)]
+pub fn notices(state: State<AppState>) -> Vec<Notice> {
+    state.notices()
+}
+
+#[tauri::command]
+pub fn dismiss_notice(app: AppHandle, id: String) {
+    scanner::dismiss_notice(&app, &id);
+}
+
+/// The user picked a folder for a provider location (Browse in a notice, or Re-locate).
+/// The error is a sentence such as "This folder has no steamapps/libraryfolders.vdf."
+#[tauri::command]
+pub fn set_location(app: AppHandle, provider: String, key: String, path: String) -> Result<(), String> {
+    scanner::set_location(&app, &provider, &key, &path)
+}
+
+#[tauri::command]
+pub fn refresh_library(app: AppHandle) {
+    scanner::scan_all(&app);
+}
+
+/// Launch, install, uninstall or open the store page. Runs off the main thread: a provider
+/// call can take up to its timeout.
+#[tauri::command(async)]
+pub fn run_action(app: AppHandle, entry_id: String, action: Action, provider: Option<String>) -> Result<ActionResult, String> {
+    scanner::run_action(&app, &entry_id, provider.as_deref(), action)
 }
 
 #[tauri::command]

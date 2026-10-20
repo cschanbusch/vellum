@@ -7,7 +7,7 @@
     "frontendDist": "../shell/dist",
     "devUrl": "http://localhost:1420",
     "beforeDevCommand": "npm run dev:shell",
-    "beforeBuildCommand": "npm run build:shell"
+    "beforeBuildCommand": "npm run build:web"
   },
   "app": {
     "windows": [
@@ -22,8 +22,8 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src ipc: http://ipc.localhost",
-      "devCsp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src ipc: http://ipc.localhost ws://localhost:1420"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src ipc: http://ipc.localhost; frame-src http://skin.localhost skin://localhost",
+      "devCsp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src ipc: http://ipc.localhost ws://localhost:1420; frame-src http://skin.localhost skin://localhost"
     }
   },
   "bundle": {

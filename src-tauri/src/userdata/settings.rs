@@ -128,7 +128,7 @@ pub fn load(path: &Path, bytes: Option<Vec<u8>>) -> Settings {
 
 /// Returns the settings and the schema version the file was written with.
 fn parse(bytes: &[u8]) -> Result<(Settings, u32), String> {
-    let mut doc: Value = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
+    let mut doc: Value = serde_json::from_slice(atomic::strip_bom(bytes)).map_err(|e| e.to_string())?;
     if !doc.is_object() {
         return Err("settings root is not an object".into());
     }
@@ -159,6 +159,12 @@ mod tests {
     fn unversioned_file_is_migrated() {
         let s = load(Path::new("x"), Some(br#"{"activeSkin":"neon"}"#.to_vec()));
         assert_eq!(s.schema_version, SCHEMA_VERSION);
+        assert_eq!(s.active_skin, "neon");
+    }
+
+    #[test]
+    fn hand_edited_file_with_bom_loads() {
+        let s = load(Path::new("x"), Some(b"\xEF\xBB\xBF{\"activeSkin\":\"neon\"}".to_vec()));
         assert_eq!(s.active_skin, "neon");
     }
 

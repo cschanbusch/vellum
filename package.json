@@ -4,14 +4,17 @@
   "type": "module",
   "scripts": {
     "dev": "tauri dev",
-    "dev:shell": "vite --config shell/vite.config.ts",
+    "dev:shell": "npm run build:sdk && vite --config shell/vite.config.ts",
+    "build:sdk": "tsc -p sdk && vite build --config sdk/vite.config.ts",
     "build:shell": "tsc -p shell && vite build --config shell/vite.config.ts",
-    "typecheck": "tsc -p shell",
+    "build:web": "npm run build:sdk && npm run build:shell",
+    "typecheck": "tsc -p sdk && tsc -p shell",
     "test": "vitest run",
     "tauri": "tauri"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/plugin-dialog": "^2.8.3",
     "lit": "^3.3.3"
   },
   "devDependencies": {

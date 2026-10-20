@@ -1,0 +1,18 @@
+"AppState"
+{
+	"appid"		"620"
+	"universe"		"1"
+	"name"		"Portal 2"
+	"StateFlags"		"4"
+	"installdir"		"Portal 2"
+	"LastUpdated"		"1700000000"
+	"SizeOnDisk"		"12000000000"
+	"InstalledDepots"
+	{
+		"621"
+		{
+			"manifest"		"1234567890"
+			"size"		"12000000000"
+		}
+	}
+}

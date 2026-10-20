@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, RecvTimeoutError};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
 use serde::Serialize;
@@ -19,10 +19,18 @@ struct Inner<T> {
     data: Mutex<T>,
 }
 
+impl<T> Inner<T> {
+    /// A panic in one caller's closure must not make the store unusable for everyone
+    /// (a poisoned lock once aborted the whole app), so poisoning is ignored.
+    fn lock(&self) -> MutexGuard<'_, T> {
+        self.data.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+}
+
 impl<T: Serialize> Inner<T> {
     fn save(&self) {
         let bytes = {
-            let data = self.data.lock().unwrap();
+            let data = self.lock();
             serde_json::to_vec_pretty(&*data)
         };
         let result = bytes
@@ -57,11 +65,11 @@ impl<T: Serialize + Send + 'static> JsonStore<T> {
     }
 
     pub fn read<R>(&self, f: impl FnOnce(&T) -> R) -> R {
-        f(&self.inner.data.lock().unwrap())
+        f(&self.inner.lock())
     }
 
     pub fn update<R>(&self, f: impl FnOnce(&mut T) -> R) -> R {
-        let r = f(&mut self.inner.data.lock().unwrap());
+        let r = f(&mut self.inner.lock());
         let _ = self.tx.send(Msg::Dirty);
         r
     }
@@ -122,6 +130,19 @@ mod tests {
         store.flush();
         let saved: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
         assert_eq!(saved["n"], 50);
+    }
+
+    #[test]
+    fn a_panicking_reader_does_not_break_the_store() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("c.json");
+        let store = std::sync::Arc::new(JsonStore::open(path.clone(), |_, _| Counter::default()));
+        let s = store.clone();
+        let _ = std::thread::spawn(move || s.read(|_| panic!("boom"))).join();
+        store.update(|c| c.n = 5);
+        store.flush();
+        assert_eq!(store.read(|c| c.n), 5);
+        assert!(path.exists());
     }
 
     #[test]

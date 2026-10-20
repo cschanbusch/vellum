@@ -2,13 +2,13 @@
   "id": "basis",
   "type": "skin",
   "name": "Basis",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "apiVersion": 1,
   "author": "Vellum",
   "description": "The default skin",
   "entry": "index.html",
   "skin": {
-    "defaultView": "covers",
+    "defaultView": "list",
     "window": { "frameless": false, "minWidth": 960, "minHeight": 600, "background": "#0b0d12" },
     "options": [
       { "id": "accent", "label": "Accent color", "type": "color", "default": "#7cc4ff", "cssVar": "--v-accent" }

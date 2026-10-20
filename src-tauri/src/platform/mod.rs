@@ -21,12 +21,21 @@ pub enum PlatformError {
     Open { target: String, reason: String },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum Hive {
     #[serde(rename = "HKCU")]
     CurrentUser,
     #[serde(rename = "HKLM")]
     LocalMachine,
+}
+
+impl std::fmt::Display for Hive {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Hive::CurrentUser => "HKCU",
+            Hive::LocalMachine => "HKLM",
+        })
+    }
 }
 
 impl std::str::FromStr for Hive {
@@ -53,6 +62,11 @@ pub fn registry_subkeys(hive: Hive, key: &str) -> Vec<String> {
 /// Opens a URI with its registered handler (store client URIs such as `steam://`).
 pub fn open_uri(uri: &str) -> Result<(), PlatformError> {
     imp::shell_open(uri)
+}
+
+/// Lets a windowless (release) build print to the terminal that launched it.
+pub fn attach_parent_console() {
+    imp::attach_parent_console()
 }
 
 /// Opens a folder in the system file manager.

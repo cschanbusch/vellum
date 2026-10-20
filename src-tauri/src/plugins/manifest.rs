@@ -230,6 +230,7 @@ impl Checker<'_> {
         self.string_list(s, "registryRead", at);
         self.string_list(s, "uriSchemes", at);
         self.string_list(s, "artHosts", at);
+        self.string_list(s, "denyFiles", at);
         for cap in self.string_list(s, "capabilities", at) {
             if !PROVIDER_CAPABILITIES.contains(&cap.as_str()) {
                 self.warn(format!("provider.\"capabilities\" has unknown entry \"{cap}\"; it will be ignored."));

@@ -1,7 +1,67 @@
-// Scanning is implemented in Phase 2. Until then this provider reports no games.
+// Mock library: deterministic fake games for skin development and UI tests.
+// The same settings always produce the same games. Launching only logs (the shell shows a toast).
+
+const FAKE_STORES = ["Northwind", "Bluebird Games", "Paper Lantern"];
+const ADJECTIVES = ["Silent", "Crimson", "Hollow", "Golden", "Forgotten", "Iron", "Neon", "Last", "Wandering", "Broken", "Endless", "Little", "Distant", "Frozen", "Hidden", "Burning"];
+const NOUNS = ["Lighthouse", "Kingdom", "Orbit", "Garden", "Signal", "Harbor", "Archive", "Frontier", "Tides", "Engine", "Forest", "Citadel", "Meridian", "Canyon", "Atlas", "Ember"];
+const SUFFIXES = ["", "", "", " II", " Remastered", ": Origins", " Deluxe", " 3", ": The Long Night", " Tactics"];
+const GENRES = ["Action", "Adventure", "RPG", "Strategy", "Puzzle", "Platformer", "Simulation", "Racing", "Roguelike", "Shooter"];
+const STUDIOS = ["Quiet Fox", "Ninefold", "Pebble & Oak", "Starling Works", "Lowtide", "Brightmoor", "Copperfield Interactive"];
+const COLLECTIONS = ["Backlog", "Co-op nights", "Comfort games", "Finished"];
+
+/** Mulberry32: a tiny seeded PRNG so every run produces identical data. */
+function rng(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const choose = (r, list) => list[Math.floor(r() * list.length)];
+
+function makeGame(i) {
+  const r = rng(1000 + i);
+  const article = r() < 0.15 ? "The " : "";
+  const title = `${article}${choose(r, ADJECTIVES)} ${choose(r, NOUNS)}${choose(r, SUFFIXES)}`;
+  const genres = [choose(r, GENRES), choose(r, GENRES)].filter((g, k, a) => a.indexOf(g) === k);
+  const year = 2008 + Math.floor(r() * 18);
+  const month = String(1 + Math.floor(r() * 12)).padStart(2, "0");
+  const day = String(1 + Math.floor(r() * 28)).padStart(2, "0");
+  const store = FAKE_STORES[i % FAKE_STORES.length];
+  const studio = choose(r, STUDIOS);
+  const kind = i % 37 === 36 ? "tool" : "game";
+  return {
+    sourceId: `mock-${String(i + 1).padStart(4, "0")}`,
+    title: kind === "tool" ? `${choose(r, NOUNS)} Toolkit` : title,
+    kind,
+    sizeBytes: Math.floor((0.2 + r() * 80) * 1024 ** 3),
+    launchData: { fakeStore: store },
+    categories: COLLECTIONS.filter(() => r() < 0.2),
+    metadata: {
+      developer: studio,
+      publisher: r() < 0.5 ? studio : choose(r, STUDIOS),
+      releaseDate: `${year}-${month}-${day}`,
+      genres,
+      description: `A ${genres[0].toLowerCase()} game from ${studio}, sold on the fictional ${store} store.`,
+    },
+    // A few entries are hidden by the "store", to exercise hidden handling.
+    hidden: i % 29 === 28,
+  };
+}
+
 export default {
   scan(ctx) {
-    return { games: [] };
+    const count = Math.max(1, Math.min(5000, Number(ctx.settings.count) || 80));
+    const games = [];
+    for (let i = 0; i < count; i++) games.push(makeGame(i));
+    return { games };
   },
-  launch(ctx, game) {},
+
+  launch(ctx, game) {
+    ctx.log.info(`mock launch: ${game.title} (${game.launchData?.fakeStore ?? "unknown store"})`);
+  },
 };
