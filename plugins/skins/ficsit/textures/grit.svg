@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <!-- Fine grime and speckle, laid over panels at low opacity. Transparent; tiles seamlessly. -->
+  <defs>
+    <filter id="g" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3" stitchTiles="stitch" result="fine"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="3" seed="11" stitchTiles="stitch" result="blotch"/>
+      <feComposite in="fine" in2="blotch" operator="arithmetic" k1="0.9" k2="0.25" k3="0.35" k4="-0.32" result="mix"/>
+      <feColorMatrix in="mix" type="matrix" values="0 0 0 0 0.06  0 0 0 0 0.05  0 0 0 0 0.04  0 0 0 1.6 -0.55"/>
+    </filter>
+  </defs>
+  <rect width="320" height="320" filter="url(#g)"/>
+</svg>

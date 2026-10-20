@@ -581,7 +581,8 @@ selection in the middle; the Spotlight strip uses this.
 
 A titled, collapsible cover row. Set `group` (from `vellum.library.groups()`), `by` (the group
 key) and `collapsed`. Category and tag shelves show move up/down buttons on hover.
-Parts: `header`, `toggle`, `label`, `count`, `order`, `row`, plus the row's cell parts.
+Parts: `header`, `toggle`, `label`, `count`, `order`, `row`, plus the row's cell parts (its
+cover badge is exported as `cover-label`, since `label` is the shelf's own heading).
 
 #### `<vellum-list>`
 

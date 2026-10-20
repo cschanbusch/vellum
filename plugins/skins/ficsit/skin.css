@@ -1,0 +1,644 @@
+/* FICSIT Terminal: an industrial library terminal in the style of Satisfactory's FICSIT Inc.
+   Fan-made; no game assets. Textures are vector (textures/*.svg), so they stay sharp at 4K.
+
+   Layers, back to front: the factory (.fx-bg), the title bar, <vellum-app>, the status strip,
+   and the boot overlay. */
+
+@font-face { font-family: "Barlow Condensed"; src: url("fonts/barlow-condensed-latin-500-normal.woff2") format("woff2"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "Barlow Condensed"; src: url("fonts/barlow-condensed-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Barlow Condensed"; src: url("fonts/barlow-condensed-latin-800-normal.woff2") format("woff2"); font-weight: 800; font-display: swap; }
+@font-face { font-family: "Share Tech Mono"; src: url("fonts/share-tech-mono-latin-400-normal.woff2") format("woff2"); font-display: swap; }
+
+:root {
+  --v-accent: #f39a3d;
+  --fx-grime: 0.55;
+  --fx-orange: var(--v-accent);
+  --fx-orange-deep: color-mix(in srgb, var(--v-accent) 70%, #6b2a00);
+  --fx-paper: #ece8df;
+  --fx-ink: #131416;
+  --fx-steel: #2b2e33;
+  --fx-steel-hi: #3b3f45;
+  --fx-line: rgb(255 255 255 / 0.07);
+  --fx-mono: "Share Tech Mono", "Cascadia Mono", monospace;
+  --fx-cond: "Barlow Condensed", "Inter", sans-serif;
+  --fx-hazard: repeating-linear-gradient(-45deg, var(--fx-orange) 0 10px, var(--fx-ink) 10px 20px);
+  --fx-rivets:
+    radial-gradient(circle at 7px 7px, #9aa0a7 0 1.6px, #1b1d20 2.4px, transparent 3.2px),
+    radial-gradient(circle at calc(100% - 7px) 7px, #9aa0a7 0 1.6px, #1b1d20 2.4px, transparent 3.2px),
+    radial-gradient(circle at 7px calc(100% - 7px), #9aa0a7 0 1.6px, #1b1d20 2.4px, transparent 3.2px),
+    radial-gradient(circle at calc(100% - 7px) calc(100% - 7px), #9aa0a7 0 1.6px, #1b1d20 2.4px, transparent 3.2px);
+
+  --v-bg: #15171a;
+  --v-surface: rgb(36 39 44 / 0.9);
+  --v-surface-raised: #33373d;
+  --v-text: #ebe8e1;
+  --v-text-muted: #a3a29b;
+  --v-accent-text: #1a1206;
+  --v-focus-ring: #ffc57d;
+  --v-radius: 3px;
+  --v-gap: 18px;
+  --v-font-body: "Inter", "Segoe UI", sans-serif;
+  --v-font-display: var(--fx-cond);
+  --v-cover-width: 176px;
+  --v-list-row-height: 42px;
+  --v-hero-overlay: linear-gradient(0deg, rgb(21 23 26 / 0.85), transparent 45%), linear-gradient(90deg, rgb(21 23 26 / 0.45), transparent 55%);
+  --v-spot-scrim: radial-gradient(120% 110% at 0% 100%, rgb(14 15 17 / 0.9) 0%, rgb(14 15 17 / 0.55) 40%, transparent 70%);
+  --v-spot-panel: linear-gradient(180deg, rgb(30 33 37 / 0.92), rgb(22 24 27 / 0.92));
+  --v-spot-panel-padding: 2.6rem 1.6rem 1.3rem;
+  background: var(--v-bg);
+}
+
+body { background: transparent; }
+
+/* ---- the factory ----------------------------------------------------------------------- */
+
+.fx-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background: #0b0f13;
+}
+.fx-scene {
+  position: absolute;
+  inset: 0;
+  background: url("textures/factory.svg") center bottom / cover no-repeat;
+}
+.fx-vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(130% 90% at 50% 40%, transparent 50%, rgb(0 0 0 / 0.6)),
+    url("textures/grit.svg") 0 0 / 320px;
+  opacity: 0.9;
+}
+
+/* Smoke rising from the stacks. */
+.fx-smoke {
+  position: absolute;
+  width: 14vmin;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(170 170 160 / 0.35), rgb(170 170 160 / 0) 70%);
+  filter: blur(6px);
+  animation: fx-smoke 11s linear infinite;
+}
+.fx-smoke.s1 { left: 23.5%; bottom: 42%; }
+.fx-smoke.s2 { left: 27%; bottom: 44%; animation-delay: -4s; animation-duration: 13s; }
+.fx-smoke.s3 { left: 82.5%; bottom: 44%; animation-delay: -7s; animation-duration: 15s; }
+@keyframes fx-smoke {
+  0% { transform: translate(0, 0) scale(0.4); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translate(6vmin, -38vmin) scale(2.4); opacity: 0; }
+}
+
+/* Warning beacons on the towers. */
+.fx-beacon {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff6b1a;
+  box-shadow: 0 0 10px 4px rgb(255 107 26 / 0.7), 0 0 40px 10px rgb(255 107 26 / 0.25);
+  animation: fx-blink 1.6s steps(1, end) infinite;
+}
+.fx-beacon.k1 { left: 68.4%; top: 10.6%; }
+.fx-beacon.k2 { left: 17.8%; top: 56%; animation-delay: -0.8s; }
+.fx-beacon.k3 { left: 90.6%; top: 60.6%; animation-delay: -0.4s; }
+@keyframes fx-blink { 50% { opacity: 0.15; box-shadow: none; } }
+
+/* Conveyor belts with cargo, low across the floor. */
+.fx-belt {
+  position: absolute;
+  left: -5%;
+  right: -5%;
+  height: 26px;
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 0.07) 0 2px, transparent 2px 18px),
+    linear-gradient(180deg, #3a3e44, #1c1e22 70%, #0e0f11);
+  border-top: 2px solid #5b6068;
+  border-bottom: 3px solid #0a0a0b;
+  box-shadow: 0 6px 14px rgb(0 0 0 / 0.6);
+  overflow: hidden;
+  animation: fx-rollers 0.6s linear infinite;
+}
+.fx-belt.upper { bottom: 21%; transform: perspective(900px) rotateX(18deg); opacity: 0.75; }
+.fx-belt.lower { bottom: 7%; height: 34px; animation-direction: reverse; }
+.fx-cargo {
+  position: absolute;
+  inset: -12px 0 auto 0;
+  height: 22px;
+  width: 200%;
+  background:
+    linear-gradient(90deg, transparent 0 40px, var(--fx-orange) 40px 70px, transparent 70px 150px, #c9c4b8 150px 172px, transparent 172px 260px,
+      #6f8f9f 260px 286px, transparent 286px 360px) 0 0 / 360px 100% repeat-x;
+  filter: drop-shadow(0 2px 0 rgb(0 0 0 / 0.6));
+  animation: fx-cargo 12s linear infinite;
+}
+.fx-belt.lower .fx-cargo { inset: -14px 0 auto 0; height: 28px; animation-duration: 9s; animation-direction: reverse; }
+@keyframes fx-rollers { to { background-position: 18px 0, 0 0; } }
+@keyframes fx-cargo { to { transform: translateX(-360px); } }
+
+:root[data-fx-still] .fx-bg *,
+:root[data-fx-still] .fx-ticker-text { animation-play-state: paused !important; }
+@media (prefers-reduced-motion: reduce) {
+  .fx-bg *, .fx-ticker-text { animation: none !important; }
+}
+
+/* ---- title bar ------------------------------------------------------------------------- */
+
+.fx-titlebar {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  height: 40px;
+  padding-left: 12px;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.05), transparent 60%),
+    url("textures/steel.svg") 0 0 / 512px;
+  border-bottom: 1px solid #0a0a0b;
+  box-shadow: inset 0 -1px 0 rgb(255 255 255 / 0.06), 0 2px 8px rgb(0 0 0 / 0.5);
+  font-family: var(--fx-cond);
+  user-select: none;
+}
+.fx-mark,
+.fx-boot-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  background: var(--fx-orange);
+  clip-path: polygon(25% 0, 100% 0, 100% 75%, 75% 100%, 0 100%, 0 25%);
+  box-shadow: inset 0 0 0 2px rgb(0 0 0 / 0.15);
+}
+.fx-mark span,
+.fx-boot-mark span {
+  font: 800 18px/1 var(--fx-cond);
+  color: var(--fx-ink);
+  transform: skewX(-8deg);
+}
+.fx-corp { font-weight: 800; font-size: 1.15rem; letter-spacing: 0.14em; color: var(--fx-paper); }
+.fx-slash { color: var(--fx-orange); font-weight: 800; }
+.fx-app { font-weight: 500; font-size: 1.05rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--v-text-muted); }
+.fx-badge {
+  padding: 1px 8px;
+  font: 400 0.68rem var(--fx-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fx-ink);
+  background: var(--fx-paper);
+  border-radius: 2px;
+}
+.fx-spacer { flex: 1; }
+.fx-clock { font: 400 0.8rem var(--fx-mono); letter-spacing: 0.08em; color: var(--fx-orange); margin-right: 6px; }
+.fx-titlebar vellum-window-controls { height: 40px; }
+.fx-titlebar vellum-window-controls::part(close):hover { background: #c42b1c; }
+/* The title bar carries the window controls; the app's own top bar doesn't need a second set. */
+vellum-app vellum-window-controls { display: none; }
+
+/* ---- the app's top bar: tread plate with a hazard edge --------------------------------- */
+
+vellum-app .v-topbar {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgb(0 0 0 / 0.25), rgb(0 0 0 / 0.45)),
+    url("textures/plate.svg") 0 0 / 56px;
+  border-bottom: 0;
+  padding-bottom: 0.9rem;
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.45);
+}
+vellum-app .v-topbar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 6px;
+  background: var(--fx-hazard);
+  box-shadow: 0 -1px 0 rgb(0 0 0 / 0.6);
+}
+:root:not([data-opt-hazard]) vellum-app .v-topbar::after { background: var(--fx-orange); height: 2px; }
+vellum-app .v-brand { font-size: 0; }
+vellum-app .v-brand::after {
+  content: "ASSET CATALOGUE";
+  font: 800 1.3rem var(--fx-cond);
+  letter-spacing: 0.12em;
+  color: var(--fx-paper);
+  text-shadow: 0 2px 0 rgb(0 0 0 / 0.6);
+}
+vellum-app .v-count {
+  font: 400 0.75rem var(--fx-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  color: var(--fx-orange);
+  border: 1px solid color-mix(in srgb, var(--fx-orange) 50%, transparent);
+  border-radius: 2px;
+  background: rgb(0 0 0 / 0.4);
+}
+
+vellum-view-switcher::part(tabs) {
+  gap: 2px;
+  padding: 3px;
+  background: rgb(0 0 0 / 0.5);
+  border: 1px solid #0b0c0d;
+  border-radius: 3px;
+  box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.6), 0 1px 0 rgb(255 255 255 / 0.06);
+}
+vellum-view-switcher::part(tab) {
+  font: 700 1rem var(--fx-cond);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  color: var(--v-text-muted);
+  padding: 0.3em 1.1em;
+}
+vellum-view-switcher::part(tab-selected) {
+  color: var(--fx-ink);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--fx-orange) 85%, white), var(--fx-orange) 45%, var(--fx-orange-deep));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.4), 0 0 12px color-mix(in srgb, var(--fx-orange) 35%, transparent);
+}
+
+vellum-search::part(box) {
+  border-radius: 3px;
+  background: rgb(10 11 12 / 0.75);
+  border: 1px solid #0b0c0d;
+  box-shadow: inset 0 2px 4px rgb(0 0 0 / 0.6), 0 1px 0 rgb(255 255 255 / 0.06);
+}
+vellum-search::part(input) { font-family: var(--fx-mono); letter-spacing: 0.04em; }
+
+vellum-filter-bar::part(trigger),
+vellum-sort-menu::part(trigger),
+vellum-group-menu::part(trigger),
+.v-button,
+.v-icon-button {
+  font: 700 0.95rem var(--fx-cond);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-radius: 3px;
+  color: var(--fx-paper);
+  border: 1px solid #0b0c0d;
+  background: linear-gradient(180deg, #4a4f56, #33373d 50%, #2a2d32);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.14), 0 2px 4px rgb(0 0 0 / 0.45);
+}
+:is(vellum-filter-bar, vellum-sort-menu, vellum-group-menu)::part(trigger):hover,
+.v-button:hover,
+.v-icon-button:hover { background: linear-gradient(180deg, #575d65, #3d4148 50%, #30343a); }
+vellum-filter-bar::part(badge) { background: var(--fx-orange); color: var(--fx-ink); }
+:is(vellum-filter-bar, vellum-sort-menu, vellum-group-menu)::part(panel) {
+  border-radius: 3px;
+  border: 1px solid #0b0c0d;
+  border-top: 3px solid var(--fx-orange);
+  background: url("textures/steel.svg") 0 0 / 512px;
+  box-shadow: 0 18px 40px rgb(0 0 0 / 0.65);
+  font: 500 1rem var(--fx-cond);
+  letter-spacing: 0.04em;
+}
+
+/* ---- views sit on dark steel over the factory ----------------------------------------- */
+
+.v-view[data-view="covers"] {
+  /* Dark at the top for the labels; the factory floor shows through lower down. */
+  background: linear-gradient(180deg, rgb(16 17 19 / 0.86), rgb(16 17 19 / 0.55) 55%, rgb(16 17 19 / 0.38));
+}
+.v-view[data-view="list"] {
+  background:
+    linear-gradient(180deg, rgb(16 17 19 / 0.9), rgb(16 17 19 / 0.78)),
+    url("textures/grit.svg") 0 0 / 320px;
+}
+.v-view-bar { padding-top: 0.9rem; }
+
+/* ---- covers: crates in riveted steel frames, stamped by FICSIT ------------------------- */
+
+vellum-grid::part(art),
+vellum-cover-row::part(art),
+vellum-shelf::part(art) {
+  border-radius: 2px;
+  box-shadow:
+    0 0 0 1px #0b0c0d,
+    0 0 0 4px #3a3e44,
+    0 0 0 5px #0b0c0d,
+    0 12px 22px rgb(0 0 0 / 0.6);
+}
+/* Rivets in the frame corners, a FICSIT stamp, and wear. */
+vellum-grid::part(art)::after,
+vellum-cover-row::part(art)::after,
+vellum-shelf::part(art)::after {
+  content: "FICSIT";
+  position: absolute;
+  inset: 0;
+  padding: 6px 0 0 22px;
+  font: 800 0.6rem/1 var(--fx-cond);
+  letter-spacing: 0.22em;
+  color: rgb(255 255 255 / 0.55);
+  background:
+    linear-gradient(90deg, rgb(0 0 0 / 0.55), transparent 55%) 0 0 / 100% 18px no-repeat,
+    url("textures/grit.svg") 0 0 / 320px;
+  opacity: 1;
+  pointer-events: none;
+  mix-blend-mode: normal;
+}
+vellum-grid::part(art)::before,
+vellum-cover-row::part(art)::before,
+vellum-shelf::part(art)::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: var(--fx-rivets);
+  pointer-events: none;
+}
+vellum-grid::part(art-selected),
+vellum-cover-row::part(art-selected),
+vellum-shelf::part(art-selected) {
+  box-shadow:
+    0 0 0 1px #0b0c0d,
+    0 0 0 4px var(--fx-orange),
+    0 0 0 5px #0b0c0d,
+    0 0 26px color-mix(in srgb, var(--fx-orange) 45%, transparent),
+    0 14px 26px rgb(0 0 0 / 0.65);
+}
+vellum-grid::part(art-focused),
+vellum-cover-row::part(art-focused),
+vellum-shelf::part(art-focused) {
+  transform: translateY(-4px);
+  box-shadow:
+    0 0 0 1px #0b0c0d,
+    0 0 0 4px var(--fx-orange),
+    0 0 0 6px var(--v-focus-ring),
+    0 0 34px color-mix(in srgb, var(--fx-orange) 60%, transparent),
+    0 16px 30px rgb(0 0 0 / 0.7);
+}
+/* The caption is an embossed label plate. */
+vellum-grid::part(caption),
+vellum-shelf::part(caption) {
+  margin-top: 0.15rem;
+  padding: 0.15rem 0.45rem;
+  height: 1.7em;
+  font: 700 0.92rem var(--fx-cond);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fx-ink);
+  background: linear-gradient(180deg, #f3efe6, #d6d1c5);
+  border-radius: 1px;
+  box-shadow: inset 0 -1px 0 rgb(0 0 0 / 0.25), 0 2px 3px rgb(0 0 0 / 0.5);
+}
+vellum-grid::part(favorite),
+vellum-cover-row::part(favorite),
+vellum-shelf::part(favorite) {
+  z-index: 2;
+  border-radius: 2px;
+  background: var(--fx-orange);
+  color: var(--fx-ink);
+  font-weight: 800;
+}
+vellum-grid::part(label),
+vellum-cover-row::part(label),
+vellum-shelf::part(cover-label) {
+  z-index: 2;
+  border-radius: 0;
+  background: var(--fx-hazard);
+  color: #fff;
+  text-shadow: 0 1px 2px #000;
+  font-family: var(--fx-cond);
+  letter-spacing: 0.18em;
+}
+
+/* Shelves are sectors. */
+vellum-shelf::part(label) {
+  font: 800 1.25rem var(--fx-cond);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fx-paper);
+}
+vellum-shelf::part(label)::before {
+  content: "SECTOR // ";
+  color: var(--fx-orange);
+}
+vellum-shelf::part(count) {
+  padding: 0 6px;
+  font: 400 0.75rem var(--fx-mono);
+  color: var(--fx-orange);
+  border: 1px solid color-mix(in srgb, var(--fx-orange) 45%, transparent);
+  border-radius: 2px;
+}
+
+/* ---- list: a production manifest ------------------------------------------------------- */
+
+vellum-list::part(header) {
+  border-bottom: 2px solid var(--fx-orange);
+  background: rgb(0 0 0 / 0.35);
+}
+vellum-list::part(column) { font: 400 0.8rem var(--fx-mono); letter-spacing: 0.08em; color: var(--fx-orange); }
+vellum-list::part(row) { border-bottom-color: var(--fx-line); }
+vellum-list::part(title) { font: 700 1.08rem var(--fx-cond); letter-spacing: 0.04em; text-transform: uppercase; }
+vellum-list::part(source),
+vellum-list::part(size),
+vellum-list::part(when) { font-family: var(--fx-mono); font-size: 0.8rem; }
+vellum-list::part(row-selected) {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--fx-orange) 26%, transparent), transparent 70%);
+  box-shadow: inset 4px 0 0 var(--fx-orange), inset 0 -1px 0 color-mix(in srgb, var(--fx-orange) 40%, transparent);
+}
+vellum-list::part(label) { background: var(--fx-orange); color: var(--fx-ink); border-radius: 1px; font-family: var(--fx-cond); }
+
+/* ---- spotlight: an asset dossier -------------------------------------------------------- */
+
+.v-spot-stage {
+  margin: 14px 14px 0;
+  border-radius: 3px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px #0b0c0d, 0 0 0 7px #34383e, 0 0 0 8px #0b0c0d, 0 18px 40px rgb(0 0 0 / 0.6);
+}
+.v-spot-stage::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  background: var(--fx-rivets);
+  pointer-events: none;
+}
+.v-spot-tools { top: 1rem; right: 1.2rem; z-index: 3; }
+.v-spot-info {
+  position: relative;
+  border: 1px solid #0b0c0d;
+  border-left: 4px solid var(--fx-orange);
+  box-shadow: 0 16px 40px rgb(0 0 0 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.06);
+  backdrop-filter: blur(6px);
+  text-shadow: none;
+}
+.v-spot-info::before {
+  content: "FICSIT INC.  //  ASSET DOSSIER";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  padding: 0.35rem 1.6rem;
+  font: 400 0.72rem var(--fx-mono);
+  letter-spacing: 0.14em;
+  color: var(--fx-ink);
+  background: var(--fx-orange);
+}
+.v-spot-info::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 1.65rem;
+  height: 5px;
+  background: var(--fx-hazard);
+  opacity: 0.85;
+}
+:root:not([data-opt-hazard]) .v-spot-info::after { display: none; }
+.v-spot-logo { --v-logo-max-height: 8.5rem; }
+.v-spot-logo::part(title) {
+  font: 800 clamp(2.4rem, 5vw, 4.6rem) var(--fx-cond);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--fx-paper);
+  text-shadow: 0 3px 0 rgb(0 0 0 / 0.6);
+}
+.v-spot-meta {
+  font: 400 0.85rem var(--fx-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fx-orange);
+}
+.v-spot-meta::before { content: "MFR // "; color: var(--v-text-muted); }
+.v-spot-desc { font-size: 0.95rem; color: #d8d5cc; }
+.v-spot-facts { font: 400 0.75rem var(--fx-mono); letter-spacing: 0.06em; text-transform: uppercase; }
+.v-spot-facts::before { content: "OPERATIONAL LOG // "; color: var(--fx-orange); }
+.v-spot-label { border-radius: 1px; background: var(--fx-hazard); color: #fff; text-shadow: 0 1px 2px #000; font-family: var(--fx-cond); letter-spacing: 0.16em; }
+vellum-source-badges::part(badge) {
+  border-radius: 1px;
+  font: 400 0.7rem var(--fx-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fx-paper);
+  background: rgb(0 0 0 / 0.45);
+  border: 1px solid rgb(255 255 255 / 0.12);
+}
+vellum-play-button::part(button) {
+  font: 800 1.3rem var(--fx-cond);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  border-radius: 3px;
+  color: var(--fx-ink);
+  border: 1px solid #0b0c0d;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--fx-orange) 75%, white), var(--fx-orange) 45%, var(--fx-orange-deep));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.45), 0 0 0 3px rgb(0 0 0 / 0.35), 0 6px 18px color-mix(in srgb, var(--fx-orange) 35%, transparent);
+  padding: 0.6em 2em;
+}
+vellum-play-button::part(button):hover { filter: brightness(1.08); }
+.v-spot-rows { background: linear-gradient(180deg, transparent, rgb(12 13 15 / 0.85) 30%); }
+.v-spot-row-label { font: 800 1.05rem var(--fx-cond); letter-spacing: 0.12em; text-transform: uppercase; }
+.v-spot-row-label::before { content: "SECTOR // "; color: var(--fx-orange); }
+.v-spot-row-count { font-family: var(--fx-mono); color: var(--fx-orange); }
+
+/* ---- status strip ------------------------------------------------------------------------ */
+
+.fx-status {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  height: 30px;
+  padding: 0 14px;
+  font: 400 0.75rem var(--fx-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--v-text-muted);
+  background:
+    linear-gradient(180deg, rgb(0 0 0 / 0.2), rgb(0 0 0 / 0.5)),
+    url("textures/steel.svg") 0 0 / 512px;
+  border-top: 2px solid var(--fx-orange);
+  box-shadow: 0 -4px 12px rgb(0 0 0 / 0.45);
+  white-space: nowrap;
+}
+.fx-led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #6fe36f;
+  box-shadow: 0 0 8px #6fe36f;
+  animation: fx-pulse 2.4s ease-in-out infinite;
+}
+@keyframes fx-pulse { 50% { opacity: 0.5; } }
+.fx-online { color: #9fe69f; }
+.fx-key { color: var(--fx-orange); }
+.fx-field b { font-weight: 400; color: var(--fx-paper); }
+.fx-sel { min-width: 0; overflow: hidden; text-overflow: ellipsis; max-width: 32ch; }
+.fx-ticker {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+}
+.fx-ticker-text { display: inline-block; padding-left: 100%; color: var(--fx-paper); }
+.fx-ticker-text::before { content: "NOTICE // "; color: var(--fx-orange); }
+.fx-ticker-text.run { animation: fx-ticker 22s linear 1; }
+@keyframes fx-ticker { to { transform: translateX(-100%); } }
+
+/* ---- boot sequence ---------------------------------------------------------------------- */
+
+.fx-boot {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(70% 60% at 50% 45%, rgb(40 30 18 / 0.85), rgb(8 9 10 / 0.98)),
+    url("textures/grit.svg") 0 0 / 320px;
+  transition: opacity 450ms ease;
+}
+.fx-boot.done { opacity: 0; pointer-events: none; }
+.fx-boot-panel {
+  width: min(640px, 86vw);
+  padding: 28px 30px 24px;
+  background: url("textures/steel.svg") 0 0 / 512px;
+  border: 1px solid #0b0c0d;
+  border-top: 4px solid var(--fx-orange);
+  box-shadow: 0 30px 80px rgb(0 0 0 / 0.7), inset 0 1px 0 rgb(255 255 255 / 0.07);
+}
+.fx-boot-mark { width: 40px; height: 40px; float: left; margin-right: 14px; }
+.fx-boot-mark span { font-size: 28px; }
+.fx-boot-title { font: 800 2rem/40px var(--fx-cond); letter-spacing: 0.2em; color: var(--fx-paper); }
+.fx-boot-title span { color: var(--fx-orange); }
+.fx-boot-log {
+  clear: both;
+  margin: 18px 0 16px;
+  min-height: 9.5em;
+  font: 400 0.85rem/1.6 var(--fx-mono);
+  color: #c9d3c0;
+  white-space: pre-wrap;
+}
+.fx-boot-bar { height: 8px; background: rgb(0 0 0 / 0.5); border: 1px solid #0b0c0d; }
+.fx-boot-bar i { display: block; height: 100%; width: 0; background: var(--fx-hazard); transition: width 200ms linear; }
+
+/* ---- wear --------------------------------------------------------------------------------- */
+
+/* Panel wear: grime over the chrome, strength set by the "Panel wear" option. */
+.fx-titlebar::after,
+.fx-status::after,
+vellum-app .v-topbar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1; /* under the bar's content; each bar isolates its own stacking */
+  background: url("textures/grit.svg") 0 0 / 320px;
+  opacity: var(--fx-grime);
+  pointer-events: none;
+}
+.fx-titlebar,
+.fx-status,
+vellum-app .v-topbar { isolation: isolate; }
+
+/* ---- narrow windows ------------------------------------------------------------------ */
+
+@media (max-width: 1280px) { .fx-badge { display: none; } }
+@media (max-width: 1100px) { .fx-app, .fx-slash, .fx-clock { display: none; } }
+@media (max-width: 1150px) { .fx-ticker { visibility: hidden; } }

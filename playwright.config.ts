@@ -26,5 +26,6 @@ export default defineConfig({
     harness("plugins/skins/aero", 5212),
     harness("plugins/skins/gridline", 5214),
     harness("plugins/skins/calling-card", 5216),
+    harness("plugins/skins/ficsit", 5218),
   ],
 });

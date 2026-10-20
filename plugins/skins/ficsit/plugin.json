@@ -1,0 +1,24 @@
+{
+  "id": "ficsit",
+  "type": "skin",
+  "name": "FICSIT Terminal",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "author": "Vellum",
+  "description": "An industrial library terminal in the style of Satisfactory's FICSIT Inc. Fan-made; no game assets.",
+  "entry": "index.html",
+  "skin": {
+    "preview": "preview.jpg",
+    "defaultView": "covers",
+    "window": { "frameless": true, "minWidth": 1000, "minHeight": 640, "background": "#15171a" },
+    "options": [
+      { "id": "accent", "label": "FICSIT orange", "type": "color", "default": "#f39a3d", "cssVar": "--v-accent" },
+      { "id": "motion", "label": "Factory in motion (conveyors, smoke, beacons)", "type": "toggle", "default": true },
+      { "id": "boot", "label": "Boot sequence on start", "type": "toggle", "default": true },
+      { "id": "ticker", "label": "Corporate notices ticker", "type": "toggle", "default": true },
+      { "id": "hazard", "label": "Hazard striping", "type": "toggle", "default": true },
+      { "id": "grime", "label": "Panel wear", "type": "range", "min": 0, "max": 1, "step": 0.05, "default": 0.55, "cssVar": "--fx-grime" },
+      { "id": "coverSize", "label": "Cover size", "type": "range", "min": 140, "max": 300, "step": 10, "default": 176, "cssVar": "--v-cover-width", "unit": "px" }
+    ]
+  }
+}

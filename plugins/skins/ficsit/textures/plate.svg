@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56">
+  <!-- Diamond tread plate: raised bars in two directions with a lit edge and a shadow edge. -->
+  <defs>
+    <linearGradient id="bar" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5b6068"/>
+      <stop offset="0.45" stop-color="#3a3e44"/>
+      <stop offset="1" stop-color="#202327"/>
+    </linearGradient>
+    <g id="d">
+      <rect x="-9" y="-2.6" width="18" height="5.2" rx="2.6" fill="#15171a" transform="translate(1 1.4)" opacity="0.8"/>
+      <rect x="-9" y="-2.6" width="18" height="5.2" rx="2.6" fill="url(#bar)"/>
+      <rect x="-7.5" y="-2.1" width="15" height="1.2" rx="0.6" fill="#ffffff" opacity="0.14"/>
+    </g>
+  </defs>
+  <rect width="56" height="56" fill="#26292e"/>
+  <use href="#d" transform="translate(14 14) rotate(45)"/>
+  <use href="#d" transform="translate(42 42) rotate(45)"/>
+  <use href="#d" transform="translate(42 14) rotate(-45)"/>
+  <use href="#d" transform="translate(14 42) rotate(-45)"/>
+</svg>

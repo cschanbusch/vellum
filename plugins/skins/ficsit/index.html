@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>FICSIT Terminal</title>
+  <link rel="stylesheet" href="/__vellum/sdk.css">
+  <link rel="stylesheet" href="skin.css">
+  <script type="module" src="/__vellum/sdk.js"></script>
+  <script type="module" src="skin.js"></script>
+</head>
+<body>
+  <!-- The factory behind everything. -->
+  <div class="fx-bg" aria-hidden="true">
+    <div class="fx-scene"></div>
+    <div class="fx-smoke s1"></div>
+    <div class="fx-smoke s2"></div>
+    <div class="fx-smoke s3"></div>
+    <div class="fx-beacon k1"></div>
+    <div class="fx-beacon k2"></div>
+    <div class="fx-beacon k3"></div>
+    <div class="fx-belt upper"><div class="fx-cargo"></div></div>
+    <div class="fx-belt lower"><div class="fx-cargo"></div></div>
+    <div class="fx-vignette"></div>
+  </div>
+
+  <header class="fx-titlebar" data-vellum-drag>
+    <span class="fx-mark" aria-hidden="true"><span>F</span></span>
+    <span class="fx-corp">FICSIT&nbsp;INC.</span>
+    <span class="fx-slash" aria-hidden="true">//</span>
+    <span class="fx-app">Pioneer Library Terminal</span>
+    <span class="fx-badge">Asset Management Division</span>
+    <span class="fx-spacer"></span>
+    <span class="fx-clock" aria-label="Local time"></span>
+    <vellum-window-controls></vellum-window-controls>
+  </header>
+
+  <vellum-app></vellum-app>
+
+  <footer class="fx-status">
+    <span class="fx-led" aria-hidden="true"></span>
+    <span class="fx-online">Terminal online</span>
+    <span class="fx-field"><span class="fx-key">Assets</span> <b class="fx-count">—</b></span>
+    <span class="fx-field fx-sel"><span class="fx-key">Selected</span> <b class="fx-selected">—</b></span>
+    <span class="fx-ticker" aria-live="off"><span class="fx-ticker-text"></span></span>
+    <span class="fx-field"><span class="fx-key">Approved by</span> <b>FICSIT</b></span>
+  </footer>
+
+  <div class="fx-boot" hidden aria-hidden="true">
+    <div class="fx-boot-panel">
+      <div class="fx-boot-mark"><span>F</span></div>
+      <div class="fx-boot-title">FICSIT <span>OS</span></div>
+      <pre class="fx-boot-log"></pre>
+      <div class="fx-boot-bar"><i></i></div>
+    </div>
+  </div>
+</body>
+</html>

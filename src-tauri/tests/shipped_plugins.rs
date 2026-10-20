@@ -23,7 +23,7 @@ fn every_shipped_plugin_is_valid() {
         v
     };
     assert_eq!(ids(PluginKind::Provider), ["custom", "epic", "gog", "mock", "steam"]);
-    assert_eq!(ids(PluginKind::Skin), ["aero", "basis", "calling-card", "gridline", "synthwave"]);
+    assert_eq!(ids(PluginKind::Skin), ["aero", "basis", "calling-card", "ficsit", "gridline", "synthwave"]);
     assert_eq!(ids(PluginKind::Module), ["quick-launch", "random-pick"]);
 }
 

@@ -149,7 +149,7 @@ export class VellumShelf extends LitElement {
             </span>`
           : nothing}
       </header>
-      ${this.collapsed ? nothing : html`<vellum-cover-row part="row" exportparts="cell, cell-selected, art, art-selected, art-focused, cover, caption, title, favorite" .entries=${g.entries}></vellum-cover-row>`}
+      ${this.collapsed ? nothing : html`<vellum-cover-row part="row" exportparts="cell, cell-selected, art, art-selected, art-focused, cover, caption, title, favorite, label: cover-label" .entries=${g.entries}></vellum-cover-row>`}
     `;
   }
 

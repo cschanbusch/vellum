@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMax slice">
+  <!-- A factory at dusk on an alien world: haze, cliffs, plants and towers, power lines,
+       a truss walkway, and foundations. Vector, so it stays sharp at any size. -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b141b"/>
+      <stop offset="0.45" stop-color="#1b2c35"/>
+      <stop offset="0.68" stop-color="#4a4a42"/>
+      <stop offset="0.78" stop-color="#b56b2e"/>
+      <stop offset="0.84" stop-color="#2a2622"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0.72" cy="0.74" r="0.35">
+      <stop offset="0" stop-color="#ffb35c" stop-opacity="0.55"/>
+      <stop offset="0.4" stop-color="#ff8a2a" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#ff8a2a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="far" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a4247"/>
+      <stop offset="1" stop-color="#262b2f"/>
+    </linearGradient>
+    <linearGradient id="mid" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#22272c"/>
+      <stop offset="1" stop-color="#181b1f"/>
+    </linearGradient>
+    <linearGradient id="near" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#15171a"/>
+      <stop offset="1" stop-color="#0c0d0f"/>
+    </linearGradient>
+    <linearGradient id="silo" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#1a1d21"/>
+      <stop offset="0.35" stop-color="#2f343a"/>
+      <stop offset="0.7" stop-color="#1c1f23"/>
+      <stop offset="1" stop-color="#121417"/>
+    </linearGradient>
+    <pattern id="truss" width="60" height="40" patternUnits="userSpaceOnUse">
+      <path d="M0 0 H60 M0 40 H60 M0 0 L30 40 L60 0" stroke="#1c1f23" stroke-width="5" fill="none"/>
+      <path d="M0 0 H60 M0 40 H60 M0 0 L30 40 L60 0" stroke="#3a3f45" stroke-width="1.2" fill="none"/>
+    </pattern>
+    <pattern id="windows" width="22" height="18" patternUnits="userSpaceOnUse">
+      <rect x="4" y="5" width="9" height="4" fill="#ffae4a" opacity="0.55"/>
+    </pattern>
+    <filter id="haze" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="2.2"/>
+    </filter>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#sky)"/>
+  <rect width="1920" height="1080" fill="url(#sun)"/>
+
+  <!-- distant cliffs -->
+  <path filter="url(#haze)" fill="url(#far)" opacity="0.9" d="M0 760 L80 700 L150 720 L240 640 L300 660 L360 600 L430 650 L520 620 L600 690 L700 660 L780 700 L860 650 L960 690
+    L1040 630 L1120 660 L1200 600 L1290 640 L1380 610 L1460 670 L1560 640 L1650 690 L1760 650 L1840 690 L1920 670 L1920 1080 L0 1080 Z"/>
+
+  <!-- far factory: blocks, chimneys, a space elevator -->
+  <g fill="url(#mid)" opacity="0.95">
+    <rect x="1290" y="250" width="40" height="560"/>
+    <rect x="1270" y="230" width="80" height="26"/>
+    <rect x="1250" y="430" width="120" height="14"/>
+    <rect x="1262" y="600" width="96" height="14"/>
+    <path d="M1310 230 L1310 120 L1316 120 L1316 230 Z"/>
+    <rect x="150" y="610" width="180" height="200"/>
+    <rect x="330" y="560" width="70" height="250"/>
+    <rect x="420" y="640" width="220" height="170"/>
+    <rect x="460" y="520" width="26" height="130"/>
+    <rect x="520" y="540" width="22" height="110"/>
+    <rect x="1480" y="620" width="260" height="190"/>
+    <rect x="1520" y="540" width="30" height="90"/>
+    <rect x="1600" y="560" width="30" height="70"/>
+    <rect x="1760" y="660" width="160" height="150"/>
+  </g>
+  <g fill="url(#windows)" opacity="0.85">
+    <rect x="160" y="630" width="160" height="160"/>
+    <rect x="430" y="660" width="200" height="130"/>
+    <rect x="1490" y="640" width="240" height="150"/>
+    <rect x="1770" y="680" width="140" height="110"/>
+  </g>
+
+  <!-- silos and a cooling tower -->
+  <g>
+    <rect x="700" y="560" width="70" height="260" fill="url(#silo)"/>
+    <ellipse cx="735" cy="560" rx="35" ry="9" fill="#2c3136"/>
+    <rect x="785" y="590" width="70" height="230" fill="url(#silo)"/>
+    <ellipse cx="820" cy="590" rx="35" ry="9" fill="#2c3136"/>
+    <path d="M980 820 C 1000 700, 990 620, 970 540 L1110 540 C 1090 620, 1080 700, 1100 820 Z" fill="url(#silo)"/>
+    <ellipse cx="1040" cy="540" rx="70" ry="10" fill="#30353a"/>
+  </g>
+
+  <!-- power poles and cables -->
+  <g stroke="#14171a" stroke-width="5" fill="none">
+    <path d="M90 840 V560 M60 580 H120"/>
+    <path d="M620 840 V590 M590 610 H650"/>
+    <path d="M1180 840 V570 M1150 590 H1210"/>
+    <path d="M1860 840 V580 M1830 600 H1890"/>
+  </g>
+  <g stroke="#0f1113" stroke-width="1.6" fill="none" opacity="0.9">
+    <path d="M62 582 Q 340 680 592 612"/>
+    <path d="M118 582 Q 370 690 648 612"/>
+    <path d="M592 612 Q 870 700 1152 592"/>
+    <path d="M648 612 Q 900 710 1208 592"/>
+    <path d="M1152 592 Q 1500 700 1832 602"/>
+    <path d="M1208 592 Q 1540 710 1888 602"/>
+  </g>
+  <g fill="#ff9a3c">
+    <circle cx="90" cy="556" r="3"/><circle cx="620" cy="586" r="3"/><circle cx="1180" cy="566" r="3"/><circle cx="1860" cy="576" r="3"/>
+  </g>
+
+  <!-- elevated truss walkway -->
+  <rect x="0" y="790" width="1920" height="40" fill="url(#truss)"/>
+  <rect x="0" y="786" width="1920" height="6" fill="#2b2f34"/>
+  <rect x="0" y="786" width="1920" height="1.5" fill="#f39a3d" opacity="0.6"/>
+  <g fill="#1a1d21">
+    <rect x="180" y="830" width="16" height="250"/><rect x="560" y="830" width="16" height="250"/>
+    <rect x="940" y="830" width="16" height="250"/><rect x="1320" y="830" width="16" height="250"/>
+    <rect x="1700" y="830" width="16" height="250"/>
+  </g>
+
+  <!-- foundations in the foreground -->
+  <path fill="url(#near)" d="M0 930 L1920 900 L1920 1080 L0 1080 Z"/>
+  <path d="M0 930 L1920 900" stroke="#f39a3d" stroke-width="2" opacity="0.5"/>
+  <g stroke="#202327" stroke-width="2">
+    <path d="M240 926 L230 1080 M560 921 L556 1080 M880 916 L882 1080 M1200 911 L1208 1080 M1520 906 L1534 1080 M1840 901 L1860 1080"/>
+  </g>
+</svg>

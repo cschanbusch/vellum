@@ -263,7 +263,7 @@ test("grouped Spotlight shows a row per group; up/down move between rows", async
   await page.screenshot({ path: "test-artifacts/views/basis-spotlight-grouped.png" });
 });
 
-for (const [id, port] of [["synthwave", 5210], ["aero", 5212], ["gridline", 5214], ["calling-card", 5216]] as const) {
+for (const [id, port] of [["synthwave", 5210], ["aero", 5212], ["gridline", 5214], ["calling-card", 5216], ["ficsit", 5218]] as const) {
   test(`the ${id} skin renders every view`, async ({ page }) => {
     const frame = await open(page, port);
     for (const view of ["list", "covers", "spotlight"]) {
@@ -279,7 +279,7 @@ for (const [id, port] of [["synthwave", 5210], ["aero", 5212], ["gridline", 5214
   });
 }
 
-for (const [id, port] of [["synthwave", 5210], ["gridline", 5214], ["calling-card", 5216], ["sidebar-test", 5198]] as const) {
+for (const [id, port] of [["synthwave", 5210], ["gridline", 5214], ["calling-card", 5216], ["ficsit", 5218], ["sidebar-test", 5198]] as const) {
   test(`frameless ${id} always shows window controls, even in a narrow window`, async ({ browser }) => {
     for (const width of [1600, 1100, 960]) {
       const page = await browser.newPage({ viewport: { width, height: 800 } });
