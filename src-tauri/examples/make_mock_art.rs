@@ -1,4 +1,4 @@
-//! Generates the mock provider's art at real resolutions into plugins/providers/mock/art/.
+//! Generates the mock provider's art at real resolutions into extras/providers/mock/art/.
 //!
 //!   cargo run --release --example make_mock_art [-- <plugins dir>]
 //!
@@ -22,7 +22,7 @@ use vellum_lib::providers::model::ProviderSpec;
 pub const SETS: usize = 80;
 const FONT: &[u8] = include_bytes!("../../scripts/mock-art/InterDisplay-Bold.ttf");
 
-/// Which art a game deliberately lacks (mirrors plugins/providers/mock/provider.js).
+/// Which art a game deliberately lacks (mirrors extras/providers/mock/provider.js).
 fn missing(i: usize, kind: &str) -> bool {
     match kind {
         "cover" => i % 13 == 12,
@@ -293,7 +293,7 @@ fn make_set(dir: &Path, i: usize, title: &str, studio: &str, t: &Text) {
 }
 
 fn main() {
-    let plugins_dir = std::env::args().nth(1).map(PathBuf::from).unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("../plugins"));
+    let plugins_dir = std::env::args().nth(1).map(PathBuf::from).unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("../extras"));
     let mock_dir = plugins_dir.join("providers").join("mock");
     let rec = plugins::load(&mock_dir, PluginKind::Provider);
     let mut saved = Map::new();

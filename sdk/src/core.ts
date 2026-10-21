@@ -7,6 +7,7 @@
 
 import { artUrl, styleFor, type ArtStyle } from "./art";
 import { focus } from "./focus";
+import { allowLaunch, type BeforeLaunch } from "./hooks";
 import { input, type NavEvent } from "./input";
 import {
   CALL_METHODS,
@@ -115,6 +116,9 @@ function applyCouch() {
 // ---- options --------------------------------------------------------------------------------
 
 const fontFaces = new Map<string, FontFace>();
+
+/** Hooks run before launches (vellum.actions.onBeforeLaunch). */
+const beforeLaunch = new Set<BeforeLaunch>();
 
 /** Sets each option's CSS variable on :root; fonts and images get usable values. */
 function applyOptions() {
@@ -343,7 +347,17 @@ export const vellum = {
   },
 
   actions: {
-    launch: (id: string, provider?: string) => call<void>("actions.launch", { id, provider }),
+    /** Launches through the preferred store, or `provider`. Hooks from `onBeforeLaunch` run
+     *  first; if one calls it off, this resolves without launching. */
+    launch: async (id: string, provider?: string): Promise<void> => {
+      if (!(await allowLaunch(beforeLaunch, id, provider))) return;
+      return call<void>("actions.launch", { id, provider });
+    },
+    /** Runs `hook` before every launch this skin starts; return false to call it off. */
+    onBeforeLaunch: (hook: BeforeLaunch): (() => void) => {
+      beforeLaunch.add(hook);
+      return () => void beforeLaunch.delete(hook);
+    },
     install: (id: string) => call<void>("actions.install", { id }),
     uninstall: (id: string) => call<void>("actions.uninstall", { id }),
     openStore: (id: string) => call<void>("actions.openStore", { id }),

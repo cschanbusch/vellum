@@ -1,5 +1,6 @@
 //! Valve's binary KeyValues format (e.g. `shortcuts.vdf`), parsed to JSON.
 //! Each field is `<type byte><NUL-terminated key><payload>`; maps end with 0x08.
+//! In `appinfo.vdf` v29 keys are instead 32-bit indexes into a string table.
 
 use serde_json::{Map, Number, Value};
 
@@ -15,9 +16,11 @@ const UINT64: u8 = 0x07;
 const END: u8 = 0x08;
 const INT64: u8 = 0x0A;
 
-struct Reader<'a> {
-    bytes: &'a [u8],
-    pos: usize,
+pub(crate) struct Reader<'a> {
+    pub(crate) bytes: &'a [u8],
+    pub(crate) pos: usize,
+    /// Keys are indexes into this table instead of inline strings.
+    pub(crate) keys: Option<&'a [String]>,
 }
 
 impl Reader<'_> {
@@ -25,14 +28,14 @@ impl Reader<'_> {
         FormatError::Binary { offset: self.pos, msg: msg.into() }
     }
 
-    fn take(&mut self, n: usize) -> Result<&[u8], FormatError> {
+    pub(crate) fn take(&mut self, n: usize) -> Result<&[u8], FormatError> {
         let end = self.pos.checked_add(n).filter(|&e| e <= self.bytes.len()).ok_or(FormatError::Eof)?;
         let s = &self.bytes[self.pos..end];
         self.pos = end;
         Ok(s)
     }
 
-    fn cstr(&mut self) -> Result<String, FormatError> {
+    pub(crate) fn cstr(&mut self) -> Result<String, FormatError> {
         let rest = &self.bytes[self.pos..];
         let len = rest.iter().position(|&b| b == 0).ok_or(FormatError::Eof)?;
         let s = String::from_utf8_lossy(&rest[..len]).into_owned();
@@ -40,11 +43,11 @@ impl Reader<'_> {
         Ok(s)
     }
 
-    fn array<const N: usize>(&mut self) -> Result<[u8; N], FormatError> {
+    pub(crate) fn array<const N: usize>(&mut self) -> Result<[u8; N], FormatError> {
         Ok(self.take(N)?.try_into().unwrap())
     }
 
-    fn map(&mut self, top: bool) -> Result<Map<String, Value>, FormatError> {
+    pub(crate) fn map(&mut self, top: bool) -> Result<Map<String, Value>, FormatError> {
         let mut map = Map::new();
         loop {
             let Some(&ty) = self.bytes.get(self.pos) else {
@@ -54,7 +57,13 @@ impl Reader<'_> {
             if ty == END {
                 return Ok(map);
             }
-            let key = self.cstr()?;
+            let key = match self.keys {
+                Some(table) => {
+                    let i = u32::from_le_bytes(self.array()?) as usize;
+                    table.get(i).cloned().ok_or_else(|| self.err(format!("key index {i} outside the string table")))?
+                }
+                None => self.cstr()?,
+            };
             let value = match ty {
                 MAP => Value::Object(self.map(false)?),
                 STRING => Value::String(self.cstr()?),
@@ -70,7 +79,7 @@ impl Reader<'_> {
 }
 
 pub fn parse(bytes: &[u8]) -> Result<Value, FormatError> {
-    let mut r = Reader { bytes, pos: 0 };
+    let mut r = Reader { bytes, pos: 0, keys: None };
     Ok(Value::Object(r.map(true)?))
 }
 

@@ -65,6 +65,24 @@ fn scans_installed_games_across_libraries_with_collections() {
 }
 
 #[test]
+fn store_metadata_comes_from_appinfo() {
+    let fx = steam_fixture();
+    let mut h = harness(&fx, Map::new());
+    let scan = parse_scan(h.call(Method::Scan, None).unwrap().value).unwrap();
+    let portal = scan.games.iter().find(|g| g.source_id == "620").unwrap();
+    assert_eq!(portal.metadata.developer.as_deref(), Some("Valve"));
+    assert_eq!(portal.metadata.publisher.as_deref(), Some("Valve"));
+    assert_eq!(portal.metadata.genres, ["Action", "Adventure"]);
+    assert_eq!(portal.metadata.release_date.as_deref(), Some("2011-04-18"));
+    let stardew = scan.games.iter().find(|g| g.source_id == "413150").unwrap();
+    assert_eq!(stardew.metadata.genres, ["Indie", "RPG", "Simulation"], "Early Access is not a genre");
+    assert_eq!(stardew.metadata.developer.as_deref(), Some("ConcernedApe"));
+    // Apps missing from the cache have no metadata.
+    let tools = scan.games.iter().find(|g| g.source_id == "228980").unwrap();
+    assert!(tools.metadata.developer.is_none() && tools.metadata.genres.is_empty());
+}
+
+#[test]
 fn respect_hidden_setting_can_be_turned_off() {
     let fx = steam_fixture();
     let mut settings = Map::new();

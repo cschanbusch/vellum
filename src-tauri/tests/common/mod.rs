@@ -54,13 +54,17 @@ pub fn steam_fixture() -> SteamFixture {
         .replace("%LIBB%", &vdf_path(&lib_b))
         .replace("%MISSING%", &vdf_path(&dir.path().join("unplugged")));
     std::fs::write(&lf, text).unwrap();
-    let old = SystemTime::now() - Duration::from_secs(86_400);
-    std::fs::File::options()
-        .write(true)
-        .open(root.join("userdata/11111/config/localconfig.vdf"))
-        .unwrap()
-        .set_modified(old)
-        .unwrap();
+    // Set both times: copying keeps the checked-out mtimes on Windows, so a fixed "a day ago"
+    // alone would stop being older than 22222's once the checkout is more than a day old.
+    let now = SystemTime::now();
+    for (account, at) in [("11111", now - Duration::from_secs(86_400)), ("22222", now)] {
+        std::fs::File::options()
+            .write(true)
+            .open(root.join(format!("userdata/{account}/config/localconfig.vdf")))
+            .unwrap()
+            .set_modified(at)
+            .unwrap();
+    }
     SteamFixture { dir, root, lib_b }
 }
 

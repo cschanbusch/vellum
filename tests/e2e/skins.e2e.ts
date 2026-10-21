@@ -297,7 +297,91 @@ test("Frontier's Catalogue: arrows move the circled article and turn pages; tabs
   await page.screenshot({ path: "test-artifacts/views/frontier-catalogue.png" });
 });
 
-for (const [id, port] of [["synthwave", 5210], ["aero", 5212], ["gridline", 5214], ["calling-card", 5216], ["ficsit", 5218], ["frontier", 5224]] as const) {
+test("Redline's ignition: a worn game can stall; a service restores it; a start wears it", async ({ page }) => {
+  const frame = await open(page, 5226);
+  await show(page, "garage");
+  const skin = page.frames().find((f) => f.url().includes("127.0.0.1"))!;
+  await frame.locator(".rl-gar-strip").focus();
+  const id = await skin.evaluate(() => window.vellum.state.get().selectedId!);
+  const launched = () => host(page, (h) => h.entries.find((e) => e.id === h.state.selectedId)?.lastLaunched ?? null);
+
+  // Worn out and unlucky: the engine won't turn over, and nothing launches.
+  await skin.evaluate(async (id) => {
+    const c = await import(new URL("condition.js", location.href).href);
+    c.setCondition(id, 0.05);
+    Math.random = () => 0.01;
+  }, id);
+  await expect(frame.locator(".rl-gar-cond-note.is-warn")).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(frame.locator(".rl-ign")).toBeVisible();
+  await expect(frame.locator(".rl-ign.is-stalled")).toBeVisible({ timeout: 8000 });
+  expect(await launched()).toBeNull();
+
+  // Service: pressure-wash (hold Enter), then three presses with the needle in the green band.
+  await page.keyboard.press("s");
+  await expect(frame.locator(".rl-svc")).toBeVisible();
+  await expect
+    .poll(async () => {
+      await page.keyboard.down("Enter");
+      return frame.locator(".rl-svc-dial").count();
+    }, { timeout: 15_000, intervals: [60] })
+    .toBe(1);
+  await page.keyboard.up("Enter");
+  for (let i = 0; i < 3; i++) {
+    // Press from inside the page, the moment the needle is in the band, so timing is exact.
+    await skin.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          const dial = document.querySelector<HTMLElement>(".rl-svc-dial")!;
+          const tick = () => {
+            const [a, b] = (dial.dataset.zone ?? "0 0").split(" ").map(Number);
+            const rpm = Number(dial.dataset.rpm);
+            if (rpm > a + 0.08 && rpm < b - 0.08) {
+              dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+              resolve();
+            } else requestAnimationFrame(tick);
+          };
+          tick();
+        }),
+    );
+    // The third hit completes the service, which replaces the lamps.
+    if (i < 2) await expect(frame.locator(".rl-svc-lamp.is-on")).toHaveCount(i + 1);
+  }
+  await expect(frame.locator(".rl-svc-done")).toBeVisible();
+  await page.keyboard.press("Enter");
+
+  // Serviced, it cranks again by itself, fires, and launches; the start costs some condition.
+  await expect.poll(launched, { timeout: 10_000 }).not.toBeNull();
+  await expect(frame.locator(".rl-ign")).toHaveCount(0, { timeout: 5000 });
+  await expect(frame.locator(".rl-gar-cond-pct")).toHaveText("88%");
+});
+
+test("Redline's Garage: left/right pick the model, up/down change maker, the card follows", async ({ page }) => {
+  const frame = await open(page, 5226);
+  await show(page, "garage");
+  const strip = frame.locator(".rl-gar-strip");
+  await expect(frame.locator(".rl-gar-thumb").first()).toBeVisible();
+  await strip.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(frame.locator(".rl-gar-thumb.is-selected")).toHaveAttribute("data-i", "1");
+  // The card shows the selected model, and the shell ends up with the same selection.
+  const name = await frame.locator(".rl-gar-name").textContent();
+  await expect.poll(() => host(page, (h) => h.entries.find((e) => e.id === h.state.selectedId)?.title)).toBe(name);
+  // Down changes maker; the banner and the current maker tab follow.
+  const maker = await frame.locator(".rl-gar-banner-maker").textContent();
+  await page.keyboard.press("ArrowDown");
+  await expect(frame.locator(".rl-gar-banner-maker")).not.toHaveText(maker!);
+  await expect(frame.locator('.rl-gar-maker[aria-current="true"]')).toHaveCount(1);
+  await expect(strip).toBeFocused();
+  // Selecting elsewhere moves the Garage there.
+  const other = await host(page, (h) => h.entries[h.entries.length - 1]);
+  await host(page, (h) => h.setState({ selectedId: h.entries[h.entries.length - 1].id }));
+  await expect(frame.locator(".rl-gar-name")).toHaveText(other.title);
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: "test-artifacts/views/redline-garage.png" });
+});
+
+for (const [id, port] of [["synthwave", 5210], ["aero", 5212], ["gridline", 5214], ["calling-card", 5216], ["ficsit", 5218], ["frontier", 5224], ["redline", 5226]] as const) {
   test(`the ${id} skin renders every view`, async ({ page }) => {
     const frame = await open(page, port);
     for (const view of ["list", "covers", "spotlight"]) {
@@ -313,7 +397,7 @@ for (const [id, port] of [["synthwave", 5210], ["aero", 5212], ["gridline", 5214
   });
 }
 
-for (const [id, port] of [["synthwave", 5210], ["gridline", 5214], ["calling-card", 5216], ["ficsit", 5218], ["frontier", 5224], ["sidebar-test", 5198]] as const) {
+for (const [id, port] of [["synthwave", 5210], ["gridline", 5214], ["calling-card", 5216], ["ficsit", 5218], ["frontier", 5224], ["redline", 5226], ["sidebar-test", 5198]] as const) {
   test(`frameless ${id} always shows window controls, even in a narrow window`, async ({ browser }) => {
     for (const width of [1600, 1100, 960]) {
       const page = await browser.newPage({ viewport: { width, height: 800 } });

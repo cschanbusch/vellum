@@ -1,5 +1,6 @@
 //! Store file formats parsed in Rust and exposed to providers through `ctx.formats`.
 
+pub mod appinfo;
 pub mod binary_vdf;
 pub mod vdf;
 

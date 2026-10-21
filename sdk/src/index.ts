@@ -16,6 +16,7 @@ import { builtinView } from "./views/registry";
 
 export type { Vellum, ViewImpl } from "./core";
 export type { NavEvent } from "./input";
+export type { BeforeLaunch } from "./hooks";
 export type { Group } from "./query";
 export type * from "./types";
 export { fold, matches, query, sortEntries, groupEntries } from "./query";

@@ -1,0 +1,566 @@
+@import url("views/garage.css");
+@import url("overlays.css");
+
+/* Redline: a racing-showroom menu in the style of early-2000s console games. Original design;
+   no game assets or names.
+
+   The look: pearl and silver under studio light, frosted glass panels with a bright specular
+   band, a glossy blue cursor bar that snaps from item to item, chrome lettering, condensed
+   spec-sheet type with big tabular numerals, and two-tier labels (a big tracked-caps label over
+   a small sub-label). Motion carries the personality: a light sweep glints across whatever is
+   selected, the cursor pulses, and a wipe runs between views.
+
+   Contrast: ink #1a2230 on pearl is about 13:1, steel #4f5a69 about 6:1, and white on the
+   cursor blue about 5:1. Backdrop effects (streaks, the TV glow) stay behind the interface. */
+
+@font-face { font-family: "Saira Semi Condensed"; src: url("fonts/saira-semi-condensed-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Saira Semi Condensed"; src: url("fonts/saira-semi-condensed-latin-600-normal.woff2") format("woff2"); font-weight: 600; font-display: swap; }
+@font-face { font-family: "Saira Semi Condensed"; src: url("fonts/saira-semi-condensed-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Michroma"; src: url("fonts/michroma-latin-400-normal.woff2") format("woff2"); font-display: swap; }
+
+:root {
+  color-scheme: light;
+  --rl-signal: #e0262b;
+  --rl-ink: #1a2230;
+  --rl-steel: #4f5a69;
+  --rl-hair: rgb(92 110 135 / 0.35);
+  --rl-blue: #1f6fe0;
+  --rl-amber: #f2b01e;
+  --rl-saira: "Saira Semi Condensed", "Segoe UI", system-ui, sans-serif;
+  --rl-wide: "Michroma", "Saira Semi Condensed", sans-serif;
+
+  /* Glossy blue: a bright specular band over the top half, then the colour. */
+  --rl-gloss:
+    linear-gradient(180deg, rgb(255 255 255 / 0.3) 0%, rgb(255 255 255 / 0.08) 49%, rgb(255 255 255 / 0) 50%),
+    linear-gradient(180deg, #3d8ff0 0%, #1a63d0 55%, #124aa6 100%);
+  --rl-gloss-signal:
+    linear-gradient(180deg, rgb(255 255 255 / 0.5) 0%, rgb(255 255 255 / 0.15) 49%, rgb(255 255 255 / 0) 50%),
+    linear-gradient(180deg, color-mix(in srgb, var(--rl-signal) 70%, #fff), var(--rl-signal) 55%, color-mix(in srgb, var(--rl-signal) 75%, #000));
+  /* Frosted glass: white, brighter at the top, with a specular edge. */
+  --rl-glass: linear-gradient(180deg, rgb(255 255 255 / 0.92), rgb(255 255 255 / 0.68) 50%, rgb(238 243 249 / 0.74));
+  --rl-glass-shadow: inset 0 1px 0 #fff, 0 0 0 1px var(--rl-hair), 0 8px 24px rgb(40 60 90 / 0.16);
+  /* Brushed chrome, for lettering and key caps. */
+  --rl-chrome: linear-gradient(180deg, #ffffff 0%, #dfe5ec 38%, #8a96a6 50%, #c3cbd6 64%, #f4f7fa 100%);
+
+  --v-bg: #e8edf3;
+  --v-surface: rgb(255 255 255 / 0.7);
+  --v-surface-raised: #ffffff;
+  --v-text: var(--rl-ink);
+  --v-text-muted: var(--rl-steel);
+  --v-accent: var(--rl-blue);
+  --v-accent-text: #ffffff;
+  --v-focus-ring: var(--rl-blue);
+  --v-radius: 6px;
+  --v-gap: 22px;
+  --v-font-body: var(--rl-saira);
+  --v-font-display: var(--rl-wide);
+  --v-cover-width: 180px;
+  --v-list-row-height: 44px;
+  --v-hero-overlay: linear-gradient(0deg, rgb(232 237 243 / 0.95), transparent 30%);
+  --v-spot-scrim: none;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+body { background: transparent; }
+
+/* ---- backdrop: studio sky, floor, light streaks ------------------------------------------- */
+
+.rl-bg { position: fixed; inset: 0; z-index: -1; overflow: hidden; }
+.rl-sky {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(70% 45% at 50% 0%, #ffffff, transparent 70%),
+    linear-gradient(180deg, #f8fafc 0%, #e6ecf2 52%, #cfd8e2 70%, #e9eef3 71%, #f3f6f9 100%);
+}
+/* The studio floor: a pool of light, and the horizon where the wall meets it. */
+.rl-floor {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  top: 70%;
+  bottom: -20%;
+  background:
+    radial-gradient(50% 40% at 50% 0%, rgb(255 255 255 / 0.95), transparent 70%),
+    linear-gradient(180deg, rgb(120 140 165 / 0.25), transparent 2px);
+}
+.rl-streaks i {
+  position: absolute;
+  left: -40%;
+  width: 60%;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.95), rgb(110 170 255 / 0.5), transparent);
+  transform: rotate(-8deg);
+  opacity: 0.7;
+  animation: rl-streak 14s linear infinite;
+}
+.rl-streaks i:nth-child(1) { top: 18%; animation-delay: -2s; }
+.rl-streaks i:nth-child(2) { top: 31%; animation-delay: -7s; animation-duration: 19s; height: 1px; }
+.rl-streaks i:nth-child(3) { top: 44%; animation-delay: -11s; animation-duration: 16s; }
+.rl-streaks i:nth-child(4) { top: 57%; animation-delay: -4s; animation-duration: 22s; height: 1px; }
+.rl-streaks i:nth-child(5) { top: 64%; animation-delay: -15s; animation-duration: 18s; }
+@keyframes rl-streak { from { transform: translateX(0) rotate(-8deg); } to { transform: translateX(240%) rotate(-8deg); } }
+
+/* Optional 480-line TV glow: faint scanlines and bloom, on the backdrop only. */
+.rl-crt { position: absolute; inset: 0; display: none; }
+:root[data-opt-crt] .rl-crt {
+  display: block;
+  background:
+    repeating-linear-gradient(180deg, rgb(40 60 90 / 0.07) 0 1px, transparent 1px 3px),
+    radial-gradient(80% 60% at 50% 40%, rgb(255 255 255 / 0.5), transparent 70%);
+}
+
+:root[data-rl-still] *,
+:root[data-rl-still] *::before,
+:root[data-rl-still] *::after { animation-play-state: paused !important; }
+:root[data-rl-still] .rl-streaks { display: none; }
+
+/* ---- shared: glass, gloss, the light sweep -------------------------------------------------- */
+
+/* The light sweep: a bright diagonal band crossing the element every few seconds. Used as an
+   ::after overlay on selected and focused things. */
+@keyframes rl-sweep {
+  0% { background-position: 160% 0; }
+  32%, 100% { background-position: -60% 0; }
+}
+@keyframes rl-pulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.12); }
+}
+
+/* ---- top bar: chrome wordmark and the mode-select strip ------------------------------------- */
+
+vellum-app .v-topbar {
+  min-height: 4.4rem;
+  padding-bottom: 0.25rem;
+  background: var(--rl-glass);
+  border-bottom: 0;
+  box-shadow: inset 0 -1px 0 var(--rl-hair), 0 1px 0 #fff, 0 6px 18px rgb(40 60 90 / 0.1);
+  position: relative;
+}
+/* Two thin pinstripes under the bar, blue and signal. */
+vellum-app .v-topbar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -5px;
+  height: 5px;
+  pointer-events: none;
+  background: linear-gradient(180deg, var(--rl-blue) 0 2px, transparent 2px 3px, var(--rl-signal) 3px 4px, transparent 4px);
+}
+vellum-app .v-brand { font-size: 0; padding: 0 0.8rem 0 0.4rem; }
+vellum-app .v-brand::after {
+  content: "VELLUM";
+  font: 400 1.5rem var(--rl-wide);
+  letter-spacing: 0.12em;
+  background: linear-gradient(180deg, #5d6878 0%, #1a2230 48%, #0b1018 52%, #3c4757 80%, #6f7b8c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 1px 0 #fff);
+}
+vellum-app .v-count { font: 600 0.95rem var(--rl-saira); color: var(--rl-steel); letter-spacing: 0.04em; }
+
+vellum-view-switcher::part(tabs) { background: transparent; gap: 0.35rem; }
+vellum-view-switcher::part(tab) {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.05rem;
+  min-width: 6.2rem;
+  padding: 0.3rem 0.8rem 0.32rem;
+  border: 0;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #ffffff, #e9eef4 50%, #dde4ec 51%, #f1f4f8);
+  box-shadow: inset 0 1px 0 #fff, 0 0 0 1px var(--rl-hair), 0 2px 4px rgb(40 60 90 / 0.12);
+  color: var(--rl-ink);
+  font: 400 0.82rem var(--rl-wide);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+/* Sub-labels under each mode. */
+vellum-view-switcher::part(tab)::after {
+  content: "";
+  font: 400 0.72rem var(--rl-saira);
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  color: var(--rl-steel);
+}
+vellum-view-switcher::part(tab-list)::after { content: "all titles"; }
+vellum-view-switcher::part(tab-covers)::after { content: "collection"; }
+vellum-view-switcher::part(tab-spotlight)::after { content: "featured"; }
+vellum-view-switcher::part(tab-garage)::after { content: "showroom"; }
+vellum-view-switcher::part(tab):hover { background: linear-gradient(180deg, #ffffff, #f1f5fa 50%, #e5ebf2 51%, #f7f9fb); }
+vellum-view-switcher::part(tab-selected) {
+  background: var(--rl-gloss);
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6), 0 0 0 1px #1352b4, 0 3px 10px rgb(31 111 224 / 0.45);
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.5);
+  animation: rl-pulse 2.4s ease-in-out infinite;
+}
+vellum-view-switcher::part(tab-selected)::after { color: #fff; }
+
+/* Search: a glass pill. */
+vellum-search::part(box) {
+  border-radius: 999px;
+  border: 0;
+  background: linear-gradient(180deg, #f1f4f8, #ffffff);
+  box-shadow: inset 0 1px 3px rgb(40 60 90 / 0.25), 0 0 0 1px var(--rl-hair), 0 1px 0 #fff;
+}
+vellum-search::part(box):focus-within { box-shadow: inset 0 1px 3px rgb(40 60 90 / 0.25), 0 0 0 2px var(--rl-blue); }
+vellum-search::part(input) { font: 600 1rem var(--rl-saira); color: var(--rl-ink); }
+vellum-search::part(icon) { color: var(--rl-blue); }
+
+/* Menus and plain buttons: glossy silver keys. */
+vellum-filter-bar::part(trigger),
+vellum-sort-menu::part(trigger),
+vellum-group-menu::part(trigger),
+.v-button {
+  border: 0;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #ffffff, #e9eef4 50%, #dde4ec 51%, #f1f4f8);
+  box-shadow: inset 0 1px 0 #fff, 0 0 0 1px var(--rl-hair), 0 2px 4px rgb(40 60 90 / 0.12);
+  color: var(--rl-ink);
+  font: 700 0.92rem var(--rl-saira);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+:is(vellum-filter-bar, vellum-sort-menu, vellum-group-menu)::part(trigger):hover,
+.v-button:hover { background: linear-gradient(180deg, #ffffff, #f1f5fa 50%, #e5ebf2 51%, #f7f9fb); }
+:is(vellum-filter-bar, vellum-sort-menu, vellum-group-menu)::part(trigger):focus-visible,
+.v-button:focus-visible { outline: none; box-shadow: inset 0 1px 0 #fff, 0 0 0 2px var(--rl-blue), 0 0 12px rgb(31 111 224 / 0.45); }
+:is(vellum-filter-bar, vellum-sort-menu, vellum-group-menu)::part(caret) { color: var(--rl-blue); }
+:is(vellum-filter-bar, vellum-sort-menu, vellum-group-menu)::part(panel) {
+  border: 0;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.97), rgb(240 244 249 / 0.97));
+  box-shadow: var(--rl-glass-shadow), 0 18px 40px rgb(40 60 90 / 0.25);
+  font: 600 1rem var(--rl-saira);
+}
+vellum-filter-bar::part(badge) { background: var(--rl-signal); color: #fff; font-family: var(--rl-wide); }
+.v-icon-button { color: var(--rl-ink); border-radius: 6px; }
+.v-icon-button:hover { background: rgb(31 111 224 / 0.1); }
+
+vellum-window-controls::part(minimize),
+vellum-window-controls::part(maximize),
+vellum-window-controls::part(close) { color: var(--rl-ink); }
+vellum-window-controls::part(close):hover { background: var(--rl-signal); color: #fff; }
+
+/* ---- covers: cards on glossy plinths --------------------------------------------------------- */
+
+.v-view-bar { padding-top: 0.6rem; }
+
+vellum-grid::part(art),
+vellum-cover-row::part(art),
+vellum-shelf::part(art) {
+  position: relative;
+  z-index: 2; /* above the caption's cursor bar */
+  border-radius: 4px;
+  box-shadow: 0 0 0 3px #fff, 0 0 0 4px var(--rl-hair), 0 10px 18px rgb(40 60 90 / 0.28);
+  transition: transform 180ms cubic-bezier(0.3, 1.4, 0.5, 1), box-shadow 180ms ease;
+}
+vellum-grid::part(art-selected),
+vellum-cover-row::part(art-selected),
+vellum-shelf::part(art-selected) {
+  box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--rl-blue), 0 0 22px 4px rgb(31 111 224 / 0.5), 0 16px 26px rgb(40 60 90 / 0.35);
+}
+vellum-grid::part(art-focused),
+vellum-cover-row::part(art-focused),
+vellum-shelf::part(art-focused) { transform: translateY(-6px) scale(1.03); }
+/* The glint across the selected cover. */
+vellum-grid::part(art-selected)::after,
+vellum-cover-row::part(art-selected)::after,
+vellum-shelf::part(art-selected)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(105deg, transparent 40%, rgb(255 255 255 / 0.7) 50%, transparent 60%) 160% 0 / 250% 100% no-repeat;
+  animation: rl-sweep 2.6s ease-in-out infinite;
+}
+vellum-grid::part(caption),
+vellum-shelf::part(caption) {
+  margin-top: 0.55rem;
+  position: relative;
+  z-index: 1;
+  font: 600 0.98rem/1.2 var(--rl-saira);
+  color: var(--rl-cap, var(--rl-ink));
+  text-shadow: var(--rl-cap-shadow, 0 1px 0 rgb(255 255 255 / 0.9));
+}
+/* The selected caption sits on the glossy cursor bar, in white. */
+vellum-grid::part(cell-selected),
+vellum-shelf::part(cell-selected) { isolation: isolate; --rl-cap: #fff; --rl-cap-shadow: 0 1px 1px rgb(0 0 0 / 0.35); }
+vellum-grid::part(cell-selected)::after,
+vellum-shelf::part(cell-selected)::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  left: -6px;
+  right: -6px;
+  bottom: -0.3rem;
+  height: 2.9rem;
+  border-radius: 5px;
+  background: var(--rl-gloss);
+  box-shadow: 0 2px 8px rgb(31 111 224 / 0.4);
+  animation: rl-pulse 2.4s ease-in-out infinite;
+}
+vellum-grid::part(favorite),
+vellum-cover-row::part(favorite),
+vellum-shelf::part(favorite) {
+  border-radius: 4px;
+  background: var(--rl-gloss-signal);
+  color: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+}
+vellum-grid::part(label),
+vellum-cover-row::part(label),
+vellum-shelf::part(cover-label) {
+  border-radius: 3px;
+  background: var(--rl-amber);
+  color: #1a1300;
+  font: 700 0.72rem var(--rl-saira);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Shelves: numbered headers on a glass strip. */
+.v-shelves { counter-reset: rl-shelf; }
+vellum-shelf { counter-increment: rl-shelf; }
+vellum-shelf::part(header) {
+  margin: 0 var(--v-gap);
+  padding: 0.25rem 0.8rem;
+  border-radius: 6px;
+  background: var(--rl-glass);
+  box-shadow: var(--rl-glass-shadow);
+}
+vellum-shelf::part(label) { font: 400 1.05rem var(--rl-wide); letter-spacing: 0.08em; text-transform: uppercase; color: var(--rl-ink); }
+vellum-shelf::part(label)::before {
+  content: counter(rl-shelf, decimal-leading-zero);
+  margin-right: 0.8rem;
+  padding: 0 0.4rem;
+  border-radius: 3px;
+  background: var(--rl-gloss);
+  color: #fff;
+  font-size: 0.85em;
+}
+vellum-shelf::part(count) { font: 600 0.95rem var(--rl-saira); color: var(--rl-steel); }
+vellum-shelf::part(chevron) { color: var(--rl-blue); }
+
+/* ---- list: a spec table on glass --------------------------------------------------------------- */
+
+.v-view[data-view="list"] {
+  margin: 0.9rem 1.4rem 0.6rem;
+  border-radius: 10px;
+  background: var(--rl-glass);
+  box-shadow: var(--rl-glass-shadow);
+  overflow: hidden;
+}
+vellum-list::part(header) { background: linear-gradient(180deg, #f6f8fb, #e4e9f0); border-bottom: 1px solid var(--rl-hair); }
+vellum-list::part(column) { font: 700 0.8rem var(--rl-saira); letter-spacing: 0.14em; text-transform: uppercase; color: var(--rl-steel); }
+vellum-list::part(row) { border-bottom: 1px solid rgb(92 110 135 / 0.14); }
+vellum-list::part(title) { font: 600 1.08rem var(--rl-saira); }
+vellum-list::part(source),
+vellum-list::part(size),
+vellum-list::part(when) { font: 600 0.98rem var(--rl-saira); color: var(--v-text-muted); }
+vellum-list::part(row-selected) {
+  position: relative;
+  background: var(--rl-gloss);
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5), 0 2px 8px rgb(31 111 224 / 0.35);
+  --v-text: #fff;
+  --v-text-muted: #e3efff;
+  text-shadow: 0 1px 1px rgb(0 0 0 / 0.3);
+}
+vellum-list::part(row-selected)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 42%, rgb(255 255 255 / 0.45) 50%, transparent 58%) 160% 0 / 250% 100% no-repeat;
+  animation: rl-sweep 2.6s ease-in-out infinite;
+}
+vellum-list::part(label) { border-radius: 3px; background: var(--rl-amber); color: #1a1300; font-weight: 700; letter-spacing: 0.08em; }
+vellum-list::part(icon) { border-radius: 4px; box-shadow: 0 0 0 1px rgb(255 255 255 / 0.9), 0 1px 3px rgb(0 0 0 / 0.3); }
+
+/* ---- spotlight: the hero in a bezel, info on a glass card --------------------------------------- */
+
+.v-spot-stage { margin: 0.8rem 1.4rem 0; border-radius: 10px; overflow: hidden; box-shadow: 0 0 0 4px #fff, 0 0 0 5px var(--rl-hair), 0 14px 30px rgb(40 60 90 / 0.28); }
+.v-spot-content { padding: 1.4rem; }
+.v-spot-info {
+  max-width: 34rem;
+  padding: 1.1rem 1.4rem 1.2rem;
+  border-radius: 10px;
+  background: var(--rl-glass);
+  box-shadow: var(--rl-glass-shadow);
+  backdrop-filter: blur(10px);
+  animation: rl-slide-in 420ms cubic-bezier(0.25, 1.3, 0.4, 1) both;
+}
+@keyframes rl-slide-in { from { transform: translateX(-40px); opacity: 0; } to { transform: none; opacity: 1; } }
+/* The logo on a dark chrome nameplate: store logos are mostly light, made for dark art. */
+.v-spot-logo {
+  --v-logo-max-height: 6rem;
+  display: block;
+  margin: -0.2rem -0.3rem 0.7rem;
+  padding: 0.8rem 1rem;
+  border-radius: 7px;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.16), rgb(255 255 255 / 0.02) 49%, rgb(255 255 255 / 0) 50%),
+    linear-gradient(180deg, #2c3748, #141a24);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 0 0 1px #0b0f16, 0 4px 10px rgb(20 30 45 / 0.35);
+}
+.v-spot-logo::part(logo) { filter: drop-shadow(0 2px 4px rgb(0 0 0 / 0.6)); }
+.v-spot-logo::part(title) { font: 400 clamp(1.6rem, 3vw, 2.5rem)/1.15 var(--rl-wide); letter-spacing: 0.04em; color: #fff; text-transform: uppercase; }
+.v-spot-meta { font: 700 0.95rem var(--rl-saira); letter-spacing: 0.12em; text-transform: uppercase; color: var(--rl-blue); }
+.v-spot-desc { font: 400 1.02rem/1.45 var(--rl-saira); color: var(--rl-ink); }
+.v-spot-facts { font: 600 0.92rem var(--rl-saira); color: var(--rl-steel); letter-spacing: 0.04em; }
+.v-spot-label { border-radius: 3px; background: var(--rl-amber); color: #1a1300; font: 700 0.75rem var(--rl-saira); letter-spacing: 0.1em; text-transform: uppercase; }
+vellum-source-badges::part(badge) { border-radius: 3px; background: linear-gradient(180deg, #fff, #e3e9f0); box-shadow: 0 0 0 1px var(--rl-hair); color: var(--rl-ink); font: 700 0.78rem var(--rl-saira); letter-spacing: 0.08em; text-transform: uppercase; }
+.v-spot-rows { background: linear-gradient(180deg, transparent, rgb(243 246 249 / 0.9) 30%); }
+.v-spot-row-label { font: 400 0.95rem var(--rl-wide); letter-spacing: 0.08em; text-transform: uppercase; color: var(--rl-ink); }
+
+/* Start: the one signal-coloured, glossy button on screen. */
+vellum-play-button::part(button) {
+  position: relative;
+  overflow: hidden;
+  border: 0;
+  border-radius: 6px;
+  padding: 0.55em 2.2em;
+  background: var(--rl-gloss-signal);
+  color: #fff;
+  font: 400 1.05rem var(--rl-wide);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 1px rgb(0 0 0 / 0.4);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), 0 0 0 1px color-mix(in srgb, var(--rl-signal) 70%, #000), 0 4px 12px color-mix(in srgb, var(--rl-signal) 45%, transparent);
+}
+vellum-play-button::part(button)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 40%, rgb(255 255 255 / 0.6) 50%, transparent 60%) 160% 0 / 250% 100% no-repeat;
+  animation: rl-sweep 2.6s ease-in-out infinite;
+}
+vellum-play-button::part(button):focus-visible { outline: none; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), 0 0 0 2px #fff, 0 0 0 4px var(--rl-blue), 0 0 18px rgb(31 111 224 / 0.6); }
+vellum-play-button::part(icon) { font-size: 0.85em; }
+vellum-play-button::part(via) {
+  border: 0;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #ffffff, #e9eef4 50%, #dde4ec 51%, #f1f4f8);
+  box-shadow: inset 0 1px 0 #fff, 0 0 0 1px var(--rl-hair);
+  color: var(--rl-ink);
+  font: 700 0.9rem var(--rl-saira);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.v-spot-actions .v-button[aria-pressed="true"] { color: var(--rl-signal); }
+
+/* ---- help bar ------------------------------------------------------------------------------------ */
+
+.rl-help {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1.5rem;
+  height: 2.5rem;
+  padding: 0 1.6rem;
+  background: var(--rl-glass);
+  box-shadow: inset 0 1px 0 var(--rl-hair), inset 0 2px 0 #fff;
+  font: 700 0.88rem var(--rl-saira);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--rl-ink);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.rl-key { display: inline-flex; align-items: center; gap: 0.5rem; }
+.rl-key kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.8rem;
+  height: 1.5rem;
+  padding: 0 0.45rem;
+  border-radius: 5px;
+  background: var(--rl-chrome);
+  box-shadow: inset 0 1px 0 #fff, 0 0 0 1px #7d8a9b, 0 2px 0 #66727f;
+  color: var(--rl-ink);
+  font: 700 0.75rem var(--rl-saira);
+  letter-spacing: 0.04em;
+  text-transform: none;
+  text-shadow: 0 1px 0 rgb(255 255 255 / 0.8);
+}
+
+/* ---- wipe between views ---------------------------------------------------------------------------- */
+
+.rl-wipe {
+  position: fixed;
+  inset: 0 -30%;
+  z-index: 80;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 0.95) 38%, rgb(89 173 255 / 0.85) 45%, rgb(31 111 224 / 0.9) 50%, rgb(255 255 255 / 0.9) 56%, transparent 66%);
+  transform: translateX(-100%);
+}
+.rl-wipe.go { animation: rl-wipe 520ms cubic-bezier(0.5, 0, 0.3, 1); }
+@keyframes rl-wipe {
+  0% { transform: translateX(-100%); opacity: 1; }
+  100% { transform: translateX(100%); opacity: 1; }
+}
+
+/* ---- title screen --------------------------------------------------------------------------------- */
+
+.rl-boot {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.6rem;
+  background:
+    radial-gradient(60% 50% at 50% 45%, #ffffff, transparent 75%),
+    linear-gradient(180deg, #f8fafc, #dfe6ee 70%, #eef2f6);
+  transition: opacity 380ms ease;
+}
+.rl-boot.out { opacity: 0; }
+.rl-boot-mark {
+  font: 400 clamp(3rem, 8vw, 6.5rem) var(--rl-wide);
+  letter-spacing: 0.18em;
+  padding-left: 0.18em;
+  background:
+    linear-gradient(105deg, transparent 40%, rgb(255 255 255 / 0.95) 50%, transparent 60%) 160% 0 / 250% 100% no-repeat,
+    linear-gradient(180deg, #6b7686 0%, #1a2230 47%, #05080d 53%, #3b4656 78%, #8592a3 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 0 #fff) drop-shadow(0 10px 18px rgb(40 60 90 / 0.25));
+  animation: rl-boot-in 700ms cubic-bezier(0.2, 1.2, 0.4, 1) both, rl-boot-glint 1.6s 600ms ease-in-out both;
+}
+.rl-boot-sub { font: 700 1rem var(--rl-saira); letter-spacing: 0.5em; text-transform: uppercase; color: var(--rl-steel); animation: rl-fade 500ms 400ms both; }
+.rl-boot-press {
+  margin-top: 2.2rem;
+  font: 400 0.95rem var(--rl-wide);
+  letter-spacing: 0.3em;
+  color: var(--rl-blue);
+  animation: rl-fade 300ms 900ms both, rl-blink 1s 1.2s steps(2, jump-none) infinite;
+}
+@keyframes rl-boot-in { from { letter-spacing: 0.8em; opacity: 0; transform: scaleX(1.2); } to { letter-spacing: 0.18em; opacity: 1; transform: none; } }
+@keyframes rl-boot-glint { from { background-position: 160% 0, 0 0; } to { background-position: -60% 0, 0 0; } }
+@keyframes rl-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rl-blink { 50% { opacity: 0.15; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
+  .rl-streaks { display: none; }
+}

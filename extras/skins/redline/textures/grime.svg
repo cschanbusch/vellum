@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450" viewBox="0 0 300 450" preserveAspectRatio="none">
+  <!-- Road grime for worn cases: brown film, splatter heavier toward the bottom, dust specks.
+       Faded in by wear; see .rl-grime. -->
+  <defs>
+    <filter id="film" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.02" numOctaves="4" seed="7" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.36  0 0 0 0 0.28  0 0 0 0 0.18  0 0 0 1.6 -0.55"/>
+    </filter>
+    <filter id="splat" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="2" seed="3" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.3  0 0 0 0 0.24  0 0 0 0 0.16  0 0 0 6 -3.6"/>
+    </filter>
+    <filter id="dust" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="1" seed="11" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.25  0 0 0 0 0.2  0 0 0 0 0.15  0 0 0 9 -6.8"/>
+    </filter>
+    <linearGradient id="low" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0.35" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="1"/>
+    </linearGradient>
+    <mask id="lower"><rect width="300" height="450" fill="url(#low)"/></mask>
+  </defs>
+  <rect width="300" height="450" filter="url(#film)"/>
+  <rect width="300" height="450" filter="url(#splat)" mask="url(#lower)"/>
+  <rect width="300" height="450" filter="url(#dust)"/>
+</svg>

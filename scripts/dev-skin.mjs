@@ -31,7 +31,7 @@ const port = Number(flag("--port", "5180"));
 let count = Number(flag("--count", "80"));
 const noOpen = args.includes("--no-open") && args.splice(args.indexOf("--no-open"), 1);
 const skinDir = resolve(args[0] ?? join(ROOT, "plugins", "skins", "basis"));
-const mockDir = join(ROOT, "plugins", "providers", "mock");
+const mockDir = join(ROOT, "extras", "providers", "mock");
 
 if (!existsSync(join(skinDir, "plugin.json"))) {
   console.error(`No plugin.json in ${skinDir}. Pass the path of a skin folder.`);
@@ -52,7 +52,7 @@ if (!existsSync(sdkJs)) buildSdk();
 
 let library = await mockLibrary(mockDir, count);
 const artReady = existsSync(join(mockDir, "art"));
-if (!artReady) console.log("Mock art not generated; placeholders are shown. Run `npm run mock-art` once (needs Rust), or copy plugins/providers/mock/art from any Vellum package.");
+if (!artReady) console.log("Mock art not generated; placeholders are shown. Run `npm run mock-art` once (needs Rust), or copy plugins/providers/mock/art from any Vellum extras package into extras/providers/mock/art.");
 
 const placeholder = await import(new URL("../sdk/src/placeholder.ts", import.meta.url).href).catch(() => null);
 

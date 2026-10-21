@@ -14,8 +14,8 @@ There are three depths of skin, and you can mix them:
 | Fully custom | Your own JavaScript views against the SDK | [Example 3](#example-3-a-custom-view) |
 
 The three examples are real skins in `tests/fixtures/dev-plugins/skins/` (`token-test`,
-`sidebar-test`, `timeline-test`), and the end-to-end tests run them. The shipped skins in
-`plugins/skins/` show what's possible beyond that:
+`sidebar-test`, `timeline-test`), and the end-to-end tests run them. The default skin, Basis, is in
+`plugins/skins/`, and the optional skins in `extras/skins/` show what's possible beyond that:
 
 | Skin | Techniques worth reading |
 | --- | --- |
@@ -68,7 +68,7 @@ Favorites, tags and options you set in the harness are kept in that browser's st
 
 Mock art is generated once with `npm run mock-art`, which needs Rust. Without it the harness
 shows generated placeholders, and you can copy `plugins/providers/mock/art/` from any Vellum
-package instead. The harness serves art at full size, while the app also resizes it.
+extras package into `extras/providers/mock/art/` instead. The harness serves art at full size, while the app also resizes it.
 
 To try the skin in the app, copy the folder into `plugins/skins/` beside `Vellum Game Launcher.exe` and
 choose **Activate** in Settings → Skins. Copying a skin to another PC is just copying the folder.
@@ -324,7 +324,8 @@ It also survives skin reloads and restarts.
 
 | Member | Description |
 | --- | --- |
-| `launch(id, provider?)` | Launch through the preferred store, or the named one ("Play via…") |
+| `launch(id, provider?)` | Launch through the preferred store, or the named one ("Play via…"), after any `onBeforeLaunch` hooks |
+| `onBeforeLaunch(hook)` | Run `hook` before launches this skin starts; it can hold or call them off (see below) |
 | `install(id)`, `uninstall(id)`, `openStore(id)` | Only work when the store declares the capability |
 | `toggleFavorite(id)` | |
 | `setHidden(id, hidden)` | |
@@ -339,6 +340,19 @@ playButton.addEventListener("click", () => vellum.actions.launch(entry.id).catch
 ```
 
 The shell shows a toast for launches and for errors, so you can ignore rejected promises.
+
+`onBeforeLaunch(hook)` runs `hook(id, provider)` before every launch your skin starts (the kit's
+Play buttons, Enter in a collection, your own calls). The hook may be async: an animation or a
+confirmation holds the launch until it settles. Return `false` to call the launch off; anything
+else lets it go ahead. It returns an unsubscribe function. A hook that throws is ignored, so a
+bug can't stop launches. Launches the shell starts itself (its context menu) don't run hooks.
+
+```js
+vellum.actions.onBeforeLaunch(async (id) => {
+  await playIgnition();           // hold the launch for the animation
+  return !engineStalled();        // false: no launch this time
+});
+```
 
 ### `vellum.art`
 
@@ -492,7 +506,7 @@ Parts: `box`, `input`.
 
 #### `<vellum-view-switcher>`
 
-Tabs for `vellum.views.list()`, titled with their hotkeys. Parts: `tabs`, `tab`, `tab-selected` (the current view).
+Tabs for `vellum.views.list()`, titled with their hotkeys. Parts: `tabs`, `tab`, `tab-selected` (the current view), and `tab-<view id>` on each tab (`tab-covers`, `tab-catalogue`…) so you can style or label one view's tab.
 
 #### `<vellum-filter-bar>`
 
@@ -1144,7 +1158,7 @@ built-ins keep their keys wherever they sit.
 
 ### Example: a view with its own focus container
 
-*Frontier's Catalogue* (`plugins/skins/frontier/views/catalogue.js` and `catalogue.css`) lays the
+*Frontier's Catalogue* (`extras/skins/frontier/views/catalogue.js` and `catalogue.css`) lays the
 library out as an open mail-order catalogue: a paginated listing on the left page, the selected
 game's plate on the right and department tabs on the fore-edge. It shows how to:
 

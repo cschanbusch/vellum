@@ -6,6 +6,9 @@
 // redistributables are kind "tool", soundtracks are kind "other" with a "Soundtrack" label
 // (Steam installs them under steamapps/music), and demos and playtests are games labelled
 // "Demo" / "Playtest" so they can be told apart from the full game.
+//
+// Developer, publisher, genres and release date come from appcache/appinfo.vdf, the client's
+// local copy of the store data, so no network is needed.
 
 const TOOL_APPIDS = new Set(["228980"]); // Steamworks Common Redistributables
 const TOOL_PREFIXES = ["Proton", "Steam Linux Runtime"];
@@ -13,6 +16,16 @@ const COLLECTIONS_FILE = "cloud-storage-namespace-1.json";
 const SOUNDTRACK_NAME = /\b(soundtrack|OST)\b/i;
 const DEMO_NAME = /\bdemo\b/i;
 const PLAYTEST_NAME = /\bplaytest\b/i;
+
+/** Steam's genre ids. Store descriptors that are not genres (Early Access, Free to Play,
+ *  content warnings) are left out. */
+const GENRES = {
+  1: "Action", 2: "Strategy", 3: "RPG", 4: "Casual", 9: "Racing", 18: "Sports", 23: "Indie",
+  25: "Adventure", 28: "Simulation", 29: "Massively Multiplayer", 50: "Accounting",
+  51: "Animation & Modeling", 52: "Audio Production", 53: "Design & Illustration", 54: "Education",
+  55: "Photo Editing", 56: "Software Training", 57: "Utilities", 58: "Video Production",
+  59: "Web Publishing", 60: "Game Development", 81: "Documentary", 84: "Tutorial",
+};
 
 const join = (...parts) => parts.join("\\").replace(/[\\/]+/g, "\\");
 
@@ -259,6 +272,31 @@ function cdnArt(id) {
   ];
 }
 
+/** Store metadata for `appids` from appinfo.vdf; empty if the cache is missing or unreadable. */
+function storeMetadata(ctx, appids) {
+  const file = join(ctx.locations.root, "appcache", "appinfo.vdf");
+  if (!appids.length || !ctx.fs.exists(file)) return {};
+  let info;
+  try {
+    info = ctx.formats.steamAppinfo(ctx.fs.readBytes(file), appids);
+  } catch (e) {
+    ctx.log.warn(`store metadata unavailable: ${e.message}`);
+    return {};
+  }
+  const out = {};
+  for (const [id, a] of Object.entries(info)) {
+    const ids = [a.primaryGenre, ...(a.genres ?? [])].map(Number);
+    const genres = [...new Set(ids.map((g) => GENRES[g]).filter(Boolean))];
+    const m = {};
+    if (a.developers?.length) m.developer = a.developers.join(", ");
+    if (a.publishers?.length) m.publisher = a.publishers.join(", ");
+    if (a.releaseDate) m.releaseDate = new Date(a.releaseDate * 1000).toISOString().slice(0, 10);
+    if (genres.length) m.genres = genres;
+    out[id] = m;
+  }
+  return out;
+}
+
 export default {
   scan(ctx) {
     const respectHidden = ctx.settings.respectHidden !== false;
@@ -283,6 +321,8 @@ export default {
         });
       }
     }
+    const meta = storeMetadata(ctx, games.map((g) => Number(g.sourceId)).filter(Number.isFinite));
+    for (const g of games) if (meta[g.sourceId]) g.metadata = meta[g.sourceId];
     return { games };
   },
 

@@ -281,7 +281,7 @@ export class VellumViewSwitcher extends Bound {
       ${vellum.views.list().map(
         (v) => html`<button
           role="tab"
-          part=${v.id === current ? "tab tab-selected" : "tab"}
+          part=${`tab tab-${v.id}${v.id === current ? " tab-selected" : ""}`}
           data-vellum-focus
           aria-selected=${v.id === current}
           title=${v.hotkey ? `${v.name} (${v.hotkey})` : v.name}

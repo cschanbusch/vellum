@@ -235,6 +235,7 @@ globalThis.__ctx = Object.freeze({
   formats: Object.freeze({
     vdf: (text) => JSON.parse(h.vdf(str(text))),
     binaryVdf: (bytes) => JSON.parse(h.binaryVdf(bytes)),
+    steamAppinfo: (bytes, appids = []) => JSON.parse(h.steamAppinfo(bytes, JSON.stringify((appids ?? []).map(Number)))),
   }),
   sqlite: Object.freeze({
     query() { throw new Error("ctx.sqlite is not available in this version of the host"); },
@@ -360,6 +361,17 @@ fn install_host<'js>(ctx: &Ctx<'js>, st: &Arc<HostState>, locations_json: String
                 .map(<[u8]>::to_vec)
                 .ok_or_else(|| throw(&ctx, "binaryVdf needs a Uint8Array".into()))?;
             formats::binary_vdf::parse(&b).map(|v| v.to_string()).map_err(|e| throw(&ctx, format!("binary VDF: {e}")))
+        })?,
+    )?;
+    h.set(
+        "steamAppinfo",
+        Function::new(ctx.clone(), move |ctx: Ctx<'js>, bytes: TypedArray<'js, u8>, appids: String| -> rquickjs::Result<String> {
+            // SAFETY: the bytes are copied out before any JavaScript can run again.
+            let b = unsafe { bytes.as_bytes() }
+                .map(<[u8]>::to_vec)
+                .ok_or_else(|| throw(&ctx, "steamAppinfo needs a Uint8Array".into()))?;
+            let wanted: std::collections::HashSet<u32> = serde_json::from_str(&appids).map_err(|e| throw(&ctx, format!("steamAppinfo appids: {e}")))?;
+            formats::appinfo::parse(&b, &wanted).map(|v| v.to_string()).map_err(|e| throw(&ctx, format!("appinfo.vdf: {e}")))
         })?,
     )?;
     h.set("expand", Function::new(ctx.clone(), |s: String| platform::expand_env(&s))?)?;

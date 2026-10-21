@@ -12,6 +12,9 @@ pub struct AppPaths {
     pub data_dir: PathBuf,
     pub portable: bool,
     pub plugins_dir: PathBuf,
+    /// The repo's `extras/` folder (optional skins, modules and the mock provider). Debug builds
+    /// running from the repo scan it beside `plugins/`; a package copies extras into `plugins/`.
+    pub extras_dir: Option<PathBuf>,
     /// Debug builds also scan `tests/fixtures/dev-plugins` so broken example plugins
     /// show up in the Plugins page without ever being shipped.
     pub dev_plugins_dir: Option<PathBuf>,
@@ -44,15 +47,22 @@ impl AppPaths {
             (None, Some(repo)) if !beside_exe.is_dir() => repo.join("plugins"),
             _ => beside_exe,
         };
+        let extras_dir = repo
+            .filter(|r| plugins_dir == r.join("plugins"))
+            .map(|r| r.join("extras"))
+            .filter(|d| d.is_dir());
         let dev_plugins_dir = repo
             .map(|r| r.join("tests").join("fixtures").join("dev-plugins"))
             .filter(|d| d.is_dir() && std::env::var_os("VELLUM_NO_DEV_PLUGINS").is_none());
 
-        AppPaths { exe_dir: exe_dir.to_path_buf(), data_dir, portable, plugins_dir, dev_plugins_dir }
+        AppPaths { exe_dir: exe_dir.to_path_buf(), data_dir, portable, plugins_dir, extras_dir, dev_plugins_dir }
     }
 
     pub fn plugin_roots(&self) -> Vec<PathBuf> {
-        std::iter::once(self.plugins_dir.clone()).chain(self.dev_plugins_dir.clone()).collect()
+        std::iter::once(self.plugins_dir.clone())
+            .chain(self.extras_dir.clone())
+            .chain(self.dev_plugins_dir.clone())
+            .collect()
     }
 
     pub fn logs_dir(&self) -> PathBuf {
@@ -97,8 +107,13 @@ mod tests {
         let repo = tempfile::tempdir().unwrap();
         let p = AppPaths::resolve_from(exe.path(), Path::new("R:\\"), Some(repo.path()), &Args::default());
         assert_eq!(p.plugins_dir, repo.path().join("plugins"));
+        assert_eq!(p.extras_dir, None);
+        std::fs::create_dir(repo.path().join("extras")).unwrap();
+        let p = AppPaths::resolve_from(exe.path(), Path::new("R:\\"), Some(repo.path()), &Args::default());
+        assert_eq!(p.extras_dir, Some(repo.path().join("extras")));
         std::fs::create_dir(exe.path().join("plugins")).unwrap();
         let p = AppPaths::resolve_from(exe.path(), Path::new("R:\\"), Some(repo.path()), &Args::default());
         assert_eq!(p.plugins_dir, exe.path().join("plugins"));
+        assert_eq!(p.extras_dir, None, "a packaged plugins folder already holds its extras");
     }
 }

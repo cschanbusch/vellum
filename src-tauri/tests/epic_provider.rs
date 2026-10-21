@@ -10,7 +10,23 @@ use vellum_lib::providers::model::{parse_scan, GameKind};
 
 fn harness() -> Harness {
     let manifests = repo("tests/fixtures/epic/Manifests");
-    Harness::new(shipped_provider("epic", Map::new()), &[("manifests", &manifests)], FakeRegistry::default())
+    let catalog = repo("tests/fixtures/epic/Catalog");
+    Harness::new(shipped_provider("epic", Map::new()), &[("manifests", &manifests), ("catalog", &catalog)], FakeRegistry::default())
+}
+
+#[test]
+fn developer_comes_from_the_catalog_cache() {
+    let mut h = harness();
+    let scan = parse_scan(h.call(Method::Scan, None).unwrap().value).unwrap();
+    let game = scan.games.iter().find(|g| g.source_id == "Fowl").unwrap();
+    assert_eq!(game.metadata.developer.as_deref(), Some("Pöllö Studios"), "base64 and UTF-8 decoded");
+    assert!(scan.games.iter().find(|g| g.source_id == "UE_5.4").unwrap().metadata.developer.is_none());
+
+    // Without the cache, scanning still works.
+    let manifests = repo("tests/fixtures/epic/Manifests");
+    let mut h = Harness::new(shipped_provider("epic", Map::new()), &[("manifests", &manifests)], FakeRegistry::default());
+    let scan = parse_scan(h.call(Method::Scan, None).unwrap().value).unwrap();
+    assert!(scan.games.iter().all(|g| g.metadata.developer.is_none()));
 }
 
 #[test]

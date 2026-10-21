@@ -13,7 +13,7 @@ shell/dist/
 spikes/perf/skin/art/
 
 # Generated mock art; recreate with `npm run mock-art`
-plugins/providers/mock/art/
+extras/providers/mock/art/
 test-results/
 playwright-report/
 test-artifacts/

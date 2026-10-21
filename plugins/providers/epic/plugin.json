@@ -2,7 +2,7 @@
   "id": "epic",
   "type": "provider",
   "name": "Epic Games",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "apiVersion": 1,
   "author": "Vellum",
   "description": "Installed games from the Epic Games Launcher",
@@ -12,11 +12,30 @@
       "manifests": {
         "label": "Epic Games Launcher manifests folder",
         "required": true,
-        "defaults": ["%ProgramData%\\Epic\\EpicGamesLauncher\\Data\\Manifests"],
-        "validate": ["*.item"]
+        "defaults": [
+          "%ProgramData%\\Epic\\EpicGamesLauncher\\Data\\Manifests"
+        ],
+        "validate": [
+          "*.item"
+        ]
+      },
+      "catalog": {
+        "label": "Epic Games Launcher catalog cache folder",
+        "required": false,
+        "defaults": [
+          "%ProgramData%\\Epic\\EpicGamesLauncher\\Data\\Catalog"
+        ],
+        "validate": [
+          "catcache.bin"
+        ]
       }
     },
-    "uriSchemes": ["com.epicgames.launcher"],
-    "capabilities": ["launch", "watch"]
+    "uriSchemes": [
+      "com.epicgames.launcher"
+    ],
+    "capabilities": [
+      "launch",
+      "watch"
+    ]
   }
 }
