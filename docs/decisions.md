@@ -1,5 +1,13 @@
 # Decisions
 
+## 2026-10-20 — Art styles and skin contrast
+
+- **Art styles are drawn in Rust, not with CSS or SVG filters.** Sketch (a colour dodge of the image over its blurred inverse, with hatching and paper tooth) and watercolor (a Kuwahara filter, tonal snapping, edge pooling, granulation and a deckled border) need neighbourhood operations that CSS filters can't express. As SVG filters on thousands of pooled cells they would cost far more than a one-time render. `src-tauri/src/art/style.rs` renders each style once per cached width (`{key}-{w}-{style}`), and art URLs ask for it with `fx=`. Skins choose a style with the `--v-art-style` and `--v-icon-style` tokens, so no new bridge API is needed.
+- **Styled art is as sharp as the plain art.** Styles render at the requested width up to 3840 px (`style::MAX_STYLED_WIDTH`), with brush size set per kind (heroes and headers are shown at about their pixel size, covers well below it), and the source's fine detail is drawn back over the watercolor washes as ink. The work runs in row bands across cores, and the Kuwahara tables are kept per band, so 4K stays fast and small. `style::VERSION` is part of the cache key, so changing a style re-renders.
+- **Hand-drawn interface glyphs are an SVG filter in a skin file.** Chromium doesn't apply a `url(#id)` filter defined in the document to shadow-DOM parts, but it does apply one from a separate same-origin SVG file. The kit gives its glyphs parts (`icon`, `caret`, `chevron`) so skins can target them.
+- **Select options are exposed as `data-opt-<id>="<value>"`**, as toggles already were, so skins can style by choice without matching inline styles.
+- **Atmosphere stays behind the interface.** Frontier's film grain had been an overlay above everything (z-index 90 at 55% opacity), which lowered the contrast of all text and icons and made the screen look out of focus. Skin guidance is now: fog, grain and particles sit under the UI; body text keeps at least 4.5:1 against what is actually behind it, and icons and large type keep at least 3:1; the selected item is the sharpest thing on screen.
+
 ## 2026-10-20 — Phase 3 (skin system, views, input model, art v0) choices
 
 - **One host controller, two backends.** The shell's skin host (`shell/src/host/controller.ts`) owns UI state, answers bridge calls and pushes changes to the skin. It knows nothing about Tauri: the app gives it a Tauri backend, and the skin dev harness gives it a mock backend over the mock provider. The harness therefore exercises the real bridge validation, state handling, context menu and overlays, and the Playwright suite runs against it without Rust.
@@ -58,7 +66,7 @@
 - **Skins aren't enabled or disabled.** "Enabled" for a skin means "active". The Plugins page offers **Activate** instead of a toggle.
 - **`select` options** declare their values as `"choices": [{ "value": …, "label": … }]` (the spec doesn't define this field).
 - **Manifest type sections** are validated now but kept as raw JSON in `Manifest.section`. Each host (provider host in Phase 2, skins in Phase 3, modules in Phase 6) will give its section a typed form when it's built.
-- **Package script** builds with `npx tauri build --no-bundle` and copies `target/release/vellum.exe` to `dist/Vellum/Vellum.exe`. `-Portable` also writes `portable.flag`, and `-SkipBuild` reuses the existing binary.
+- **Package script** builds with `npx tauri build --no-bundle` and copies the binary to `dist/Vellum/Vellum Game Launcher.exe`, building into `target/package` so that test builds (which replace `target/release/vellum.exe` with a dev binary) are never packaged. `-Portable` also writes `portable.flag`, and `-SkipBuild` reuses the existing binary.
 
 ## 2026-10-19 — Skin/module origins: fixed schemes, not one per plugin (Phase 0 spike)
 

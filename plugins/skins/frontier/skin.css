@@ -1,0 +1,439 @@
+@import url("views/catalogue.css");
+
+/* Frontier: in the style of Red Dead Redemption 2's menus. Fan-made; no game assets.
+   Smoke and embers behind everything; white type; a dry-brush stroke behind whatever is
+   selected (textures/brush.svg, used as a mask so it can be painted any color); blood-red
+   accents; the List view as an aged mail-order catalogue page.
+
+   Contrast rules this skin keeps (WCAG): body text at least 4.5:1 against what is actually
+   behind it, large type and icons at least 3:1. Atmosphere (fog, embers, grain) stays
+   behind the interface, never over it, and the selected item is always the sharpest,
+   highest-contrast thing on screen. */
+
+@font-face { font-family: "Rye"; src: url("fonts/rye-latin-400-normal.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "IM Fell English"; src: url("fonts/im-fell-english-latin-400-normal.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "IM Fell English"; src: url("fonts/im-fell-english-latin-400-italic.woff2") format("woff2"); font-style: italic; font-display: swap; }
+@font-face { font-family: "IM Fell English SC"; src: url("fonts/im-fell-english-sc-latin-400-normal.woff2") format("woff2"); font-display: swap; }
+
+:root {
+  --v-accent: #b3201a;
+  --fr-bone: #f4eee2;
+  --fr-ink: #17120d;
+  --fr-brush: url("textures/brush.svg");
+  --fr-sc: "IM Fell English SC", "IM Fell English", Georgia, serif;
+  --fr-fell: "IM Fell English", Georgia, serif;
+  --fr-wood: "Rye", "IM Fell English SC", serif;
+
+  --v-bg: #0d0b09;
+  --v-surface: rgb(24 20 16 / 0.82);
+  --v-surface-raised: rgb(40 34 27 / 0.95);
+  --v-text: var(--fr-bone);
+  --v-text-muted: #c9bfab;
+  --v-accent-text: #fff;
+  --v-focus-ring: var(--fr-bone);
+  --v-radius: 0px;
+  --v-gap: 20px;
+  --v-font-body: var(--fr-fell);
+  --v-font-display: var(--fr-wood);
+  --v-cover-width: 170px;
+  --v-list-row-height: 46px;
+  --v-hero-overlay: linear-gradient(0deg, rgb(13 11 9 / 0.85), transparent 38%);
+  --v-spot-scrim: radial-gradient(110% 100% at 0% 100%, rgb(10 8 6 / 0.92) 0%, rgb(10 8 6 / 0.55) 42%, transparent 72%);
+  font-size: 16.5px;
+}
+
+body { background: transparent; }
+
+/* A brush stroke behind an element's content: add the class, or reuse these declarations. */
+.fr-brushed { position: relative; isolation: isolate; }
+
+/* ---- backdrop: smoke, embers, grain ---------------------------------------------------- */
+
+.fr-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background:
+    radial-gradient(90% 70% at 50% 110%, rgb(120 52 20 / 0.32), transparent 60%),
+    radial-gradient(120% 90% at 50% 40%, #1c1712 0%, #0d0b09 60%, #050403 100%);
+}
+.fr-fog {
+  position: absolute;
+  width: 140vw;
+  height: 70vh;
+  left: -20vw;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(200 190 170 / 0.07), transparent 70%);
+  filter: blur(20px);
+  animation: fr-drift 70s ease-in-out infinite alternate;
+}
+.fr-fog.f1 { top: 10%; }
+.fr-fog.f2 { top: 45%; animation-duration: 95s; animation-delay: -30s; opacity: 0.8; }
+.fr-fog.f3 { top: 70%; height: 50vh; animation-duration: 120s; animation-delay: -60s; opacity: 0.7; }
+@keyframes fr-drift { from { transform: translateX(-12vw); } to { transform: translateX(12vw); } }
+
+.fr-embers span {
+  position: absolute;
+  bottom: -10px;
+  left: var(--x);
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background: #ffb35a;
+  box-shadow: 0 0 6px 2px rgb(255 120 30 / 0.7);
+  animation: fr-ember var(--dur) linear var(--delay) infinite;
+}
+@keyframes fr-ember {
+  0% { transform: translate(0, 0); opacity: 0; }
+  10% { opacity: 1; }
+  60% { transform: translate(var(--sway), -55vh); opacity: 0.8; }
+  100% { transform: translate(calc(var(--sway) * -0.5), -95vh); opacity: 0; }
+}
+
+.fr-grain {
+  position: fixed;
+  inset: -50%;
+  z-index: -1; /* behind the interface: grain over text and icons reads as blur */
+  pointer-events: none;
+  background: url("textures/grain.svg") 0 0 / 256px;
+  opacity: 0.4;
+  mix-blend-mode: overlay;
+  animation: fr-grain 0.6s steps(4) infinite;
+}
+@keyframes fr-grain {
+  25% { transform: translate(-3%, 2%); }
+  50% { transform: translate(2%, -3%); }
+  75% { transform: translate(-1%, -1%); }
+}
+:root:not([data-opt-grain]) .fr-grain { display: none; }
+:root[data-fr-still] .fr-bg *, :root[data-fr-still] .fr-grain { animation-play-state: paused; }
+:root[data-fr-still] .fr-embers { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .fr-bg *, .fr-grain { animation: none !important; }
+}
+
+/* ---- top bar -------------------------------------------------------------------------- */
+
+vellum-app .v-topbar {
+  background: linear-gradient(180deg, rgb(5 4 3 / 0.9), rgb(5 4 3 / 0.45) 80%, transparent);
+  border-bottom: 0;
+  min-height: 4.2rem;
+  padding-bottom: 0.4rem;
+}
+vellum-app .v-brand { font-size: 0; position: relative; isolation: isolate; padding: 0.1rem 0.9rem 0.2rem 0.5rem; }
+vellum-app .v-brand::after {
+  content: "Vellum";
+  font: 400 1.75rem var(--fr-wood);
+  color: var(--fr-bone);
+  letter-spacing: 0.02em;
+  text-shadow: 0 2px 6px rgb(0 0 0 / 0.8);
+}
+vellum-app .v-brand::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 0;
+  right: 0;
+  bottom: -0.2rem;
+  height: 0.55rem;
+  background: var(--v-accent);
+  -webkit-mask: var(--fr-brush) center / 100% 100% no-repeat;
+  mask: var(--fr-brush) center / 100% 100% no-repeat;
+}
+vellum-app .v-count { font: italic 400 1rem var(--fr-fell); color: var(--v-text-muted); }
+
+/* Tabs: plain small caps; the selected one gets the white brush with dark ink. */
+vellum-view-switcher::part(tabs) { background: transparent; gap: 0.4rem; }
+vellum-view-switcher::part(tab) {
+  position: relative;
+  isolation: isolate;
+  font: 400 1.25rem var(--fr-sc);
+  letter-spacing: 0.06em;
+  color: var(--v-text-muted);
+  background: transparent;
+  border: 0;
+  padding: 0.25em 1em;
+  text-shadow: 0 1px 4px rgb(0 0 0 / 0.8);
+}
+vellum-view-switcher::part(tab):hover { color: var(--fr-bone); background: transparent; }
+vellum-view-switcher::part(tab-selected) { color: var(--fr-ink); text-shadow: none; }
+vellum-view-switcher::part(tab-selected)::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -0.15em -0.4em;
+  background: var(--fr-bone);
+  -webkit-mask: var(--fr-brush) center / 100% 100% no-repeat;
+  mask: var(--fr-brush) center / 100% 100% no-repeat;
+}
+
+vellum-search::part(box) {
+  border-radius: 0;
+  background: rgb(0 0 0 / 0.35);
+  border: 0;
+  border-bottom: 1px solid rgb(239 232 218 / 0.4);
+}
+vellum-search::part(box):focus-within { border-bottom-color: var(--fr-bone); }
+vellum-search::part(input) { font: italic 400 1.05rem var(--fr-fell); }
+
+vellum-filter-bar::part(trigger),
+vellum-sort-menu::part(trigger),
+vellum-group-menu::part(trigger),
+.v-button,
+.v-icon-button {
+  border-radius: 0;
+  border: 0;
+  border-bottom: 1px solid rgb(239 232 218 / 0.25);
+  background: transparent;
+  color: var(--fr-bone);
+  font: 400 1.05rem var(--fr-sc);
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 4px rgb(0 0 0 / 0.8);
+}
+:is(vellum-filter-bar, vellum-sort-menu, vellum-group-menu)::part(trigger):hover,
+.v-button:hover,
+.v-icon-button:hover { background: rgb(239 232 218 / 0.08); border-bottom-color: var(--fr-bone); }
+:is(vellum-filter-bar, vellum-sort-menu, vellum-group-menu)::part(panel) {
+  border-radius: 0;
+  border: 1px solid rgb(239 232 218 / 0.18);
+  background: rgb(12 10 8 / 0.97);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 0.8);
+  font: 400 1.05rem var(--fr-fell);
+}
+vellum-filter-bar::part(badge) { border-radius: 0; background: var(--v-accent); }
+
+/* ---- covers: cigarette-card prints -------------------------------------------------- */
+
+.v-view[data-view="covers"] { background: linear-gradient(180deg, rgb(8 7 5 / 0.5), rgb(8 7 5 / 0.15)); }
+.v-view-bar { padding-top: 0.3rem; }
+
+vellum-grid::part(art),
+vellum-cover-row::part(art),
+vellum-shelf::part(art) {
+  border-radius: 0;
+  box-shadow: 0 0 0 5px #e9dfc8, 0 0 0 6px #8d7f63, 0 14px 26px rgb(0 0 0 / 0.75);
+  transition: filter 300ms ease, transform 200ms ease, box-shadow 200ms ease;
+}
+:root[data-opt-sepia] :is(vellum-grid, vellum-cover-row, vellum-shelf)::part(art) { filter: sepia(0.4) saturate(0.85) contrast(1.06); }
+vellum-grid::part(art-selected),
+vellum-cover-row::part(art-selected),
+vellum-shelf::part(art-selected) {
+  filter: none !important;
+  box-shadow: 0 0 0 5px var(--fr-bone), 0 0 0 7px var(--v-accent), 0 18px 34px rgb(0 0 0 / 0.85);
+}
+vellum-grid::part(art-focused),
+vellum-cover-row::part(art-focused),
+vellum-shelf::part(art-focused) { transform: translateY(-4px) rotate(-0.6deg); }
+vellum-grid::part(caption),
+vellum-shelf::part(caption) {
+  margin-top: 0.35rem;
+  font: 400 1.02rem var(--fr-sc);
+  letter-spacing: 0.02em;
+  color: var(--fr-caption, #ddd4c2);
+  text-shadow: 0 1px 4px rgb(0 0 0 / 0.9);
+}
+/* The selected card's caption sits on a red brush stroke, in white. */
+vellum-grid::part(cell-selected),
+vellum-shelf::part(cell-selected) { isolation: isolate; --fr-caption: #fff; }
+vellum-grid::part(cell-selected)::after,
+vellum-shelf::part(cell-selected)::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: -10px;
+  right: -10px;
+  bottom: -0.35rem;
+  height: 2.1rem;
+  background: var(--v-accent);
+  -webkit-mask: var(--fr-brush) center / 100% 100% no-repeat;
+  mask: var(--fr-brush) center / 100% 100% no-repeat;
+}
+vellum-grid::part(favorite),
+vellum-cover-row::part(favorite),
+vellum-shelf::part(favorite) { border-radius: 0; background: var(--v-accent); color: #fff; }
+vellum-grid::part(label),
+vellum-cover-row::part(label),
+vellum-shelf::part(cover-label) {
+  border-radius: 0;
+  background: var(--fr-bone);
+  color: var(--fr-ink);
+  font: 400 0.8rem var(--fr-sc);
+  letter-spacing: 0.08em;
+  text-transform: none;
+}
+
+vellum-shelf::part(label) { font: 400 1.5rem var(--fr-wood); letter-spacing: 0.01em; text-shadow: 0 2px 6px rgb(0 0 0 / 0.8); }
+vellum-shelf::part(count) { font: italic 400 1rem var(--fr-fell); }
+
+/* ---- list: a mail-order catalogue page ----------------------------------------------- */
+
+:root[data-opt-catalogue] .v-view[data-view="list"] {
+  --v-text: #2a2017;
+  --v-text-muted: #47382a;
+  --v-surface: rgb(70 45 20 / 0.08);
+  --v-surface-raised: rgb(70 45 20 / 0.14);
+  --v-accent-text: #fff;
+  margin: 0.4rem 1.6rem 1.2rem;
+  padding: 0 1.4rem 0.6rem;
+  color: var(--v-text);
+  background:
+    radial-gradient(120% 120% at 50% 50%, transparent 60%, rgb(90 55 20 / 0.35)),
+    url("textures/paper.svg") 0 0 / 600px;
+  box-shadow: 0 24px 60px rgb(0 0 0 / 0.8), inset 0 0 0 10px rgb(0 0 0 / 0.04);
+  outline: 2px solid rgb(42 32 23 / 0.6);
+  outline-offset: -14px;
+  transform: rotate(-0.25deg);
+}
+:root[data-opt-catalogue] .v-view[data-view="list"]::before {
+  content: "Vellum & Co.  —  General Catalogue of Amusements";
+  display: block;
+  padding: 1.3rem 0 0.2rem;
+  text-align: center;
+  font: 400 1.9rem var(--fr-wood);
+  color: #2a2017;
+  border-bottom: 3px double rgb(42 32 23 / 0.7);
+  margin: 0 0.6rem 0.4rem;
+}
+:root[data-opt-catalogue] .v-view[data-view="list"] vellum-list::part(header) { border-bottom: 1px solid rgb(42 32 23 / 0.5); }
+:root[data-opt-catalogue] .v-view[data-view="list"] vellum-list::part(column) { font: 400 0.95rem var(--fr-sc); color: #47382a; text-transform: none; letter-spacing: 0.04em; }
+:root[data-opt-catalogue] .v-view[data-view="list"] vellum-list::part(row) { border-bottom: 1px dotted rgb(42 32 23 / 0.35); }
+:root[data-opt-catalogue] .v-view[data-view="list"] vellum-list::part(title) { font: 400 1.25rem var(--fr-fell); color: var(--v-text); }
+:root[data-opt-catalogue] .v-view[data-view="list"] vellum-list::part(icon) { filter: contrast(1.1); mix-blend-mode: multiply; }
+:root[data-opt-catalogue] .v-view[data-view="list"] vellum-list::part(source),
+:root[data-opt-catalogue] .v-view[data-view="list"] vellum-list::part(size),
+:root[data-opt-catalogue] .v-view[data-view="list"] vellum-list::part(when) { font: italic 400 1rem var(--fr-fell); }
+vellum-list::part(row) { isolation: isolate; }
+vellum-list::part(title) { font: 400 1.2rem var(--fr-fell); }
+vellum-list::part(row-selected) { background: transparent; box-shadow: none; color: #fff; }
+vellum-list::part(row-selected)::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -5px -10px;
+  background: var(--v-accent);
+  -webkit-mask: var(--fr-brush) center / 100% 100% no-repeat;
+  mask: var(--fr-brush) center / 100% 100% no-repeat;
+}
+:root[data-opt-catalogue] .v-view[data-view="list"] vellum-list::part(row-selected) { --v-text: #fff; --v-text-muted: #f3e6d6; }
+vellum-list::part(label) { border-radius: 0; background: var(--v-accent); color: #fff; font-family: var(--fr-sc); text-transform: none; letter-spacing: 0.06em; }
+:root:not([data-opt-catalogue]) .v-view[data-view="list"] { background: rgb(8 7 5 / 0.75); }
+
+/* ---- spotlight ------------------------------------------------------------------------- */
+
+.v-spot-hero::part(hero) { filter: contrast(1.04); }
+.v-spot-logo { position: relative; --v-logo-max-height: 9rem; }
+.v-spot-logo::part(logo) { filter: drop-shadow(0 4px 12px rgb(0 0 0 / 0.9)); }
+.v-spot-logo::part(title) {
+  font: 400 clamp(2.6rem, 5.5vw, 5rem) var(--fr-wood);
+  letter-spacing: 0.01em;
+  color: var(--fr-bone);
+  text-shadow: 0 3px 10px rgb(0 0 0 / 0.9);
+}
+.v-spot-logo::after {
+  content: "";
+  display: block;
+  width: min(22rem, 70%);
+  height: 0.7rem;
+  margin-top: 0.5rem;
+  background: var(--v-accent);
+  -webkit-mask: var(--fr-brush) center / 100% 100% no-repeat;
+  mask: var(--fr-brush) center / 100% 100% no-repeat;
+}
+.v-spot-meta { font: 400 1.15rem var(--fr-sc); letter-spacing: 0.04em; color: var(--fr-bone); }
+.v-spot-desc { font: italic 400 1.12rem/1.5 var(--fr-fell); color: #ddd4c3; }
+.v-spot-facts { font: italic 400 0.95rem var(--fr-fell); }
+.v-spot-label { border-radius: 0; background: var(--fr-bone); color: var(--fr-ink); font: 400 0.85rem var(--fr-sc); text-transform: none; letter-spacing: 0.06em; }
+vellum-source-badges::part(badge) { border-radius: 0; background: transparent; border-bottom: 1px solid rgb(239 232 218 / 0.35); font: 400 0.9rem var(--fr-sc); color: var(--v-text-muted); }
+
+/* Play: dark ink on the white brush. */
+vellum-play-button::part(button) {
+  position: relative;
+  isolation: isolate;
+  font: 400 1.6rem var(--fr-sc);
+  letter-spacing: 0.08em;
+  color: var(--fr-ink);
+  background: transparent;
+  border: 0;
+  padding: 0.35em 1.6em;
+  box-shadow: none;
+}
+vellum-play-button::part(button)::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -0.1em -0.4em;
+  background: var(--fr-bone);
+  -webkit-mask: var(--fr-brush) center / 100% 100% no-repeat;
+  mask: var(--fr-brush) center / 100% 100% no-repeat;
+  transition: transform 160ms ease;
+}
+vellum-play-button::part(button):hover::before,
+vellum-play-button::part(button):focus-visible::before { transform: scaleX(1.06); background: #fff; }
+vellum-play-button::part(button):focus-visible { outline: none; }
+.v-spot-actions .v-button { backdrop-filter: none; background: transparent; padding: 0.4em 0.8em; }
+.v-spot-actions .v-button[aria-pressed="true"] { color: #e05a4e; }
+.v-spot-rows { background: linear-gradient(180deg, transparent, rgb(8 7 5 / 0.9) 35%); }
+.v-spot-row-label { font: 400 1.3rem var(--fr-wood); }
+.v-spot-row-count { font: italic 400 0.95rem var(--fr-fell); }
+
+/* ---- button prompts --------------------------------------------------------------------- */
+
+body { --prompts-h: 2.6rem; }
+.fr-prompts {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1.6rem;
+  height: var(--prompts-h);
+  padding: 0 1.6rem;
+  background: linear-gradient(0deg, rgb(5 4 3 / 0.95), rgb(5 4 3 / 0.4));
+  font: 400 1.05rem var(--fr-sc);
+  color: var(--fr-bone);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.fr-prompts[hidden] { display: none; }
+.fr-prompt { display: inline-flex; align-items: center; gap: 0.5rem; text-shadow: 0 1px 4px rgb(0 0 0 / 0.9); }
+.fr-prompt kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.7rem;
+  height: 1.55rem;
+  padding: 0 0.4rem;
+  border-radius: 4px;
+  background: var(--fr-bone);
+  color: var(--fr-ink);
+  font: 700 0.72rem "Inter", sans-serif;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 0 #8d7f63, 0 3px 8px rgb(0 0 0 / 0.6);
+}
+
+/* Window controls blend into the top bar. */
+vellum-window-controls::part(minimize),
+vellum-window-controls::part(maximize),
+vellum-window-controls::part(close) { color: var(--fr-bone); }
+vellum-window-controls::part(close):hover { background: var(--v-accent); }
+
+/* ---- hand-drawn interface icons ---------------------------------------------------------- */
+
+/* Kit glyph icons get an inked, slightly wobbly line (textures/hand.svg). */
+:root[data-opt-hand-icons] :is(vellum-search, vellum-play-button)::part(icon),
+:root[data-opt-hand-icons] :is(vellum-filter-bar, vellum-sort-menu, vellum-group-menu)::part(caret),
+:root[data-opt-hand-icons] vellum-shelf::part(chevron),
+:root[data-opt-hand-icons] :is(vellum-grid, vellum-cover-row, vellum-shelf)::part(favorite),
+:root[data-opt-hand-icons] vellum-window-controls::part(minimize),
+:root[data-opt-hand-icons] vellum-window-controls::part(maximize),
+:root[data-opt-hand-icons] vellum-window-controls::part(close),
+:root[data-opt-hand-icons] .v-icon-button {
+  /* Not the light keycaps of the button prompts: their small dark text would lose contrast. */
+  filter: url("textures/hand.svg#hand");
+}
+/* Glyphs are a little heavier so the hand-drawn line keeps at least 3:1. */
+:root[data-opt-hand-icons] .v-icon-button { font-size: 1.25rem; }
+:root[data-opt-hand-icons] vellum-play-button::part(icon) { font-size: 1.1em; }
+
+/* Styled art (watercolor, sketch) is light, like paper: frame it as a print, not a photo. */
+:root:is([data-opt-art-style="watercolor"], [data-opt-art-style="sketch"]) :is(vellum-grid, vellum-cover-row, vellum-shelf)::part(art) {
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.6), 0 10px 24px rgb(0 0 0 / 0.75);
+}

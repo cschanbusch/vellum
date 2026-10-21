@@ -1,0 +1,514 @@
+/* Frontier Catalogue view (views/catalogue.js): an open mail-order catalogue on a dark desk.
+   Type: Rye (wood type) for titles, Sancreek for department headings and tabs, Old Standard TT
+   (a late-19th-century modern face, as catalogues of the period were set in) for the copy,
+   IM Fell English SC for small capitals. Ink on paper is at least 7:1; red ink at least 5:1. */
+
+@font-face { font-family: "Sancreek"; src: url("../fonts/sancreek-latin-400-normal.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Old Standard TT"; src: url("../fonts/old-standard-tt-latin-400-normal.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Old Standard TT"; src: url("../fonts/old-standard-tt-latin-400-italic.woff2") format("woff2"); font-style: italic; font-display: swap; }
+@font-face { font-family: "Old Standard TT"; src: url("../fonts/old-standard-tt-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+
+.v-view[data-view="catalogue"] {
+  --cat-paper: #ecdfc3;
+  --cat-ink: #221910;
+  --cat-ink-soft: #4a3826;
+  --cat-rule: #5e4c36;
+  --cat-red: #8e1c13;
+  --cat-old: "Old Standard TT", Georgia, serif;
+  --cat-sancreek: "Sancreek", "Rye", serif;
+}
+
+.fr-cat {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 14px 92px 66px 40px; /* room for the thumb tabs and the button prompts */
+  container-type: size;
+}
+
+/* ---- the book ------------------------------------------------------------------------------ */
+
+.fr-cat-book {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 0 1fr;
+  width: min(100cqw, 100cqh * 1.5);
+  aspect-ratio: 3 / 2;
+  max-height: 100cqh;
+  font-size: clamp(11px, min(1.2cqw, 1.8cqh), 21px);
+  color: var(--cat-ink);
+  transform: perspective(2400px) rotateX(1.2deg);
+  filter: drop-shadow(0 30px 40px rgb(0 0 0 / 0.75));
+}
+/* The leather cover peeking out round the pages, and the stacked page edges. */
+.fr-cat-book::before {
+  content: "";
+  position: absolute;
+  inset: -1.1em -1.3em;
+  z-index: -2;
+  border-radius: 0.5em;
+  background:
+    radial-gradient(120% 90% at 50% 40%, transparent 50%, rgb(0 0 0 / 0.55)),
+    url("../textures/grain.svg") 0 0 / 180px,
+    linear-gradient(160deg, #5a2a1a, #3a1a10 60%, #2a120b);
+  box-shadow: inset 0 0 0 0.25em rgb(0 0 0 / 0.3), inset 0 0 0 0.4em rgb(210 160 90 / 0.25);
+}
+
+.fr-cat-page {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background:
+    url("../textures/paper.svg") 0 0 / 520px,
+    var(--cat-paper);
+}
+.fr-cat-left {
+  border-radius: 0.35em 0 0 0.35em;
+  box-shadow: -1px 0 0 #c9b893, -3px 1px 0 #b7a37b, -5px 2px 0 #a8946c, -7px 3px 0 #8e7a55;
+}
+.fr-cat-right {
+  border-radius: 0 0.35em 0.35em 0;
+  box-shadow: 1px 0 0 #c9b893, 3px 1px 0 #b7a37b, 5px 2px 0 #a8946c, 7px 3px 0 #8e7a55;
+}
+/* The page curving down into the binding, and light falling off at the edges. */
+.fr-cat-left::after,
+.fr-cat-right::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+.fr-cat-left::after { background: linear-gradient(90deg, rgb(70 45 15 / 0.18), transparent 10%, transparent 84%, rgb(60 35 10 / 0.22) 96%, rgb(30 15 5 / 0.45)); }
+.fr-cat-right::after { background: linear-gradient(270deg, rgb(70 45 15 / 0.18), transparent 10%, transparent 84%, rgb(60 35 10 / 0.22) 96%, rgb(30 15 5 / 0.45)); }
+.fr-cat-gutter { position: relative; z-index: 4; box-shadow: 0 0 1.2em 0.5em rgb(20 10 2 / 0.35); }
+
+.fr-cat-sheet {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 1.6em 2.4em 1.2em 2.6em;
+}
+.fr-cat-right .fr-cat-sheet { padding: 1.6em 2.6em 1.2em 2.4em; }
+
+.fr-cat-running {
+  display: flex;
+  justify-content: space-between;
+  gap: 1em;
+  padding-bottom: 0.35em;
+  border-bottom: 3px double var(--cat-rule);
+  font: 400 0.82em var(--fr-sc);
+  letter-spacing: 0.08em;
+  color: var(--cat-ink-soft);
+  white-space: nowrap;
+}
+.fr-cat-running-dept { overflow: hidden; text-overflow: ellipsis; color: var(--cat-ink); }
+.fr-cat-folio {
+  margin-top: auto;
+  padding-top: 0.4em;
+  text-align: center;
+  font: italic 400 0.85em var(--cat-old);
+  color: var(--cat-ink-soft);
+}
+
+/* ---- left page: the listing ------------------------------------------------------------------- */
+
+.fr-cat-listing { position: absolute; inset: 0; outline: none; }
+
+.fr-cat-band {
+  margin: 0.7em 0 0.2em;
+  text-align: center;
+}
+.fr-cat-band-title {
+  margin: 0;
+  font: 400 2.15em/1.1 var(--cat-sancreek);
+  letter-spacing: 0.02em;
+  color: var(--cat-red);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Printer's ornament either side of the subtitle. */
+.fr-cat-band-sub {
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+  margin: 0.25em 0 0;
+  font: italic 400 0.9em var(--cat-old);
+  color: var(--cat-ink-soft);
+}
+.fr-cat-band-sub::before,
+.fr-cat-band-sub::after {
+  content: "";
+  flex: 1;
+  height: 0.5em;
+  background:
+    linear-gradient(var(--cat-rule), var(--cat-rule)) center / 100% 1px no-repeat,
+    radial-gradient(circle, var(--cat-rule) 0.16em, transparent 0.19em) center / 0.5em 0.5em no-repeat;
+}
+
+.fr-cat-items {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: repeat(var(--rows, 4), minmax(0, 1fr));
+  column-gap: 1.6em;
+  margin: 0.6em 0 0;
+  padding: 0;
+  list-style: none;
+  /* A rule down the middle, as between printed columns. */
+  background: linear-gradient(var(--cat-rule), var(--cat-rule)) center / 1px 96% no-repeat;
+}
+.fr-cat-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.9em;
+  min-height: 0;
+  padding: 0.45em 0.4em;
+  border-bottom: 1px solid rgb(94 76 54 / 0.45);
+  cursor: pointer;
+}
+
+/* The engraved plate: the sketch-style cover printed into the paper. */
+.fr-cat-cut {
+  position: relative;
+  height: 100%;
+  max-height: 8.4em;
+  aspect-ratio: 2 / 3;
+  min-height: 0;
+  border: 1px solid var(--cat-ink);
+  outline: 1px solid var(--cat-ink);
+  outline-offset: 2px;
+  background: #e9dcbf;
+}
+.fr-cat-cut img,
+.fr-cat-engraving img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  mix-blend-mode: multiply;
+  filter: contrast(1.12);
+}
+.fr-cat-cut.is-placeholder img,
+.fr-cat-engraving.is-placeholder img { filter: grayscale(1) sepia(0.35) contrast(1.3) brightness(1.05); }
+
+.fr-cat-copy { min-width: 0; align-self: center; }
+.fr-cat-no { font: 400 0.78em var(--fr-sc); letter-spacing: 0.08em; color: var(--cat-red); }
+.fr-cat-title {
+  margin: 0.05em 0 0.1em;
+  font: 700 1.12em/1.15 var(--cat-old);
+  color: var(--cat-ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.fr-cat-maker {
+  margin: 0;
+  font: italic 400 0.88em var(--cat-old);
+  color: var(--cat-ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fr-cat-price {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3em;
+  margin: 0.3em 0 0;
+  font: 400 0.88em var(--cat-old);
+  color: var(--cat-ink-soft);
+  white-space: nowrap;
+}
+.fr-cat-price b { font-weight: 700; color: var(--cat-ink); font-size: 1.1em; }
+.fr-cat-leader {
+  flex: 1;
+  min-width: 1em;
+  height: 0.2em;
+  background: radial-gradient(circle, currentColor 0.07em, transparent 0.09em) 0 50% / 0.42em 0.42em repeat-x;
+  opacity: 0.8;
+}
+.fr-cat-item.is-favorite .fr-cat-no::after { content: "  ★ want list"; color: var(--cat-ink-soft); }
+
+/* Circled in red pencil. Bolder while the catalogue has focus. */
+.fr-cat-item.is-selected::before {
+  content: "";
+  position: absolute;
+  inset: -0.35em -0.55em;
+  z-index: 2;
+  pointer-events: none;
+  background: var(--cat-red);
+  -webkit-mask: url("../textures/circle.svg") center / 100% 100% no-repeat;
+  mask: url("../textures/circle.svg") center / 100% 100% no-repeat;
+  opacity: 0.55;
+  transform: rotate(-0.6deg);
+}
+.fr-cat-listing:focus .fr-cat-item.is-selected::before { opacity: 1; }
+.fr-cat-item.is-selected .fr-cat-title { color: #000; }
+.fr-cat-item:hover:not(.is-selected) { background: rgb(120 80 30 / 0.07); }
+
+/* ---- right page: the plate ---------------------------------------------------------------------- */
+
+.fr-cat-right .fr-cat-sheet { gap: 0; }
+.fr-cat-engraving {
+  position: relative;
+  flex: 0 0 auto;
+  margin-top: 0.8em;
+  /* The standard hero shape (1920 x 620), so the whole hero shows uncropped. Other shapes
+     fill it, cropped evenly. */
+  aspect-ratio: 1920 / 620;
+  border: 1px solid var(--cat-ink);
+  outline: 1px solid var(--cat-ink);
+  outline-offset: 3px;
+  background: #e9dcbf;
+  overflow: hidden;
+}
+/* Hand-coloured: the watercolor keeps its own colour, so print it a little less hard. */
+.fr-cat-engraving.is-coloured img { filter: saturate(1.05) contrast(1.04); }
+.fr-cat-engraving.is-cover { aspect-ratio: 2 / 3; height: 40%; align-self: center; }
+.fr-cat-fig {
+  position: absolute;
+  right: 0.5em;
+  bottom: 0.3em;
+  padding: 0 0.35em;
+  font: italic 400 0.8em var(--cat-old);
+  color: var(--cat-ink);
+  background: rgb(236 223 195 / 0.85);
+}
+.fr-cat-plate-title {
+  margin: 0.55em 0 0;
+  text-align: center;
+  font: 400 2.05em/1.08 var(--fr-wood);
+  color: var(--cat-ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.fr-cat-plate-title.is-long { font-size: 1.6em; }
+.fr-cat-byline {
+  margin: 0.2em 0 0;
+  text-align: center;
+  font: italic 400 0.95em var(--cat-old);
+  color: var(--cat-ink-soft);
+}
+.fr-cat-rule {
+  flex: 0 0 auto;
+  height: 0.9em;
+  margin: 0.35em 18%;
+  background:
+    linear-gradient(var(--cat-rule), var(--cat-rule)) 0 50% / 42% 1px no-repeat,
+    linear-gradient(var(--cat-rule), var(--cat-rule)) 100% 50% / 42% 1px no-repeat,
+    radial-gradient(circle, var(--cat-red) 0.2em, transparent 0.23em) center / 0.9em 0.9em no-repeat;
+}
+.fr-cat-desc {
+  margin: 0;
+  font: 400 0.98em/1.42 var(--cat-old);
+  text-align: justify;
+  hyphens: auto;
+  color: var(--cat-ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.fr-cat-desc::first-letter {
+  float: left;
+  margin: 0.06em 0.1em 0 0;
+  font: 400 3.1em/0.86 var(--cat-sancreek);
+  color: var(--cat-red);
+}
+.fr-cat-specs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 1.6em;
+  margin: 0.7em 0 0;
+  font: 400 0.9em var(--cat-old);
+}
+.fr-cat-specs div { display: flex; align-items: baseline; gap: 0.3em; min-width: 0; padding: 0.12em 0; }
+.fr-cat-specs dt { font-family: var(--fr-sc); letter-spacing: 0.04em; color: var(--cat-ink-soft); white-space: nowrap; }
+.fr-cat-specs dd { margin: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
+.fr-cat-specs .fr-cat-leader { color: var(--cat-ink-soft); }
+
+/* The order blank: a coupon ruled off with a dotted cut line. */
+.fr-cat-order {
+  padding: 0.55em 0.9em 0.7em;
+  border: 2px dashed var(--cat-rule);
+  background: rgb(255 250 235 / 0.28);
+}
+.fr-cat-order-head {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1em;
+  font: 400 0.8em var(--fr-sc);
+  letter-spacing: 0.08em;
+  color: var(--cat-ink-soft);
+}
+.fr-cat-order-head span:nth-child(2) { font: 400 1.55em var(--cat-sancreek); letter-spacing: 0.03em; color: var(--cat-red); }
+.fr-cat-scissors {
+  position: absolute;
+  left: -1.55em;
+  top: -1.45em;
+  font-size: 1.5em;
+  letter-spacing: 0;
+  color: var(--cat-ink);
+  background: var(--cat-paper);
+  transform: rotate(-90deg);
+}
+.fr-cat-order-line {
+  margin: 0.25em 0 0.5em;
+  font: italic 400 0.95em/1.6 var(--cat-old);
+  color: var(--cat-ink-soft);
+}
+/* Filled in by hand, on the dotted line. */
+.fr-cat-field {
+  padding: 0 0.3em;
+  border-bottom: 1px dotted var(--cat-ink);
+  font: 400 1.18em var(--fr-fell);
+  font-style: italic;
+  color: #23305a;
+}
+.fr-cat-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.4em;
+}
+.fr-cat-signed { margin-left: auto; font: italic 400 0.85em var(--fr-fell); color: var(--cat-ink-soft); border-top: 1px solid var(--cat-rule); padding: 0.1em 0.6em 0; }
+/* Order: bone type on a red brush stroke. */
+.fr-cat vellum-play-button::part(button) { font-size: 1.35em; color: #fff7ea; padding: 0.3em 1.4em; }
+.fr-cat vellum-play-button::part(button)::before { background: var(--cat-red); }
+.fr-cat vellum-play-button::part(button):hover::before,
+.fr-cat vellum-play-button::part(button):focus-visible::before { background: #a5231a; }
+.fr-cat vellum-play-button::part(button):focus-visible { outline: 2px solid var(--cat-ink); outline-offset: 4px; }
+.fr-cat vellum-play-button::part(via) { font: 400 0.95em var(--fr-sc); color: var(--cat-ink); background: transparent; border: 1px solid var(--cat-rule); }
+.fr-cat-want {
+  padding: 0.3em 0.2em;
+  border: 0;
+  border-bottom: 1px solid var(--cat-rule);
+  background: transparent;
+  font: italic 400 1.02em var(--cat-old);
+  color: var(--cat-ink);
+  cursor: pointer;
+}
+.fr-cat-want[aria-pressed="true"] { color: var(--cat-red); border-bottom-color: var(--cat-red); }
+.fr-cat-want:focus-visible { outline: 2px solid var(--cat-ink); outline-offset: 3px; }
+
+/* A rubber stamp, inked unevenly. */
+.fr-cat-stamp {
+  align-self: flex-end;
+  margin: auto 1.2em 0.9em 0; /* in the open paper between the specifications and the order blank */
+  padding: 0.15em 0.6em;
+  border: 0.16em solid currentColor;
+  outline: 0.07em solid currentColor;
+  outline-offset: 0.12em;
+  font: 400 1.5em var(--fr-wood);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cat-red);
+  transform: rotate(var(--tilt, -8deg));
+  mix-blend-mode: multiply;
+  opacity: 0.85;
+  filter: url("../textures/hand.svg#hand");
+}
+.fr-cat-stamp.is-order { color: #24406a; }
+
+.fr-cat-none,
+.fr-cat-ornament-page {
+  flex: 1;
+  display: grid;
+  place-content: center;
+  gap: 0.6em;
+  text-align: center;
+  font: italic 400 1.05em/1.5 var(--cat-old);
+  color: var(--cat-ink-soft);
+  padding: 0 2em;
+}
+.fr-cat-none-big { margin: 0; font: 400 2.2em var(--cat-sancreek); font-style: normal; color: var(--cat-red); }
+
+/* ---- thumb-index tabs on the fore-edge ------------------------------------------------------------ */
+
+.fr-cat-tabs {
+  position: absolute;
+  top: 1.2em;
+  bottom: 1.2em;
+  left: calc(100% + 1.3em);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25em;
+  width: 5.6em;
+}
+.fr-cat-tab {
+  position: relative;
+  flex: 1 1 0;
+  max-height: 4.6em;
+  min-height: 1.8em;
+  display: flex;
+  align-items: center;
+  padding: 0 0.6em;
+  margin-left: -1.3em;
+  border: 0;
+  border-radius: 0 0.5em 0.5em 0;
+  background:
+    linear-gradient(90deg, rgb(0 0 0 / 0.35), transparent 1.6em),
+    url("../textures/grain.svg") 0 0 / 120px,
+    hsl(calc(var(--hue) * 0.1 + 8) 45% 26%);
+  box-shadow: inset 0 0 0 1px rgb(255 220 170 / 0.12), 0.15em 0.2em 0.4em rgb(0 0 0 / 0.5);
+  color: #f2e6cf;
+  font: 400 0.82em/1.05 var(--cat-sancreek);
+  letter-spacing: 0.02em;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 160ms ease, background-color 160ms ease;
+}
+.fr-cat-tab span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-left: 1.3em; }
+.fr-cat-tab:hover { transform: translateX(0.25em); }
+.fr-cat-tab[aria-current="page"] {
+  transform: translateX(0.5em);
+  background:
+    linear-gradient(90deg, rgb(0 0 0 / 0.25), transparent 1.6em),
+    url("../textures/grain.svg") 0 0 / 120px,
+    var(--cat-red);
+  color: #fff;
+}
+.fr-cat-tab:focus-visible { outline: 2px solid var(--fr-bone); outline-offset: 2px; }
+
+/* ---- page turn ----------------------------------------------------------------------------------- */
+
+/* The new page is uncovered behind a passing leaf: from the gutter going forward, from the
+   fore-edge going back, with the leaf's shadow sweeping across. */
+.fr-cat-curl {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 18%;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(90deg, transparent, rgb(60 35 10 / 0.35) 55%, rgb(255 248 230 / 0.6) 80%, rgb(40 20 5 / 0.25));
+}
+.fr-cat-left.turn-next .fr-cat-sheet { animation: fr-cat-uncover-next 460ms cubic-bezier(0.3, 0.6, 0.3, 1); }
+.fr-cat-left.turn-prev .fr-cat-sheet { animation: fr-cat-uncover-prev 460ms cubic-bezier(0.3, 0.6, 0.3, 1); }
+.fr-cat-left.turn-next .fr-cat-curl { animation: fr-cat-sweep-next 460ms cubic-bezier(0.3, 0.6, 0.3, 1); }
+.fr-cat-left.turn-prev .fr-cat-curl { animation: fr-cat-sweep-prev 460ms cubic-bezier(0.3, 0.6, 0.3, 1); }
+@keyframes fr-cat-uncover-next { from { clip-path: inset(0 0 0 100%); } to { clip-path: inset(0 0 0 0); } }
+@keyframes fr-cat-uncover-prev { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes fr-cat-sweep-next { from { left: 92%; opacity: 1; } 85% { opacity: 1; } to { left: -18%; opacity: 0; } }
+@keyframes fr-cat-sweep-prev { from { left: -10%; opacity: 1; transform: scaleX(-1); } 85% { opacity: 1; } to { left: 100%; opacity: 0; transform: scaleX(-1); } }
+
+:root[data-fr-still] .fr-cat-left :is(.fr-cat-sheet, .fr-cat-curl) { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .fr-cat-left :is(.fr-cat-sheet, .fr-cat-curl) { animation: none !important; }
+}
+
+/* Narrow windows: tabs tuck in, the book takes the width. */
+@container (max-width: 1050px) {
+  .fr-cat-book { font-size: clamp(10px, min(1.3cqw, 1.8cqh), 16px); }
+}

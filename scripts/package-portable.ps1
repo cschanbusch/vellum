@@ -3,7 +3,7 @@
   Builds Vellum in release mode and assembles the portable distribution folder:
 
     dist/Vellum/
-      Vellum.exe
+      Vellum Game Launcher.exe
       plugins/providers|skins|modules/...
       portable.flag          (only with -Portable)
 
@@ -21,7 +21,12 @@ param(
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 $out = Join-Path $repo 'dist\Vellum'
-$targetDir = if ($env:CARGO_TARGET_DIR) { $env:CARGO_TARGET_DIR } else { Join-Path $repo 'src-tauri\target' }
+# Packaging builds into a target folder of its own. `cargo test --release` and
+# `cargo run --release --example ...` rebuild target\release\vellum.exe *without* the embedded
+# interface: a dev binary that loads http://localhost:1420 and shows a blank window. They never
+# touch this folder, so -SkipBuild can only ever reuse a real `tauri build`.
+$baseTarget = if ($env:CARGO_TARGET_DIR) { $env:CARGO_TARGET_DIR } else { Join-Path $repo 'src-tauri\target' }
+$targetDir = Join-Path $baseTarget 'package'
 $exe = Join-Path $targetDir 'release\vellum.exe'
 
 # rustup installs cargo here; a terminal opened before the install may not have it on PATH yet.
@@ -36,8 +41,12 @@ try {
     $ErrorActionPreference = 'Continue'
     if (-not (Test-Path (Join-Path $repo 'node_modules'))) { npm install --no-audit --no-fund; if ($LASTEXITCODE) { throw 'npm install failed' } }
     # Builds the shell (beforeBuildCommand) and the exe with the shell embedded; no installer.
+    $savedTarget = $env:CARGO_TARGET_DIR
+    $env:CARGO_TARGET_DIR = $targetDir
     npx tauri build --no-bundle
-    if ($LASTEXITCODE) { throw "tauri build failed ($LASTEXITCODE)" }
+    $built = $LASTEXITCODE
+    $env:CARGO_TARGET_DIR = $savedTarget
+    if ($built) { throw "tauri build failed ($built)" }
     # The mock provider's art is generated, not committed.
     if (-not (Test-Path (Join-Path $repo 'plugins\providers\mock\art'))) {
       cargo run --manifest-path src-tauri/Cargo.toml --release --example make_mock_art
@@ -47,9 +56,11 @@ try {
   }
   if (-not (Test-Path $exe)) { throw "Release binary not found at $exe" }
 
-  if (Test-Path $out) { Remove-Item $out -Recurse -Force }
+  # Empty the folder rather than deleting it: an Explorer window or terminal open in
+  # dist\Vellum holds the folder itself and would make removing it fail half-way.
   New-Item -ItemType Directory -Force $out | Out-Null
-  Copy-Item $exe (Join-Path $out 'Vellum.exe')
+  Get-ChildItem $out -Force | Remove-Item -Recurse -Force
+  Copy-Item $exe (Join-Path $out 'Vellum Game Launcher.exe')
 
   # Ship exactly the plugin types from the spec; anything else in plugins/ stays behind.
   foreach ($kind in 'providers', 'skins', 'modules') {

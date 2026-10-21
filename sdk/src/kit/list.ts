@@ -7,6 +7,7 @@ import type { Box, Direction } from "../focus-math";
 import type { NavContainer } from "../focus";
 import { parseSort } from "../query";
 import type { Entry, Sort, SortKey } from "../types";
+import { styleFor, type ArtStyle } from "../art";
 import { controlStyles, couchScale, fire, formatSize, formatWhen, tokenPx } from "./shared";
 
 interface Row {
@@ -36,6 +37,7 @@ export class VellumList extends LitElement implements NavContainer {
   declare sort: Sort;
 
   private rowH = 40;
+  private iconStyle: ArtStyle | null = null;
   private pool: Row[] = [];
   private scroller!: HTMLDivElement;
   private layer!: HTMLDivElement;
@@ -64,6 +66,7 @@ export class VellumList extends LitElement implements NavContainer {
         this.syncSelection();
       }),
       vellum.library.on("change", () => this.refresh()),
+      vellum.skin.on("options", () => requestAnimationFrame(() => this.relayout())),
     );
     this.addEventListener("keydown", this.onKey);
   }
@@ -127,6 +130,7 @@ export class VellumList extends LitElement implements NavContainer {
   private relayout() {
     if (!this.layer) return;
     this.rowH = Math.round(tokenPx(this, "--v-list-row-height", 40) * couchScale());
+    this.iconStyle = styleFor("icon", this);
     this.sizer.style.height = `${this.entries.length * this.rowH}px`;
     for (const r of this.pool) {
       r.el.style.height = `${this.rowH}px`;
@@ -195,7 +199,7 @@ export class VellumList extends LitElement implements NavContainer {
     r.source.textContent = e.sources.map((s) => s.providerName).join(", ");
     r.size.textContent = formatSize(e.sizeBytes);
     r.when.textContent = formatWhen(e.lastLaunched);
-    const url = vellum.art.url(e.id, "icon", 32);
+    const url = vellum.art.url(e.id, "icon", 32, this.iconStyle);
     if (url !== r.iconUrl) {
       r.iconUrl = url;
       r.icon.src = url;

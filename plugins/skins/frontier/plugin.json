@@ -1,0 +1,155 @@
+{
+  "id": "frontier",
+  "type": "skin",
+  "name": "Frontier",
+  "version": "1.2.0",
+  "apiVersion": 1,
+  "author": "Vellum",
+  "description": "Smoke, brush strokes and wood type, in the style of Red Dead Redemption 2's menus. Fan-made; no game assets.",
+  "entry": "index.html",
+  "skin": {
+    "preview": "preview.jpg",
+    "defaultView": "spotlight",
+    "window": {
+      "frameless": true,
+      "minWidth": 1000,
+      "minHeight": 640,
+      "background": "#0d0b09"
+    },
+    "options": [
+      {
+        "id": "accent",
+        "label": "Blood red",
+        "type": "color",
+        "default": "#b3201a",
+        "cssVar": "--v-accent"
+      },
+      {
+        "id": "atmosphere",
+        "label": "Fog and embers",
+        "type": "toggle",
+        "default": true
+      },
+      {
+        "id": "grain",
+        "label": "Film grain",
+        "type": "toggle",
+        "default": true
+      },
+      {
+        "id": "artStyle",
+        "label": "Cover and hero art",
+        "type": "select",
+        "default": "photo",
+        "cssVar": "--v-art-style",
+        "choices": [
+          {
+            "value": "photo",
+            "label": "As published"
+          },
+          {
+            "value": "watercolor",
+            "label": "Watercolor"
+          },
+          {
+            "value": "sketch",
+            "label": "Pencil sketch"
+          }
+        ]
+      },
+      {
+        "id": "iconStyle",
+        "label": "Game icons",
+        "type": "select",
+        "default": "sketch",
+        "cssVar": "--v-icon-style",
+        "choices": [
+          {
+            "value": "photo",
+            "label": "As published"
+          },
+          {
+            "value": "watercolor",
+            "label": "Watercolor"
+          },
+          {
+            "value": "sketch",
+            "label": "Pencil sketch"
+          }
+        ]
+      },
+      {
+        "id": "handIcons",
+        "label": "Hand-drawn interface icons",
+        "type": "toggle",
+        "default": true
+      },
+      {
+        "id": "sepia",
+        "label": "Sepia-tone covers until picked",
+        "type": "toggle",
+        "default": false
+      },
+      {
+        "id": "catalogue",
+        "label": "List as a mail-order catalogue page",
+        "type": "toggle",
+        "default": true
+      },
+      {
+        "id": "engravings",
+        "label": "Catalogue listing as engravings",
+        "type": "toggle",
+        "default": true
+      },
+      {
+        "id": "figureArt",
+        "label": "Catalogue figure",
+        "type": "select",
+        "default": "watercolor",
+        "choices": [
+          {
+            "value": "watercolor",
+            "label": "Hand-coloured (watercolor)"
+          },
+          {
+            "value": "sketch",
+            "label": "Engraving"
+          },
+          {
+            "value": "skin",
+            "label": "Same as cover and hero art"
+          }
+        ]
+      },
+      {
+        "id": "prompts",
+        "label": "Button prompts",
+        "type": "toggle",
+        "default": true
+      },
+      {
+        "id": "coverSize",
+        "label": "Cover size",
+        "type": "range",
+        "min": 140,
+        "max": 300,
+        "step": 10,
+        "default": 170,
+        "cssVar": "--v-cover-width",
+        "unit": "px"
+      }
+    ],
+    "views": [
+      {
+        "id": "catalogue",
+        "name": "Catalogue",
+        "entry": "views/catalogue.js",
+        "placement": {
+          "after": "spotlight"
+        },
+        "couch": true
+      }
+    ]
+  }
+}

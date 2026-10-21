@@ -70,7 +70,7 @@ Mock art is generated once with `npm run mock-art`, which needs Rust. Without it
 shows generated placeholders, and you can copy `plugins/providers/mock/art/` from any Vellum
 package instead. The harness serves art at full size, while the app also resizes it.
 
-To try the skin in the app, copy the folder into `plugins/skins/` beside `Vellum.exe` and
+To try the skin in the app, copy the folder into `plugins/skins/` beside `Vellum Game Launcher.exe` and
 choose **Activate** in Settings → Skins. Copying a skin to another PC is just copying the folder.
 
 ## 2. Folder layout
@@ -191,6 +191,8 @@ Two more tokens tune kit components:
 | --- | --- | --- |
 | `--v-cover-caption` | `block` | Set to `none` to hide titles under covers |
 | `--v-logo-max-height` | `100%` | Maximum height of `<vellum-logo>` images |
+| `--v-art-style` | none | `sketch` or `watercolor` redraws covers, heroes and headers ([Art styles](#art-styles)) |
+| `--v-icon-style` | none | The same for game icons in `<vellum-list>` |
 
 Tokens are ordinary CSS custom properties, so you can scope them. For example
 `.v-spot-strip { --v-cover-width: 104px }` makes only the Spotlight strip smaller.
@@ -340,16 +342,20 @@ The shell shows a toast for launches and for errors, so you can ignore rejected 
 
 ### `vellum.art`
 
-`url(id, kind, width?)` gives the URL of an entry's art. `width` may be:
+`url(id, kind, width?, style?)` gives the URL of an entry's art. `width` may be:
 
 - CSS pixels (multiplied by `devicePixelRatio`, then snapped up to 160/320/640/1280/1920);
 - an element, to size from its rendered width;
 - `"full"` for the original file, unchanged;
 - omitted, for the kind's usual size.
 
+`style` is `"sketch"`, `"watercolor"` or `null` (the art as it is). Omitted, the skin's
+`--v-art-style`/`--v-icon-style` tokens decide; `styleFor(kind)` reads them for you.
+
 ```js
 img.src = vellum.art.url(entry.id, "cover", 200);
 hero.style.backgroundImage = `url("${vellum.art.url(entry.id, "hero", "full")}")`;
+thumb.src = vellum.art.url(entry.id, "cover", 200, "watercolor");
 ```
 
 See [Art](#11-art).
@@ -610,7 +616,11 @@ empty. Parts: `logo`, `title`.
 #### `<vellum-play-button>`
 
 **Play**, plus **Play via…** when the entry has more than one store. It is disabled when no
-store can launch the entry. Parts: `button`, `via`, `menu`.
+store can launch the entry. Parts: `button`, `icon` (the ▶ glyph), `via`, `menu`.
+
+Glyph icons in other kit components have their own parts too, so you can restyle or filter them:
+`icon` on `<vellum-search>`, `caret` on the filter, sort and group menus, `chevron` on
+`<vellum-shelf>`, `favorite` on covers, and `minimize`/`maximize`/`close` on the window controls.
 
 #### `<vellum-source-badges>`
 
@@ -795,12 +805,17 @@ Options become a settings page for your skin, in Settings → Skins, with live p
 | `font` | `"builtin"` or a font file in your folder | a font-family list (the file is loaded for you) |
 | `image` | an image file in your folder | `url("…")` |
 
-Variables are set on `:root`, so `--v-*` tokens can be options directly. Toggles also set an
-attribute on `<html>`: `heroBlur` becomes `data-opt-hero-blur`, which works well with CSS:
+Variables are set on `:root`, so `--v-*` tokens can be options directly. Toggles and selects
+also set an attribute on `<html>`: toggle `heroBlur` adds `data-opt-hero-blur` while it is on,
+and select `artStyle` sets `data-opt-art-style="sketch"`. Both work well with CSS:
 
 ```css
 :root[data-opt-hero-blur] { --v-blur: 18px; }
+:root[data-opt-art-style="sketch"] vellum-grid::part(art) { box-shadow: 0 0 0 1px #000; }
 ```
+
+The kit lays out again when options change, so options like cover size or art style apply at
+once.
 
 All values are also in `vellum.skin.options`, and `vellum.skin.on("options", cb)` reports changes.
 Values are stored in Vellum's settings, not in your folder, so a shared skin starts from its
@@ -838,6 +853,43 @@ if (entry.artStatus.logo === "placeholder") showStyledTitle(); else showLogo();
 the kit does this for you. Vellum resizes once and caches the result, so 3,000 covers load at
 320 pixels instead of 1200. Use `"full"` only for art that fills the screen. Art URLs carry a
 version, so the browser caches them forever and a changed image gets a new URL.
+
+### Art styles
+
+Vellum can redraw art for skins with a hand-made look. Set a token, usually from an option:
+
+```css
+:root { --v-art-style: watercolor; --v-icon-style: sketch; }
+```
+
+```json
+{ "id": "artStyle", "label": "Cover art", "type": "select", "default": "photo", "cssVar": "--v-art-style",
+  "choices": [{ "value": "photo", "label": "As published" }, { "value": "watercolor", "label": "Watercolor" },
+              { "value": "sketch", "label": "Pencil sketch" }] }
+```
+
+- **`sketch`**: monochrome graphite on warm paper. Edges become pencil lines, the darks get
+  cross-hatching, and the paper's tooth shows through.
+- **`watercolor`**: flat, painterly washes with pigment pooled at the edges, granulation, light
+  areas left as paper and an unpainted, deckled border.
+
+Any other value (such as `photo`) means the art as published. Logos are never restyled, and
+neither are placeholders. The art URL gets `&fx=<style>`. Styled art keeps the resolution of the
+plain art, up to 3840 px wide, and brush strokes are sized for how each kind is shown, so a
+styled hero is as sharp as the original. The backend draws each style once per size and caches
+it beside the resized art (about 0.15 s for a 1920 px hero, 0.5 s at 4K), so only the first view
+of each image is slower. The dev harness serves
+originals and ignores `fx`; check styles in Vellum itself. To try a style on any image:
+`cargo run --release --example art_style_preview -- cover.jpg 640 out/`.
+
+Both styles are light, like paper. On a dark skin, give styled art a frame or shadow so it reads
+as a print, and keep text off it.
+
+**Hand-drawn glyphs.** For interface icons (the kit's glyph parts above), an SVG filter gives
+an inked, slightly wobbly line. Put the filter in its own file in your skin and point at it with
+`filter: url("textures/hand.svg#hand")`. A filter defined inside `index.html` doesn't reach the
+kit's shadow-DOM parts in Chromium, but a filter in a separate file does. The Frontier skin has a
+ready-made one. Keep filters off small text: they cost contrast.
 
 ## 12. Developer mode
 
@@ -1089,3 +1141,20 @@ built-ins keep their keys wherever they sit.
 - [ ] Options have sensible defaults, and Reset options looks right.
 - [ ] `preview.jpg` exists, and `version` is bumped.
 - [ ] Share the folder (or, later, a `.vplugin` zip of it).
+
+### Example: a view with its own focus container
+
+*Frontier's Catalogue* (`plugins/skins/frontier/views/catalogue.js` and `catalogue.css`) lays the
+library out as an open mail-order catalogue: a paginated listing on the left page, the selected
+game's plate on the right and department tabs on the fore-edge. It shows how to:
+
+- make your own collection a **focus container** (`vellumNav`, `vellumFocusBox`, `vellumEnter`,
+  `vellumConfirm`): arrows move the selection, the page turns at the edges, Page Up/Down jump
+  between departments, and Up from the top row leaves for the toolbar;
+- keep kit components (`<vellum-play-button>`) and plain `data-vellum-focus` buttons *outside*
+  the container, so the focus manager moves between them normally;
+- paginate to the space available, measured with a `ResizeObserver`;
+- ask for styled art per element: `vellum.art.url(id, "cover", 160, "sketch")` prints the plates
+  as engravings, whatever the skin's own art style;
+- load a view's stylesheet with `@import` from the main stylesheet, and fonts with `url()`
+  relative to that file.

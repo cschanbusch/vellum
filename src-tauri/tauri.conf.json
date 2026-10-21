@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Vellum",
+  "productName": "Vellum Game Launcher",
   "version": "0.1.0",
   "identifier": "app.vellum.launcher",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Vellum",
+        "title": "Vellum Game Launcher",
         "width": 1280,
         "height": 800,
         "minWidth": 960,

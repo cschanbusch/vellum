@@ -121,9 +121,10 @@ pub fn handle_skin(app: &AppHandle, req: Request<Vec<u8>>, responder: UriSchemeR
             return responder.respond(text(StatusCode::NOT_FOUND, "not found"));
         };
         let state = app.state::<AppState>();
-        let Some(request) = state.art_request(&id, &kind, width) else {
+        let Some(mut request) = state.art_request(&id, &kind, width) else {
             return responder.respond(text(StatusCode::NOT_FOUND, "no such entry"));
         };
+        request.style = art::parse_style(query.as_deref());
         let cache_dir = art::variants_dir(&state.paths.data_dir);
         let versioned = query.as_deref().is_some_and(|q| q.split('&').any(|p| p.starts_with("v=")));
         art::spawn(move || {

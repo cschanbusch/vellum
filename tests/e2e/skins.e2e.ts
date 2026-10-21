@@ -215,11 +215,13 @@ test("a skin view placed after Covers appears there with Ctrl+4", async ({ page 
   expect(views).toEqual(["list=Ctrl+1", "covers=Ctrl+2", "timeline=Ctrl+4", "spotlight=Ctrl+3"]);
   // defaultView applies the first time the skin is active.
   expect((await state(page)).view).toBe("timeline");
+  await expect(frame.locator('.v-view[data-view="timeline"]')).toBeVisible({ timeout: 15_000 });
   await page.keyboard.press("Control+1");
   await expect(frame.locator('.v-view[data-view="list"]')).toBeVisible();
   await frame.locator("vellum-list").click();
   await page.keyboard.press("Control+4");
-  await expect(frame.locator('.v-view[data-view="timeline"] .tl-year').first()).toBeVisible();
+  // The skin's view module loads on demand; allow for a busy machine running many harnesses.
+  await expect(frame.locator('.v-view[data-view="timeline"] .tl-year').first()).toBeVisible({ timeout: 15_000 });
   await expect(frame.locator("vellum-view-switcher button[aria-selected=true]")).toHaveText("Timeline");
   await page.screenshot({ path: "test-artifacts/views/timeline-test.png" });
 });
@@ -263,7 +265,39 @@ test("grouped Spotlight shows a row per group; up/down move between rows", async
   await page.screenshot({ path: "test-artifacts/views/basis-spotlight-grouped.png" });
 });
 
-for (const [id, port] of [["synthwave", 5210], ["aero", 5212], ["gridline", 5214], ["calling-card", 5216], ["ficsit", 5218]] as const) {
+test("Frontier's Catalogue: arrows move the circled article and turn pages; tabs jump departments", async ({ page }) => {
+  const frame = await open(page, 5224);
+  await show(page, "catalogue");
+  const listing = frame.locator(".fr-cat-listing");
+  await expect(frame.locator(".fr-cat-item").first()).toBeVisible();
+  await listing.focus();
+  await page.keyboard.press("ArrowRight");
+  const second = await frame.locator(".fr-cat-item").nth(1).locator(".fr-cat-title").textContent();
+  await expect(frame.locator(".fr-cat-item.is-selected .fr-cat-title")).toHaveText(second!);
+  await expect(frame.locator(".fr-cat-plate-title")).toHaveText(second!);
+  expect((await state(page)).selectedId).not.toBeNull();
+  // Right from the right-hand column turns the page.
+  const folio = await frame.locator(".fr-cat-folio").textContent();
+  await page.keyboard.press("ArrowRight");
+  await expect(frame.locator(".fr-cat-folio")).not.toHaveText(folio!);
+  await expect(listing).toBeFocused();
+  // Page Down opens the next department; its tab is marked current.
+  const dept = await frame.locator(".fr-cat-running-dept").textContent();
+  await page.keyboard.press("PageDown");
+  await expect(frame.locator(".fr-cat-running-dept")).not.toHaveText(dept!);
+  await expect(frame.locator('.fr-cat-tab[aria-current="page"]')).toHaveCount(1);
+  // Clicking a tab jumps there.
+  await frame.locator(".fr-cat-tab").first().click();
+  await expect(frame.locator(".fr-cat-tab").first()).toHaveAttribute("aria-current", "page");
+  // A search with no matches says so in period style.
+  await host(page, (h) => h.setState({ query: "zzzzqqq" }));
+  await expect(frame.locator(".fr-cat-none")).toBeVisible();
+  await host(page, (h) => h.setState({ query: "" }));
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: "test-artifacts/views/frontier-catalogue.png" });
+});
+
+for (const [id, port] of [["synthwave", 5210], ["aero", 5212], ["gridline", 5214], ["calling-card", 5216], ["ficsit", 5218], ["frontier", 5224]] as const) {
   test(`the ${id} skin renders every view`, async ({ page }) => {
     const frame = await open(page, port);
     for (const view of ["list", "covers", "spotlight"]) {
@@ -279,7 +313,7 @@ for (const [id, port] of [["synthwave", 5210], ["aero", 5212], ["gridline", 5214
   });
 }
 
-for (const [id, port] of [["synthwave", 5210], ["gridline", 5214], ["calling-card", 5216], ["ficsit", 5218], ["sidebar-test", 5198]] as const) {
+for (const [id, port] of [["synthwave", 5210], ["gridline", 5214], ["calling-card", 5216], ["ficsit", 5218], ["frontier", 5224], ["sidebar-test", 5198]] as const) {
   test(`frameless ${id} always shows window controls, even in a narrow window`, async ({ browser }) => {
     for (const width of [1600, 1100, 960]) {
       const page = await browser.newPage({ viewport: { width, height: 800 } });

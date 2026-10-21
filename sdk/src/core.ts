@@ -5,7 +5,7 @@
 // come back as change events. `state.set` is applied locally first so selection feels instant;
 // the shell's echo then replaces it.
 
-import { artUrl } from "./art";
+import { artUrl, styleFor, type ArtStyle } from "./art";
 import { focus } from "./focus";
 import { input, type NavEvent } from "./input";
 import {
@@ -129,11 +129,14 @@ function applyOptions() {
     else css = `${value}${opt.unit ?? ""}`;
     root.setProperty(opt.cssVar, css);
   }
-  // Toggles are also exposed as attributes, e.g. data-opt-hero-blur, for CSS selectors.
+  // Toggles and selects are also exposed as attributes for CSS selectors: data-opt-hero-blur
+  // (present when on), data-opt-art-style="sketch" (the chosen value).
   for (const opt of skin.options) {
-    if (opt.type !== "toggle") continue;
+    if (opt.type !== "toggle" && opt.type !== "select") continue;
     const attr = `data-opt-${opt.id.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`;
-    if (skin.values[opt.id] ?? opt.default) document.documentElement.setAttribute(attr, "");
+    const value = skin.values[opt.id] ?? opt.default;
+    if (opt.type === "select") document.documentElement.setAttribute(attr, String(value ?? ""));
+    else if (value) document.documentElement.setAttribute(attr, "");
     else document.documentElement.removeAttribute(attr);
   }
   reportTheme();
@@ -362,11 +365,17 @@ export const vellum = {
   },
 
   art: {
-    /** `width`: CSS pixels, an element to size from, or "full". Omitted: the kind's usual size. */
-    url: (id: string, kind: ArtKind, width?: number | Element | "full"): string => {
+    /**
+     * `width`: CSS pixels, an element to size from, or "full". Omitted: the kind's usual size.
+     * `style`: "sketch" or "watercolor" to redraw the art; omitted, the skin's tokens
+     * (`--v-art-style`, `--v-icon-style`) decide; null for the art as it is.
+     */
+    url: (id: string, kind: ArtKind, width?: number | Element | "full", style?: ArtStyle | null): string => {
       const e = byId.get(id);
-      return e ? artUrl(e, kind, width) : "";
+      return e ? artUrl(e, kind, width, style) : "";
     },
+    /** The art style the skin's tokens ask for, for a kind (read on `el`). */
+    styleFor,
   },
 
   views: {

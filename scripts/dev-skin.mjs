@@ -105,6 +105,7 @@ const skinServer = createServer((req, res) => {
   if (p === "/__vellum/sdk.js") return sendFile(res, sdkJs);
   if (p === "/__vellum/sdk.css") return sendFile(res, join(ROOT, "sdk", "src", "sdk.css"));
   if (p === "/__vellum/fonts/InterVariable.woff2") return sendFile(res, join(ROOT, "sdk", "assets", "fonts", "InterVariable.woff2"));
+  // Art styles (&fx=sketch|watercolor) are drawn by the Rust backend; the harness serves originals.
   const art = p.match(/^\/__vellum\/art\/(.+)\/(cover|hero|logo|header|icon)$/);
   if (art) {
     const id = decodeURIComponent(art[1]);

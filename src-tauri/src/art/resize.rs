@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use image::imageops::FilterType;
 use image::{DynamicImage, GenericImageView, ImageFormat, ImageReader};
 
+use super::style::{self, ArtStyle};
 use super::{short_hash, ArtCandidate, ArtResponse};
 
 pub const WIDTHS: [u32; 5] = [160, 320, 640, 1280, 1920];
@@ -52,8 +53,11 @@ fn cached(path: &Path) -> Option<ArtResponse> {
     Some(ArtResponse { content_type: ct, body: Cow::Owned(bytes) })
 }
 
-/// Returns the variant of `file` at `width`, from the cache when possible.
-pub fn variant(file: &Path, c: &ArtCandidate, width: Variant, cache_dir: &Path) -> std::io::Result<ArtResponse> {
+/// Returns the variant of `file` at `width` (and style), from the cache when possible.
+pub fn variant(file: &Path, c: &ArtCandidate, width: Variant, art_style: Option<ArtStyle>, cache_dir: &Path) -> std::io::Result<ArtResponse> {
+    if let Some(st) = art_style {
+        return styled(file, c, width, st, cache_dir);
+    }
     let Variant::Px(w) = width else { return read_original(file) };
     let key = short_hash((&c.file, c.mtime, c.size));
     let stem = cache_dir.join(format!("{key}-{w}"));
@@ -84,6 +88,43 @@ pub fn variant(file: &Path, c: &ArtCandidate, width: Variant, cache_dir: &Path) 
     };
     if let Err(e) = write_atomic(&stem.with_extension(ext), &out) {
         tracing::warn!(error = %e, "cannot cache art variant");
+    }
+    Ok(ArtResponse { content_type: ct, body: Cow::Owned(out) })
+}
+
+/// Encodes a finished image: PNG when any pixel is transparent, otherwise JPEG quality 90.
+fn encode(img: DynamicImage) -> std::io::Result<(Vec<u8>, &'static str, &'static str)> {
+    let mut out = Vec::new();
+    if has_transparency(&img) {
+        img.write_to(&mut Cursor::new(&mut out), ImageFormat::Png).map_err(std::io::Error::other)?;
+        Ok((out, "png", "image/png"))
+    } else {
+        let rgb = DynamicImage::ImageRgb8(img.to_rgb8());
+        image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, 90).encode_image(&rgb).map_err(std::io::Error::other)?;
+        Ok((out, "jpg", "image/jpeg"))
+    }
+}
+
+/// A sketch or watercolor variant, up to `style::MAX_STYLED_WIDTH` wide.
+fn styled(file: &Path, c: &ArtCandidate, width: Variant, st: ArtStyle, cache_dir: &Path) -> std::io::Result<ArtResponse> {
+    let w = match width {
+        Variant::Px(w) => Some(w),
+        Variant::Full => None,
+    };
+    let key = short_hash((&c.file, c.mtime, c.size));
+    let stem = cache_dir.join(format!("{key}-{}-{}{}", w.map_or("full".to_string(), |w| w.to_string()), st.name(), style::VERSION));
+    for ext in ["jpg", "png"] {
+        if let Some(r) = cached(&stem.with_extension(ext)) {
+            return Ok(r);
+        }
+    }
+    let img = ImageReader::open(file)?
+        .with_guessed_format()?
+        .decode()
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+    let (out, ext, ct) = encode(DynamicImage::ImageRgba8(style::render(&img, w, st, &c.kind)))?;
+    if let Err(e) = write_atomic(&stem.with_extension(ext), &out) {
+        tracing::warn!(error = %e, "cannot cache styled art");
     }
     Ok(ArtResponse { content_type: ct, body: Cow::Owned(out) })
 }
@@ -133,20 +174,29 @@ mod tests {
         logo.put_pixel(10, 10, Rgba([255, 255, 255, 255]));
         logo.save(&png).unwrap();
 
-        let r = variant(&jpg, &cand(&jpg), Variant::Px(320), &cache).unwrap();
+        let r = variant(&jpg, &cand(&jpg), Variant::Px(320), None, &cache).unwrap();
         assert_eq!(r.content_type, "image/jpeg");
         let img = image::load_from_memory(&r.body).unwrap();
         assert_eq!(img.dimensions(), (320, 480));
         assert_eq!(std::fs::read_dir(&cache).unwrap().count(), 1, "variant cached");
-        let again = variant(&jpg, &cand(&jpg), Variant::Px(320), &cache).unwrap();
+        let again = variant(&jpg, &cand(&jpg), Variant::Px(320), None, &cache).unwrap();
         assert_eq!(again.body, r.body);
 
-        let r = variant(&png, &cand(&png), Variant::Px(640), &cache).unwrap();
+        let r = variant(&png, &cand(&png), Variant::Px(640), None, &cache).unwrap();
         assert_eq!(r.content_type, "image/png", "transparent art stays transparent");
 
-        let full = variant(&jpg, &cand(&jpg), Variant::Full, &cache).unwrap();
+        let full = variant(&jpg, &cand(&jpg), Variant::Full, None, &cache).unwrap();
         assert_eq!(&*full.body, std::fs::read(&jpg).unwrap().as_slice(), "full is the original");
-        let not_upscaled = variant(&png, &cand(&png), Variant::Px(1280), &cache).unwrap();
+        let not_upscaled = variant(&png, &cand(&png), Variant::Px(1280), None, &cache).unwrap();
         assert_eq!(&*not_upscaled.body, std::fs::read(&png).unwrap().as_slice());
+
+        // Styled variants are cached separately and keep transparency.
+        let sketch = variant(&jpg, &cand(&jpg), Variant::Px(320), Some(ArtStyle::Sketch), &cache).unwrap();
+        assert_eq!(sketch.content_type, "image/jpeg");
+        assert_eq!(image::load_from_memory(&sketch.body).unwrap().dimensions(), (320, 480));
+        assert_ne!(sketch.body, r.body);
+        let wc = variant(&png, &cand(&png), Variant::Px(640), Some(ArtStyle::Watercolor), &cache).unwrap();
+        assert_eq!(wc.content_type, "image/png");
+        assert!(std::fs::read_dir(&cache).unwrap().count() >= 4);
     }
 }

@@ -1,4 +1,4 @@
-//! `Vellum.exe --diagnose --out report.json`: a shareable report confirming store formats on
+//! `"Vellum Game Launcher.exe" --diagnose --out report.json`: a shareable report confirming store formats on
 //! a real machine. It contains structure only: which location candidates were tried, folder
 //! layouts as name patterns and counts, and for each file format the keys and value types.
 //! No values, titles or account ids. Denylisted files are never opened.

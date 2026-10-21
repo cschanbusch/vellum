@@ -17,6 +17,20 @@ export function withWidth(url: string, width: ArtWidth): string {
   return `${url}${url.includes("?") ? "&" : "?"}w=${width}`;
 }
 
+/** Art redrawn by the backend: a monochrome pencil sketch or a watercolor. */
+export type ArtStyle = "sketch" | "watercolor";
+const STYLES: readonly string[] = ["sketch", "watercolor"];
+
+/**
+ * The art style a skin asks for, from the tokens `--v-art-style` (covers, heroes, headers)
+ * and `--v-icon-style` (icons), read on `el`. Logos are never restyled.
+ */
+export function styleFor(kind: ArtKind, el: Element = document.documentElement): ArtStyle | null {
+  if (kind === "logo") return null;
+  const v = getComputedStyle(el).getPropertyValue(kind === "icon" ? "--v-icon-style" : "--v-art-style").trim().replace(/["']/g, "");
+  return STYLES.includes(v) ? (v as ArtStyle) : null;
+}
+
 /** CSS pixels each kind is usually drawn at, when the caller gives no width. */
 function typicalWidth(kind: ArtKind): number {
   const root = getComputedStyle(document.documentElement);
@@ -37,15 +51,19 @@ function typicalWidth(kind: ArtKind): number {
 /**
  * URL for an entry's art. `width` may be CSS pixels, an element to size from, or "full".
  * Omitted, it is sized from the kind's usual size. Widths are multiplied by devicePixelRatio.
+ * `style` redraws the art ("sketch", "watercolor"); omitted, the skin's tokens decide; null
+ * means the art as it is.
  */
-export function artUrl(entry: Entry, kind: ArtKind, width?: number | Element | "full"): string {
+export function artUrl(entry: Entry, kind: ArtKind, width?: number | Element | "full", style?: ArtStyle | null): string {
   const base = entry.art[kind];
-  if (width === "full") return withWidth(base, "full");
+  const fx = style === undefined ? styleFor(kind, width instanceof Element ? width : undefined) : style;
+  const withStyle = (url: string) => (fx && entry.artStatus[kind] !== "placeholder" ? `${url}&fx=${fx}` : url);
+  if (width === "full") return withStyle(withWidth(base, "full"));
   const css =
     typeof width === "number"
       ? width
       : width instanceof Element
         ? width.getBoundingClientRect().width || typicalWidth(kind)
         : typicalWidth(kind);
-  return withWidth(base, snapWidth(css * (window.devicePixelRatio || 1)));
+  return withStyle(withWidth(base, snapWidth(css * (window.devicePixelRatio || 1))));
 }

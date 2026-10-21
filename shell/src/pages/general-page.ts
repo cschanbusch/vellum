@@ -21,8 +21,8 @@ export class GeneralPage extends LitElement {
         <p><code>${i.dataDir}</code></p>
         <p class="muted">
           ${i.portable
-            ? "Portable mode is on: portable.flag exists beside Vellum.exe, so all data is stored in the data folder next to it."
-            : "Data is stored in your Windows profile. Create an empty portable.flag file beside Vellum.exe to keep data next to the program instead."}
+            ? "Portable mode is on: portable.flag exists beside Vellum Game Launcher.exe, so all data is stored in the data folder next to it."
+            : "Data is stored in your Windows profile. Create an empty portable.flag file beside Vellum Game Launcher.exe to keep data next to the program instead."}
         </p>
         <button @click=${() => api.openDataFolder()}>Open data folder</button>
       </section>

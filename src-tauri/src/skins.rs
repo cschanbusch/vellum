@@ -87,7 +87,7 @@ impl AppState {
                 return None;
             }
             let candidate = recs.art.get(&g.source_id).and_then(|c| art::pick(c, kind)).cloned();
-            Some(ArtRequest { kind: kind.to_string(), width, title: g.title.clone(), candidate })
+            Some(ArtRequest { kind: kind.to_string(), width, style: None, title: g.title.clone(), candidate })
         })
     }
 }

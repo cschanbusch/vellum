@@ -1,4 +1,4 @@
-//! The plugins in the repo's `plugins/` folder are what ships beside Vellum.exe: they must
+//! The plugins in the repo's `plugins/` folder are what ships beside Vellum Game Launcher.exe: they must
 //! all validate. Among the dev fixtures, the test skins must validate and the deliberately
 //! broken plugins must all be rejected.
 
@@ -23,7 +23,7 @@ fn every_shipped_plugin_is_valid() {
         v
     };
     assert_eq!(ids(PluginKind::Provider), ["custom", "epic", "gog", "mock", "steam"]);
-    assert_eq!(ids(PluginKind::Skin), ["aero", "basis", "calling-card", "ficsit", "gridline", "synthwave"]);
+    assert_eq!(ids(PluginKind::Skin), ["aero", "basis", "calling-card", "ficsit", "frontier", "gridline", "synthwave"]);
     assert_eq!(ids(PluginKind::Module), ["quick-launch", "random-pick"]);
 }
 

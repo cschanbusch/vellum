@@ -10,6 +10,7 @@ import { vellum } from "../core";
 import type { Box, Direction } from "../focus-math";
 import type { NavContainer } from "../focus";
 import type { Entry } from "../types";
+import { styleFor, type ArtStyle } from "../art";
 import { couchScale, fire, tokenPx } from "./shared";
 
 export type ActivateAction = "details" | "launch" | "none";
@@ -138,6 +139,8 @@ export abstract class CoverCollection extends LitElement implements NavContainer
   protected pad = 16;
   protected viewportW = 0;
   protected viewportH = 0;
+  /** From --v-art-style, read with the other tokens. */
+  protected artStyle: ArtStyle | null = null;
   private pool: Cell[] = [];
   private layer!: HTMLDivElement;
   private sizer!: HTMLDivElement;
@@ -161,6 +164,8 @@ export abstract class CoverCollection extends LitElement implements NavContainer
     this.unsubs.push(
       vellum.state.on("change", () => this.syncSelection()),
       vellum.library.on("change", () => this.refreshCells()),
+      // Options can change tokens this layout depends on (cover size, art style).
+      vellum.skin.on("options", () => requestAnimationFrame(() => this.relayout())),
     );
     this.addEventListener("scroll", this.onScroll, { passive: true });
     this.addEventListener("keydown", this.onKey);
@@ -225,6 +230,7 @@ export abstract class CoverCollection extends LitElement implements NavContainer
     this.rowHeight = Math.round(this.cellWidth * 1.5 + caption * (0.4 * rem + 0.85 * rem * 1.4));
     this.viewportW = this.clientWidth;
     this.viewportH = this.clientHeight;
+    this.artStyle = styleFor("cover", this);
   }
 
   relayout() {
@@ -292,7 +298,7 @@ export abstract class CoverCollection extends LitElement implements NavContainer
     c.title.textContent = e.title;
     c.label.textContent = e.labels?.[0] ?? "";
     c.label.hidden = !e.labels?.length;
-    const url = vellum.art.url(e.id, "cover", this.cellWidth);
+    const url = vellum.art.url(e.id, "cover", this.cellWidth, this.artStyle);
     if (url !== c.url) {
       c.url = url;
       c.img.classList.remove("loaded");

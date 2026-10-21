@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 160" preserveAspectRatio="none">
+  <!-- A loose ring drawn twice round in red pencil, as when circling an article in a
+       catalogue. Used as a mask, so it takes the accent color. -->
+  <filter id="pencil" x="-5%" y="-10%" width="110%" height="120%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="4" result="w"/>
+    <feDisplacementMap in="SourceGraphic" in2="w" scale="5" xChannelSelector="R" yChannelSelector="G" result="d"/>
+    <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="1" seed="9" result="g"/>
+    <feColorMatrix in="g" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.2 1.25" result="tooth"/>
+    <feComposite in="d" in2="tooth" operator="in"/>
+  </filter>
+  <g filter="url(#pencil)" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke-width="4.5" d="M 52 30 C 120 6, 300 4, 368 32 C 404 48, 398 116, 352 134 C 280 160, 110 158, 44 134 C 4 118, 2 56, 40 36 C 70 20, 130 14, 168 13"/>
+    <path stroke-width="2.6" opacity="0.75" d="M 160 16 C 240 10, 330 16, 372 42 C 398 66, 386 116, 330 140 C 250 158, 100 154, 50 128 C 14 108, 20 52, 66 34"/>
+  </g>
+</svg>

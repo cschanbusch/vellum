@@ -9,6 +9,7 @@
 
 pub mod placeholder;
 mod resize;
+pub mod style;
 
 use std::borrow::Cow;
 use std::collections::hash_map::DefaultHasher;
@@ -24,6 +25,7 @@ use crate::library::entry::ART_KINDS;
 use crate::providers::scope::{simplify, Scope};
 
 pub use resize::{snap_width, Variant};
+pub use style::ArtStyle;
 
 /// One art candidate as a provider's `art()` returns it, validated by the host.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -149,6 +151,8 @@ pub fn encode_segment(s: &str) -> String {
 pub struct ArtRequest {
     pub kind: String,
     pub width: Variant,
+    /// Redraw the art as a sketch or watercolor (placeholders are left as they are).
+    pub style: Option<ArtStyle>,
     pub title: String,
     pub candidate: Option<ArtCandidate>,
 }
@@ -157,6 +161,11 @@ pub struct ArtRequest {
 pub struct ArtResponse {
     pub content_type: &'static str,
     pub body: Cow<'static, [u8]>,
+}
+
+/// The `fx` query parameter: an art style.
+pub fn parse_style(query: Option<&str>) -> Option<ArtStyle> {
+    query.into_iter().flat_map(|q| q.split('&')).find_map(|p| p.strip_prefix("fx=")).and_then(ArtStyle::parse)
 }
 
 /// Parses `<id>/<kind>` and the `w` query parameter.
@@ -178,7 +187,7 @@ pub fn parse_route(rest: &str, query: Option<&str>) -> Option<(String, String, V
 /// Produces the image for a request, using and filling the variant cache under `cache_dir`.
 pub fn serve(req: &ArtRequest, cache_dir: &Path) -> ArtResponse {
     if let Some(file) = req.candidate.as_ref().and_then(|c| c.file.as_deref()) {
-        match resize::variant(Path::new(file), req.candidate.as_ref().unwrap(), req.width, cache_dir) {
+        match resize::variant(Path::new(file), req.candidate.as_ref().unwrap(), req.width, req.style, cache_dir) {
             Ok(r) => return r,
             Err(e) => tracing::warn!(file, error = %e, "art file unusable; serving a placeholder"),
         }
@@ -261,6 +270,10 @@ mod tests {
         assert_eq!(parse_route("steam:620/hero", None).unwrap().2, Variant::Full);
         assert!(parse_route("steam:620/poster", None).is_none());
         assert!(parse_route("/cover", None).is_none());
+        assert_eq!(parse_style(Some("v=1&w=320&fx=sketch")), Some(ArtStyle::Sketch));
+        assert_eq!(parse_style(Some("fx=watercolor")), Some(ArtStyle::Watercolor));
+        assert_eq!(parse_style(Some("fx=oil")), None);
+        assert_eq!(parse_style(None), None);
     }
 
     #[test]

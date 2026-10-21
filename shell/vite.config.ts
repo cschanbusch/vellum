@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 
-// The shell is built into static files that Tauri embeds in Vellum.exe.
+// The shell is built into static files that Tauri embeds in the Vellum Game Launcher exe.
 export default defineConfig({
   root: fileURLToPath(new URL(".", import.meta.url)),
   clearScreen: false,

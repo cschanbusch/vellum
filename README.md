@@ -22,9 +22,9 @@ A Windows game launcher where store providers, skins and QoL modules are all plu
 | Type-check the SDK and shell | `npm run typecheck` |
 | Build the SDK and shell only | `npm run build:web` |
 | Build the portable folder | `./scripts/package-portable.ps1` (add `-Portable` for `portable.flag`) |
-| Developer mode for one run | `Vellum.exe --dev` |
-| List plugins without a window | `Vellum.exe --print-plugins --out plugins.json` |
-| Diagnostics report (structure only) | `Vellum.exe --diagnose --out report.json` |
+| Developer mode for one run | `"Vellum Game Launcher.exe" --dev` |
+| List plugins without a window | `"Vellum Game Launcher.exe" --print-plugins --out plugins.json` |
+| Diagnostics report (structure only) | `"Vellum Game Launcher.exe" --diagnose --out report.json` |
 
 ## Layout
 

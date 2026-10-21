@@ -2,57 +2,29 @@
 
 Work in progress, so the next session can pick it up.
 
-## Covers grid draws only some rows in the real app (WebView2) — open
+## Covers grid drew only some rows in the real app: not a bug (closed 2026-10-20)
 
-**Seen:** 2026-10-20, packaged build (`dist\Vellum\Vellum.exe`) with the FICSIT skin active and
-a fresh data folder (Steam 82 games). In Covers, rows 1–3 of the grid were empty. Only a few
-covers appeared, near the bottom of the window (around row 4), and the scrollbar was at the
-top.
+**Reported (by me):** a `PrintWindow` capture of the packaged app with the FICSIT skin and a
+fresh data folder, taken 8 s after launch, showed the Covers grid with its first rows empty.
 
-**Not reproduced in the skin dev harness**, which uses Playwright Chromium. These all
-rendered correctly:
-- the same skin at the app's size (1280×800 CSS px, 125% scaling);
-- narrowing the results and then restoring them;
-- an empty result followed by a full one.
+**Re-tested** with the same build, skin and fresh data folder. I inspected the running WebView2
+through `--remote-debugging-port`:
+- The grid's state was right: all 30 pooled cells were painted at the correct positions (rows
+  0–4), and `clientHeight`, `scrollTop` and the sizer height were correct.
+- Screenshots over CDP at 2, 4, 6, 8 and 11 s after launch showed the boot screen at 2 s, then
+  a complete grid every time.
+- `PrintWindow` captures at the same moments also showed a complete grid.
 
-The Phase 3 capture of Basis in the real app (before the window-controls change) was correct.
+The user never saw the problem in daily use. The most likely explanation is that the one bad
+capture caught WebView2 mid-composite: `PrintWindow` copies the window's GPU layers at the
+moment of the call. It is not the container query, the staged library load or the skin.
 
-**Suspects, most likely first:**
-1. `container: vellum-app / inline-size` on `<vellum-app>` (sdk/src/sdk.css), added with the
-   window-controls fix. It was never checked in WebView2's Covers view since then.
-2. The app's library arriving in stages (fresh data folder: empty, then Steam, then the art
-   refresh), while the grid measures itself. Check `CoverCollection.measure()` / `relayout()`
-   in sdk/src/kit/collection.ts against a 0 or stale `clientHeight`.
-3. Something FICSIT-specific: the boot overlay, or the frameless title bar resizing the
-   window after the page loads.
-
-**How to investigate:** WebView2 can expose DevTools to Playwright:
-
-```powershell
-$env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=9333"
-.\dist\Vellum\Vellum.exe --data-dir <temp folder>
-```
-
-Then `chromium.connectOverCDP("http://127.0.0.1:9333")`, find the frame on
-`http://skin.localhost`, and read `vellum-grid`'s `clientHeight`, `scrollTop`, the sizer's
-height and each `.cell`'s `transform` / `checkVisibility()`. I had confirmed the port works
-(Edg/155) when I stopped.
-
-**Next:** compare against Basis in the same build, to rule the skin in or out, and try
-removing the container query. Then add an e2e or CDP check that the first row of covers is
-painted at startup.
-
-## FICSIT Terminal skin — done except the issue above
-
-`plugins/skins/ficsit/` holds:
-- vector textures: steel, tread plate, grit, and the factory scene;
-- an animated factory backdrop: conveyors, smoke, beacons;
-- a title bar with a clock and shift counter;
-- a status strip with a corporate notice ticker;
-- a boot sequence;
-- crate-style covers;
-- the dossier-style Spotlight;
-- options.
-
-It passes the e2e suite (all views, grouped Spotlight, window controls at 960–1600 px) in the
-harness. Its preview image is generated.
+**Lessons for checking the app:**
+- Prefer CDP screenshots of the live WebView2 to `PrintWindow`: they show what Chromium
+  actually rendered. If you use `PrintWindow`, capture twice before believing a glitch.
+- Launch with `$env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=<port>"`
+  and use a new port each time. A port still held by a leftover WebView2 process makes the
+  app exit right after plugin discovery.
+- Attach with Playwright's `chromium.connectOverCDP(...)`. The skin frame is the one on
+  `http://skin.localhost`. **Never call `browser.close()`** on that connection: it shuts down
+  the WebView2 and quits Vellum. End the script with `process.exit(0)` instead.

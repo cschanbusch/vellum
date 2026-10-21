@@ -138,7 +138,7 @@ export class VellumShelf extends LitElement {
           @click=${this.toggle}
           title=${this.collapsed ? "Expand" : "Collapse"}
         >
-          <span class="chevron" aria-hidden="true">▾</span>
+          <span class="chevron" part="chevron" aria-hidden="true">▾</span>
           <span part="label">${g.label}</span>
           <span part="count" class="count">${g.entries.length}</span>
         </button>

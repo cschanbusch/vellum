@@ -7,12 +7,15 @@ import { repeat } from "lit/directives/repeat.js";
 import { vellum } from "../core";
 import type { Entry } from "../types";
 import { controlStyles } from "./shared";
+import { styleFor } from "../art";
 
 class EntryElement extends LitElement {
   static properties = { entry: { attribute: false }, entryId: { type: String, attribute: "entry-id" } };
   declare entry: Entry | undefined;
   declare entryId: string | undefined;
   private unsub?: () => void;
+
+  private unsubOptions?: () => void;
 
   connectedCallback() {
     super.connectedCallback();
@@ -21,11 +24,14 @@ class EntryElement extends LitElement {
       const fresh = id ? vellum.library.get(id) : undefined;
       if (fresh && fresh !== this.entry) this.entry = fresh;
     });
+    // Skin options may change the art style token.
+    this.unsubOptions = vellum.skin.on("options", () => requestAnimationFrame(() => this.requestUpdate()));
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this.unsub?.();
+    this.unsubOptions?.();
   }
 
   willUpdate(changed: Map<string, unknown>) {
@@ -41,7 +47,7 @@ export class VellumCover extends EntryElement {
     const width = this.clientWidth || undefined;
     return html`<img
       part="cover"
-      src=${vellum.art.url(e.id, "cover", width)}
+      src=${vellum.art.url(e.id, "cover", width, styleFor("cover", this))}
       alt=${e.title}
       decoding="async"
       loading="lazy"
@@ -91,7 +97,7 @@ export class VellumHero extends EntryElement {
     super.willUpdate(changed);
     const e = this.entry;
     if (!e) return;
-    const url = vellum.art.url(e.id, "hero", Math.max(this.clientWidth, window.innerWidth));
+    const url = vellum.art.url(e.id, "hero", Math.max(this.clientWidth, window.innerWidth), styleFor("hero", this));
     if (this.layers.at(-1)?.url !== url) this.layers = [...this.layers.slice(-1), { url, id: ++this.seq }];
   }
 
@@ -234,7 +240,7 @@ export class VellumPlayButton extends EntryElement {
         @click=${() => this.play()}
         title=${preferred ? `Play via ${preferred.providerName}` : "Play"}
       >
-        <span aria-hidden="true">▶</span> Play
+        <span part="icon" aria-hidden="true">▶</span> Play
       </button>
       ${launchable.length > 1
         ? html`<button class="primary via" part="via" data-vellum-focus aria-haspopup="menu" aria-expanded=${this.open} @click=${() => (this.open = !this.open)}>

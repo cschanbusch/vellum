@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600">
+  <!-- Aged newsprint: warm base, fibre noise, foxing blotches. Tiles seamlessly. -->
+  <defs>
+    <filter id="fibre" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" seed="5" stitchTiles="stitch" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.35  0 0 0 0 0.25  0 0 0 0 0.12  0 0 0 0.5 -0.1"/>
+    </filter>
+    <filter id="fox" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="4" seed="17" stitchTiles="stitch" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.45  0 0 0 0 0.3  0 0 0 0 0.12  0 0 0 2.4 -1.25"/>
+    </filter>
+  </defs>
+  <rect width="600" height="600" fill="#ddd0b0"/>
+  <rect width="600" height="600" filter="url(#fox)" opacity="0.6"/>
+  <rect width="600" height="600" filter="url(#fibre)" opacity="0.7"/>
+</svg>

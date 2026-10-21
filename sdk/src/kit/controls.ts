@@ -67,7 +67,7 @@ export class VellumMenu extends LitElement {
     return html`<button class="trigger" part="trigger" data-vellum-focus aria-haspopup="menu" @click=${this.toggle}>
         <span part="label">${this.label}</span>
         ${this.badge ? html`<span class="badge" part="badge">${this.badge}</span>` : nothing}
-        <span class="caret" aria-hidden="true">▾</span>
+        <span class="caret" part="caret" aria-hidden="true">▾</span>
       </button>
       <div class="panel" part="panel" popover role="menu">
         ${this.items.map(
@@ -216,7 +216,7 @@ export class VellumSearch extends Bound {
   render() {
     const q = this.local ?? vellum.state.get().query;
     return html`<label part="box">
-      <span class="icon" aria-hidden="true">⌕</span>
+      <span class="icon" part="icon" aria-hidden="true">⌕</span>
       <input
         part="input"
         type="search"
@@ -348,7 +348,7 @@ export class VellumSortMenu extends Bound {
       { value: "reverse", label: "Reverse order", checked: reversed, section: "Direction" },
     ];
     return html`<vellum-menu
-      exportparts="trigger, panel"
+      exportparts="trigger, panel, caret"
       label=${`Sort: ${SORT_LABELS[key]}${reversed ? " ↑" : ""}`}
       .items=${items}
       @vellum-select=${(e: CustomEvent<{ value: string }>) => this.pick(e.detail.value)}
@@ -375,7 +375,7 @@ export class VellumGroupMenu extends Bound {
       ...GROUP_KEYS.map((k) => ({ value: k, label: GROUP_LABELS[k], checked: k === by })),
     ];
     return html`<vellum-menu
-      exportparts="trigger, panel"
+      exportparts="trigger, panel, caret"
       label=${by ? `Group: ${GROUP_LABELS[by]}` : "Group: None"}
       .items=${items}
       @vellum-select=${(e: CustomEvent<{ value: string }>) => vellum.state.set({ groupBy: (e.detail.value || null) as GroupKey | null })}
@@ -454,7 +454,7 @@ export class VellumFilterBar extends Bound {
     if (active) items.push({ value: "clear", label: "Clear all filters", section: " " });
     return html`<vellum-menu
       multiple
-      exportparts="trigger, panel, badge"
+      exportparts="trigger, panel, badge, caret"
       label="Filters"
       badge=${active ? String(active) : ""}
       .items=${items}

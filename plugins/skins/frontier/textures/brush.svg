@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="120" viewBox="0 0 640 120" preserveAspectRatio="none">
+  <!-- A dry white brush stroke: ragged edges from displacement, bristle streaks from a
+       stretched noise mask, heavier at the start of the stroke. Drawn behind selected items. -->
+  <defs>
+    <filter id="rough" x="-5%" y="-30%" width="110%" height="160%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035 0.09" numOctaves="3" seed="4" result="edge"/>
+      <feDisplacementMap in="SourceGraphic" in2="edge" scale="18" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="bristles" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.004 0.42" numOctaves="2" seed="9" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 2.6 -0.75"/>
+    </filter>
+    <linearGradient id="load" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.9"/>
+      <stop offset="0.12" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="0.85" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0.75"/>
+    </linearGradient>
+    <mask id="dry" maskUnits="userSpaceOnUse" x="0" y="0" width="640" height="120">
+      <rect width="640" height="120" fill="#fff"/>
+      <rect width="640" height="120" filter="url(#bristles)" fill="#000" opacity="0.55"/>
+    </mask>
+  </defs>
+  <g filter="url(#rough)" mask="url(#dry)">
+    <path fill="url(#load)" d="M14 40 C 40 24, 120 22, 220 24 S 470 20, 560 26 C 600 28, 628 36, 630 52
+      C 632 70, 612 86, 560 92 C 470 100, 330 98, 210 97 S 60 100, 30 90 C 10 84, 4 70, 6 58 C 7 50, 9 44, 14 40 Z"/>
+    <path fill="#fff" opacity="0.6" d="M560 30 C 600 34, 636 46, 638 58 C 640 70, 626 80, 600 84 Z"/>
+  </g>
+</svg>
