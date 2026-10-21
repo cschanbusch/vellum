@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 150" fill="none" stroke="#221910" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- A steam velocipede: a boneshaker with a boiler and a funnel. -->
+  <circle cx="56" cy="104" r="38"/>
+  <circle cx="186" cy="110" r="32"/>
+  <path d="M56 104l40-48h56l34 54M96 56l-12-22h-14M152 56l-10-26h18"/>
+  <path d="M100 60h44v30h-44z"/>
+  <path d="M110 60V40h10v20" />
+  <path d="M106 40h18" />
+  <path d="M118 30c-6-10 4-14 0-24M112 30c-4-8 4-12 0-20" stroke-width="1.4" opacity="0.8"/>
+  <path d="M56 66v76M18 104h76M29 77l54 54M83 77l-54 54" stroke-width="1"/>
+  <path d="M186 78v64M154 110h64M163 87l46 46M209 87l-46 46" stroke-width="1"/>
+  <g stroke-width="1" opacity="0.8"><path d="M104 70h36M104 78h36M104 86h36"/></g>
+</svg>

@@ -28,7 +28,7 @@ A Windows game launcher where store providers, skins and QoL modules are all plu
 
 ## Core and extras
 
-A release has two downloads. `Vellum-Game-Launcher-<version>-windows-x64.zip` is the launcher with the core plugins: the Steam, Epic, GOG and custom-games providers and the default Basis skin. `Vellum-Game-Launcher-<version>-extras.zip` is optional and holds everything else: the other skins (Synthwave, Frutiger Aero, Gridline, Calling Card, FICSIT Terminal, Frontier, Redline), the Quick Launch and Random Pick modules, and the mock provider for skin development. Extract it into the same place as the launcher zip and it merges into `Vellum/plugins/`. To drop a single extra later, delete its folder from `plugins/`.
+A release has two downloads. `Vellum-Game-Launcher-<version>-windows-x64.zip` is the launcher with the core plugins: the Steam, Epic, GOG and custom-games providers and the default Basis skin. `Vellum-Game-Launcher-<version>-extras.zip` is optional and holds everything else: the other skins (Synthwave, Frutiger Aero, Gridline, Calling Card, FICSIT Terminal, Frontier, Grand Tourer), the Quick Launch and Random Pick modules, and the mock provider for skin development. Extract it into the same place as the launcher zip and it merges into `Vellum/plugins/`. To drop a single extra later, delete its folder from `plugins/`.
 
 In the repository, debug builds load both `plugins/` and `extras/`.
 

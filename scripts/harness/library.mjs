@@ -67,6 +67,8 @@ export async function mockLibrary(mockDir, count) {
       lastLaunched: null,
       addedAt: new Date(firstSeen.getTime() + i * 3_600_000 * 7).toISOString(),
       ...(g.sizeBytes ? { sizeBytes: g.sizeBytes } : {}),
+      ...(g.playtimeMinutes ? { playtimeMinutes: g.playtimeMinutes } : {}),
+      ...(g.lastPlayed ? { lastPlayed: g.lastPlayed } : {}),
       metadata: g.metadata ?? {},
       art: Object.fromEntries(ART_KINDS.map((k) => [k, `/__vellum/art/${encodeId(id)}/${k}?v=${version(k)}`])),
       artStatus: Object.fromEntries(ART_KINDS.map((k) => [k, files[k] ? "local" : "placeholder"])),

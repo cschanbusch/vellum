@@ -14,6 +14,7 @@ pub mod scanner;
 pub mod skins;
 pub mod userdata;
 pub mod util;
+pub mod window_state;
 
 use std::sync::{Arc, RwLock};
 
@@ -115,9 +116,12 @@ pub fn run() {
     };
     state.rescan_plugins();
 
+    let placement = window_state::Tracker::new(&state.paths.data_dir);
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(state)
+        .manage(placement)
+        .on_window_event(|win, event| window_state::on_event(win.app_handle(), win, event))
         .register_asynchronous_uri_scheme_protocol(protocols::SKIN_SCHEME, |ctx, req, responder| {
             protocols::handle_skin(ctx.app_handle(), req, responder)
         })
@@ -125,6 +129,10 @@ pub fn run() {
             // The snapshot is already loaded; fresh results replace it as each provider finishes.
             scanner::scan_all(app.handle());
             skins::apply_window(app.handle());
+            // The window starts hidden (tauri.conf.json) so it never flashes at the default size.
+            if let Some(win) = app.get_webview_window("main") {
+                app.state::<window_state::Tracker>().restore(&win);
+            }
             skins::update_dev_watch(app.handle());
             Ok(())
         })
@@ -168,6 +176,7 @@ pub fn run() {
             state.settings.flush();
             state.userdata.flush();
             state.library.flush();
+            handle.state::<window_state::Tracker>().save();
             tracing::info!("exit");
         }
     });

@@ -136,6 +136,33 @@ function activeAccount(ctx) {
   return best;
 }
 
+const localConfig = (ctx, account) => join(ctx.locations.root, "userdata", account, "config", "localconfig.vdf");
+
+/** Minutes played and when, per appid, from the account's localconfig.vdf. Steam counts all
+ *  play there, not only games started through Vellum. */
+function playtimes(ctx, account) {
+  const out = new Map();
+  if (!account || !ctx.fs.exists(localConfig(ctx, account))) return out;
+  let apps;
+  try {
+    const doc = ctx.formats.vdf(ctx.fs.readText(localConfig(ctx, account)));
+    apps = ["Software", "Valve", "Steam", "apps"].reduce((o, k) => pick(o, k), pick(doc, "UserLocalConfigStore"));
+  } catch {
+    return out; // unreadable while Steam writes it; the next scan gets it
+  }
+  if (!apps || typeof apps !== "object") return out;
+  for (const [id, a] of Object.entries(apps)) {
+    if (!/^\d+$/.test(id) || !a || typeof a !== "object") continue;
+    const minutes = Number(pick(a, "Playtime"));
+    const last = Number(pick(a, "LastPlayed"));
+    out.set(id, {
+      minutes: Number.isFinite(minutes) && minutes > 0 ? minutes : undefined,
+      last: Number.isFinite(last) && last > 0 ? new Date(last * 1000).toISOString() : undefined,
+    });
+  }
+  return out;
+}
+
 function collectionsDir(ctx, account) {
   return join(ctx.locations.root, "userdata", account, "config", "cloudstorage");
 }
@@ -300,7 +327,9 @@ function storeMetadata(ctx, appids) {
 export default {
   scan(ctx) {
     const respectHidden = ctx.settings.respectHidden !== false;
-    const cols = collections(ctx, activeAccount(ctx));
+    const account = activeAccount(ctx);
+    const cols = collections(ctx, account);
+    const played = playtimes(ctx, account);
     const games = [];
     const seen = new Set();
     for (const library of libraries(ctx)) {
@@ -318,6 +347,8 @@ export default {
           launchData: { appid: app.appid },
           categories: cols.categories.get(app.appid) ?? [],
           hidden: respectHidden && cols.hidden.has(app.appid),
+          playtimeMinutes: played.get(app.appid)?.minutes,
+          lastPlayed: played.get(app.appid)?.last,
         });
       }
     }
@@ -358,6 +389,8 @@ export default {
     if (account && ctx.fs.exists(collectionsDir(ctx, account))) {
       targets.push({ path: collectionsDir(ctx, account), glob: COLLECTIONS_FILE });
     }
+    // Steam records playtime here when a game closes.
+    if (account) targets.push({ path: join(root, "userdata", account, "config"), glob: "localconfig.vdf" });
     return targets;
   },
 };

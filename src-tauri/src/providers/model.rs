@@ -59,6 +59,12 @@ pub struct ProviderGame {
     /// The store itself hides this game (e.g. Steam's hidden collection).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub hidden: bool,
+    /// Minutes played, as the store counts them: every session, not only Vellum's launches.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub playtime_minutes: Option<u64>,
+    /// ISO time the store last saw the game played.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_played: Option<String>,
 }
 
 #[derive(Debug, Default)]

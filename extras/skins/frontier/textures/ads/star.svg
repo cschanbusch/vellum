@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" fill="none" stroke="#221910" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- A printer's star in a ring of rays. -->
+  <circle cx="80" cy="80" r="62" stroke-width="1.4"/>
+  <circle cx="80" cy="80" r="56" stroke-width="1"/>
+  <path d="M80 30l12 36h38l-31 22 12 36-31-22-31 22 12-36-31-22h38z" fill="#221910" fill-opacity="0.12"/>
+  <path d="M80 4v14M80 142v14M4 80h14M142 80h14M26 26l10 10M124 124l10 10M134 26l-10 10M26 134l10-10" stroke-width="1.6"/>
+  <g stroke-width="0.9" opacity="0.8"><path d="M80 44l6 22M80 44l-6 22M62 92l-12 12M98 92l12 12"/></g>
+</svg>

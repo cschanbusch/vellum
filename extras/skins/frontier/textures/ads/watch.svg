@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 180" fill="none" stroke="#221910" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- A pocket watch on its chain. -->
+  <path d="M62 30h16v12H62z"/>
+  <circle cx="70" cy="22" r="9"/>
+  <path d="M79 18c20-10 40 0 50 14" stroke-dasharray="5 4"/>
+  <circle cx="70" cy="104" r="60"/>
+  <circle cx="70" cy="104" r="52" stroke-width="1.2"/>
+  <path d="M70 58v8M70 142v8M24 104h8M108 104h8M37 71l6 6M97 131l6 6M103 71l-6 6M43 131l-6 6" stroke-width="1.8"/>
+  <path d="M70 104V72M70 104l22 12"/>
+  <circle cx="70" cy="104" r="3" fill="#221910"/>
+  <g stroke-width="1" opacity="0.8"><path d="M18 120c4 16 14 28 26 34M124 88c-4-16-14-28-26-34M122 120c-2 8-6 14-10 20"/></g>
+</svg>

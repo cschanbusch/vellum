@@ -1,5 +1,57 @@
 # Decisions
 
+## 2026-10-21 — Window placement; store playtime; Grand Tourer's varied wear and floor reflection
+
+- **The window comes back where it was.** `window_state.rs` saves the normal (un-maximized) position and size, in physical pixels, and whether the window was maximized.
+  - **Where:** `window.json` in the data folder, so a portable copy keeps its own placement.
+  - **When:** the placement is tracked as the window moves and resizes, and written on close and on exit. While the window is maximized or minimized, only the flag changes, so un-maximizing returns to the last normal size.
+  - **On start:** the window is hidden (`"visible": false`) until it has been placed, so it never flashes at the default size.
+  - **Unplugged monitors:** a saved position is used only if enough of the window's top strip (80 px wide, 24 of its top 40 px) is on a connected monitor. Otherwise the window opens centred at the saved size.
+  - **Why not a plugin:** a hand-rolled module rather than `tauri-plugin-window-state`, which saves to its own config folder and would ignore portable mode.
+- **Store playtime is part of the library.** `ProviderGame` and `Entry` gain `playtimeMinutes` and `lastPlayed`, an addition to the spec's model.
+  - **Steam:** the provider reads both from the active account's `localconfig.vdf` (`Software/Valve/Steam/apps/<appid>`). They count every session, not only Vellum's launches.
+  - **Watched:** the file is watched, so new playtime arrives when Steam writes it as a game closes.
+  - **Other stores:** Epic and GOG don't keep playtime locally in a form we read yet.
+- **Grand Tourer's wear varies, and play wears it too.**
+  - **Starts:** each start costs 5–14% (uniform).
+  - **Play:** hours on the store's clock cost 3% an hour on average, varied by up to 40% each time and capped at 60% for one stretch.
+  - **The odometer:** the skin keeps the store's minutes as last seen (`p`). The first reading only records it, so play from before Grand Tourer, or from before this change, costs nothing.
+  - **Shown on the card:** the Garage card shows Mileage (hours), and the condition note says what the last wear cost.
+- **The Garage reflection is a true floor reflection.** It used to be the model's own projection flipped about a fixed line, so wherever the base wasn't on that line (the near and far corners in perspective), the reflection came away from the model.
+  - **How:** a floor mirrors the model in 3D, seen from the same eye. That is the same as flipping a view of the model from an eye mirrored below the floor. So the mirrored copy uses `perspective-origin: 50% 150%`: its eye is at the model's centre, mirrored about its base.
+  - **Faces:** the mirrored copy now culls back faces normally.
+
+## 2026-10-21 — Redline becomes Grand Tourer; menu sounds
+
+- **Renamed for what it imitates, but the id stays `redline`.** "Grand Tourer" is what GT stands for, and the title screen's tagline, "The Real Gaming Library", nods at the series' own. Changing the id would orphan the active-skin setting and every game's condition, which `vellum.skin.storage` keys by skin id, so only the display name, title and wordmark changed. The folder is still `extras/skins/redline`.
+- **Menu sounds are synthesized like the engine sounds** (`sound.js` `ui()`, wired up in `menu-sounds.js`): glassy ticks and bell chimes, an air swoosh between modes, and a soft knock at an edge. The skin only listens: it observes `vellum.input.on("nav")` and never calls `preventDefault`.
+  - **Moved or blocked:** whether a step moved is judged two frames later, from whether the selection or DOM focus changed. `state.set` is optimistic, so the selection is already updated by then.
+  - **Mouse:** a selection change with no step pending ticks; trusted clicks on buttons chime. Clicks inside kit collections are left to the selection tick, and programmatic clicks (from a confirm) are skipped, so nothing doubles. The same sound never repeats within 45 ms.
+  - **Option:** the sounds have their own "Menu sounds" toggle and share the volume slider.
+
+## 2026-10-21 — Frontier's Catalogue as a bound book
+
+- **Spreads, not a listing plus a plate.** The Catalogue is a flat list of pages read two at a time:
+  - front matter: the inside cover, the title page, the house guarantee and How to Order;
+  - the Contents, listing every game in the query with its page number, over as many spreads as needed;
+  - for each department, a divider page on the left facing its first game, then one game per page;
+  - the want list and a colophon.
+- **Gaps between departments.** When a department ends on a left-hand page, the facing page takes a full-page advertisement, or a ruled Memoranda page when advertisements are off.
+- **Contents capacity.** The number of lines in a column is measured from the page height. Department headings never sit alone at the foot of a column.
+- **Leaves bend by strips, not WebGL.** The pages are live HTML (the Play button, focus, text), which can't be turned into a texture cheaply. A turning leaf is eight vertical strips, each hinged to the one before it, and the strips nearer the fore-edge lead so the paper curls. Each strip shows its slice of a fresh copy of the page.
+  - **Shading:** an even tone and a ramp per strip, changed by opacity only.
+  - **Cast shadow:** a band moved by `transform`.
+  - **Cost:** a turn never repaints page content. Most of its main-thread time is building and laying out the copies at the start, about 200 ms per turn in headless Chromium.
+  - **Riffle:** jumps of more than one spread riffle up to five leaves.
+  - **Drag:** a margin can be clicked to turn, or dragged; the leaf follows the pointer by inverting the fore-edge position.
+  - **Reduced motion:** with reduced motion or Frontier's still mode, pages cross-fade.
+- **The cover opens once per session** (sessionStorage), then the book turns to the last page read. That is the page saved in the skin's storage when nothing has been selected since, else the selected game's page, else the Contents.
+- **Advertisements are data** (`views/catalogue-ads.js`).
+  - **Placement is seeded** by the sorted entry ids and the advertisements setting, and each one has a turn before any repeats. The same library therefore always shows the same advertisements in the same places.
+  - **Kinds:** novelty goods (some stamped "Discontinued" or "Not Available by Mail", as in RDR2's catalogue), notices built from the user's own library (neglected, recently played, newly arrived, heaviest, the largest department), and house notices.
+  - **Settings:** None, Sparing (the default: gaps, the foot of the Contents and a full page every 9 to 12 games) and Generous (every 5 to 7 games, plus a strip on each game's page).
+- **Small windows.** The book's type stops shrinking at 10 px, so at small sizes a page holds fewer ems. The page is a size container, and below 50 em tall the game page drops its testimonial and tightens the stamp and figure.
+
 ## 2026-10-21 — Core and extras plugins
 
 - **Optional plugins live in `extras/`, not `plugins/`.** `plugins/` keeps only what the launcher needs on its own: the Steam, Epic, GOG and custom providers and Basis, the default skin (the fallback when a skin fails). The other skins, both QoL modules and the mock provider (disabled by default, used by the skin harness) moved to `extras/`, which has the same `providers|skins|modules` layout. Debug builds scan `extras/` whenever they use the repo's `plugins/`. Packaged builds have a single `plugins/` folder: the extras are copied into it, so installing, removing or sharing a plugin is still one folder. Releases ship two zips, the launcher with core plugins and an extras zip laid out to extract over it. `package-portable.ps1 -NoExtras` builds the folder without them, and `-Zip` writes both release zips.

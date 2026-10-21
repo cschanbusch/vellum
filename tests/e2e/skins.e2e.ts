@@ -265,39 +265,74 @@ test("grouped Spotlight shows a row per group; up/down move between rows", async
   await page.screenshot({ path: "test-artifacts/views/basis-spotlight-grouped.png" });
 });
 
-test("Frontier's Catalogue: arrows move the circled article and turn pages; tabs jump departments", async ({ page }) => {
+test("Frontier's Catalogue: the contents turn to a game; arrows turn leaves; tabs, Page Down and Back find their way; ads are placed stably", async ({ page }) => {
   const frame = await open(page, 5224);
   await show(page, "catalogue");
-  const listing = frame.locator(".fr-cat-listing");
-  await expect(frame.locator(".fr-cat-item").first()).toBeVisible();
-  await listing.focus();
-  await page.keyboard.press("ArrowRight");
-  const second = await frame.locator(".fr-cat-item").nth(1).locator(".fr-cat-title").textContent();
-  await expect(frame.locator(".fr-cat-item.is-selected .fr-cat-title")).toHaveText(second!);
-  await expect(frame.locator(".fr-cat-plate-title")).toHaveText(second!);
-  expect((await state(page)).selectedId).not.toBeNull();
-  // Right from the right-hand column turns the page.
-  const folio = await frame.locator(".fr-cat-folio").textContent();
-  await page.keyboard.press("ArrowRight");
-  await expect(frame.locator(".fr-cat-folio")).not.toHaveText(folio!);
-  await expect(listing).toBeFocused();
-  // Page Down opens the next department; its tab is marked current.
-  const dept = await frame.locator(".fr-cat-running-dept").textContent();
-  await page.keyboard.press("PageDown");
-  await expect(frame.locator(".fr-cat-running-dept")).not.toHaveText(dept!);
-  await expect(frame.locator('.fr-cat-tab[aria-current="page"]')).toHaveCount(1);
-  // Clicking a tab jumps there.
+  const book = frame.locator(".fr-cat-book");
+  const settled = () => expect(book).not.toHaveAttribute("data-turning", "", { timeout: 10_000 });
+  // The first visit of a session opens the cover, then settles on a spread.
+  await expect(frame.locator(".fr-cat-page .fr-cat-sheet").first()).toBeVisible();
+  await settled();
+
+  // The Contents tab opens the contents.
   await frame.locator(".fr-cat-tab").first().click();
+  await settled();
   await expect(frame.locator(".fr-cat-tab").first()).toHaveAttribute("aria-current", "page");
+  await expect(frame.locator(".fr-cat-toc-line").first()).toBeVisible();
+
+  // A line turns to that game's page, which takes focus and selects the game.
+  const line = frame.locator(".fr-cat-toc-line:not(.is-dept)").nth(5);
+  const title = (await line.locator(".fr-cat-toc-title").textContent())!;
+  const folio = (await line.locator(".fr-cat-toc-page").textContent())!;
+  await line.click();
+  await settled();
+  await expect(frame.locator(".fr-cat-page.is-at .fr-cat-plate-title")).toHaveText(title);
+  await expect(frame.locator(".fr-cat-page.is-at .fr-cat-folio")).toHaveText(`— ${folio} —`);
+  const selected = (await state(page)).selectedId;
+  expect((await host(page, (h) => h.entries)).find((e) => e.id === selected)?.title).toBe(title);
+
+  // Two steps right always leave the spread: a leaf turns.
+  await frame.locator(".fr-cat-spread").focus();
+  const folios = async () => (await frame.locator(".fr-cat-page .fr-cat-folio").allTextContents()).join(" ");
+  const spread = await folios();
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await settled();
+  await expect.poll(folios).not.toBe(spread);
+  await expect(frame.locator(".fr-cat-spread")).toBeFocused();
+
+  // Page Down opens the next department on its divider page, and its tab is current.
+  const tab = (await frame.locator('.fr-cat-tab[aria-current="page"]').textContent())!;
+  await page.keyboard.press("PageDown");
+  await settled();
+  await expect(frame.locator(".fr-cat-page.is-at .fr-cat-sheet")).toHaveClass(/is-divider/);
+  await expect(frame.locator('.fr-cat-tab[aria-current="page"]')).not.toHaveText(tab);
+
+  // Back returns to the contents, with a line in hand.
+  await page.keyboard.press("Escape");
+  await settled();
+  await expect(frame.locator(".fr-cat-toc-line.is-focus")).toHaveCount(1);
+  await page.keyboard.press("ArrowDown");
+  await expect(frame.locator(".fr-cat-toc-line.is-focus")).toHaveCount(1);
+  await page.screenshot({ path: "test-artifacts/views/frontier-catalogue.png" });
+
+  // The same library gets the same advertisements in the same places, even after a reload.
+  const ads = (await frame.locator(".fr-cat").getAttribute("data-ads"))!;
+  expect(ads.split(" ").length).toBeGreaterThan(3);
+  await host(page, (h) => h.reloadSkinPage());
+  await expect(page.frameLocator("iframe").locator(".fr-cat")).toHaveAttribute("data-ads", ads);
+  // "None" leaves only the house guarantee, which is front matter.
+  await page.evaluate(() => (document.querySelector("vellum-harness") as HarnessEl).backend.setOption("frontier", "adverts", "none"));
+  await expect(page.frameLocator("iframe").locator(".fr-cat")).toHaveAttribute("data-ads", "guarantee");
+  await page.evaluate(() => (document.querySelector("vellum-harness") as HarnessEl).backend.setOption("frontier", "adverts", "sparing"));
+
   // A search with no matches says so in period style.
   await host(page, (h) => h.setState({ query: "zzzzqqq" }));
-  await expect(frame.locator(".fr-cat-none")).toBeVisible();
+  await expect(page.frameLocator("iframe").locator(".fr-cat-none")).toBeVisible();
   await host(page, (h) => h.setState({ query: "" }));
-  await page.waitForTimeout(800);
-  await page.screenshot({ path: "test-artifacts/views/frontier-catalogue.png" });
 });
 
-test("Redline's ignition: a worn game can stall; a service restores it; a start wears it", async ({ page }) => {
+test("Grand Tourer's ignition: a worn game can stall; a service restores it; a start wears it", async ({ page }) => {
   const frame = await open(page, 5226);
   await show(page, "garage");
   const skin = page.frames().find((f) => f.url().includes("127.0.0.1"))!;
@@ -353,10 +388,48 @@ test("Redline's ignition: a worn game can stall; a service restores it; a start 
   // Serviced, it cranks again by itself, fires, and launches; the start costs some condition.
   await expect.poll(launched, { timeout: 10_000 }).not.toBeNull();
   await expect(frame.locator(".rl-ign")).toHaveCount(0, { timeout: 5000 });
-  await expect(frame.locator(".rl-gar-cond-pct")).toHaveText("88%");
+  // A start costs 5-14%; with the dice loaded low, just over 5%.
+  await expect(frame.locator(".rl-gar-cond-pct")).toHaveText("95%");
+  await expect(frame.locator(".rl-gar-cond-note")).toHaveText("Last start took 5% off");
 });
 
-test("Redline's Garage: left/right pick the model, up/down change maker, the card follows", async ({ page }) => {
+test("Grand Tourer's wear: hours on the store's clock cost condition, but past play doesn't", async ({ page }) => {
+  const frame = await open(page, 5226);
+  await show(page, "garage");
+  const skin = page.frames().find((f) => f.url().includes("127.0.0.1"))!;
+  await expect(frame.locator(".rl-gar-thumb").first()).toBeVisible();
+  const id = await skin.evaluate(() => window.vellum.state.get().selectedId!);
+  const cond = () =>
+    skin.evaluate(async (id) => {
+      const c = await import(new URL("condition.js", location.href).href);
+      return c.condition(id);
+    }, id);
+  const read = (minutes: number) =>
+    skin.evaluate(
+      async ([id, minutes]) => {
+        const c = await import(new URL("condition.js", location.href).href);
+        c.notePlaytime([{ id, playtimeMinutes: minutes }], () => 0.5);
+      },
+      [id, minutes] as const,
+    );
+  // The odometer as first seen is history: it costs nothing. (The real reading already happened
+  // at start-up from the mock library; a lower one resets it.)
+  await read(10);
+  await read(10);
+  expect(await cond()).toBe(1);
+  // Two more hours at the average rate (3% an hour): 6% off.
+  await read(130);
+  expect(await cond()).toBeCloseTo(0.94, 5);
+  await expect(frame.locator(".rl-gar-cond-pct")).toHaveText("94%");
+  await expect(frame.locator(".rl-gar-cond-note")).toHaveText("2.0 h on the road since the last check: 6% off");
+  // A marathon is capped: worn, not wrecked.
+  await read(130 + 60 * 100);
+  expect(await cond()).toBeCloseTo(0.34, 5);
+  // The spec card shows the mileage (the reading the card's entry carries, from the mock library).
+  await expect(frame.locator(".rl-gar-figure-label", { hasText: "Mileage" })).toBeVisible();
+});
+
+test("Grand Tourer's Garage: left/right pick the model, up/down change maker, the card follows", async ({ page }) => {
   const frame = await open(page, 5226);
   await show(page, "garage");
   const strip = frame.locator(".rl-gar-strip");
@@ -379,6 +452,71 @@ test("Redline's Garage: left/right pick the model, up/down change maker, the car
   await expect(frame.locator(".rl-gar-name")).toHaveText(other.title);
   await page.waitForTimeout(800);
   await page.screenshot({ path: "test-artifacts/views/redline-garage.png" });
+});
+
+test("Grand Tourer's menu sounds: steps tick, a dead end knocks, Back and a mode change have their own sounds", async ({ page }) => {
+  // Record the pitch of every oscillator the skin starts: each menu sound has its own.
+  await page.addInitScript(() => {
+    const w = window as unknown as { __tones: number[] };
+    w.__tones = [];
+    if (!window.AudioContext) return;
+    const freqs = new WeakSet<AudioParam>();
+    const create = AudioContext.prototype.createOscillator;
+    AudioContext.prototype.createOscillator = function () {
+      const o = create.call(this);
+      freqs.add(o.frequency);
+      return o;
+    };
+    const value = Object.getOwnPropertyDescriptor(AudioParam.prototype, "value")!;
+    Object.defineProperty(AudioParam.prototype, "value", {
+      ...value,
+      set(v: number) {
+        if (freqs.has(this)) w.__tones.push(Math.round(v));
+        value.set!.call(this, v);
+      },
+    });
+    const at = AudioParam.prototype.setValueAtTime;
+    AudioParam.prototype.setValueAtTime = function (v: number, t: number) {
+      if (freqs.has(this)) w.__tones.push(Math.round(v));
+      return at.call(this, v, t);
+    };
+  });
+  const frame = await open(page, 5226);
+  await show(page, "garage");
+  const skin = page.frames().find((f) => f.url().includes("127.0.0.1"))!;
+  const heard = () => skin.evaluate(() => (window as unknown as { __tones: number[] }).__tones.splice(0));
+  const strip = frame.locator(".rl-gar-strip");
+  await expect(frame.locator(".rl-gar-thumb").first()).toBeVisible();
+  await strip.focus();
+  await page.keyboard.press("Shift"); // dismisses the title screen, if it is up
+  await page.waitForTimeout(100);
+  await heard();
+
+  // A step right ticks high, a step left ticks lower.
+  await page.keyboard.press("ArrowRight");
+  await expect.poll(heard).toContain(1880);
+  await page.keyboard.press("ArrowLeft");
+  await expect.poll(heard).toContain(1720);
+  // Page Up on the first model goes nowhere: a knock, not a tick.
+  await page.keyboard.press("PageUp");
+  await expect.poll(heard).toContain(240);
+  expect(await heard()).not.toContain(1720);
+  // Back falls from E to A; a mode change swooshes with a high bell.
+  await page.keyboard.press("Escape");
+  await expect.poll(heard).toEqual(expect.arrayContaining([1319, 880]));
+  await host(page, (h) => h.switchView("covers"));
+  await expect.poll(heard).toContain(2349);
+  // Picking a cover with the mouse ticks too.
+  await frame.locator("vellum-grid .cell").nth(2).click();
+  await expect.poll(heard).toContain(1720);
+
+  // Menu sounds have their own switch.
+  await page.evaluate(() => (document.querySelector("vellum-harness") as HarnessEl).backend.setOption("redline", "menuSounds", false));
+  await page.waitForTimeout(200);
+  await heard();
+  await frame.locator("vellum-grid .cell").nth(3).click();
+  await page.waitForTimeout(300);
+  expect(await heard()).toEqual([]);
 });
 
 for (const [id, port] of [["synthwave", 5210], ["aero", 5212], ["gridline", 5214], ["calling-card", 5216], ["ficsit", 5218], ["frontier", 5224], ["redline", 5226]] as const) {

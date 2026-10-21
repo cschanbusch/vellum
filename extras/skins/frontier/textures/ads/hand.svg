@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 110" fill="none" stroke="#221910" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- A printer's manicule: a pointing hand with a shirt cuff. -->
+  <path d="M8 36h34v44H8z"/>
+  <path d="M14 44h22M14 72h22" stroke-width="1.2"/>
+  <path d="M42 40c14-4 26-10 40-10h96c8 0 12 4 12 8s-4 8-12 8h-62"/>
+  <path d="M116 46c8 0 12 4 12 8s-4 8-12 8"/>
+  <path d="M112 62c7 0 11 4 11 8s-4 8-11 8"/>
+  <path d="M106 78c6 0 9 3 9 7s-3 7-9 7H72c-12 0-20-4-30-10"/>
+  <path d="M96 46H82M98 62H84M96 78H84" stroke-width="1.4"/>
+  <g stroke-width="1" opacity="0.8">
+    <path d="M50 70l8-8M56 76l10-10M64 80l10-10M72 84l8-8M62 50l6-6M70 50l6-6"/>
+    <path d="M20 50v22M26 50v22M32 50v22"/>
+  </g>
+</svg>

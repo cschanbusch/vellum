@@ -2,7 +2,7 @@
   "id": "frontier",
   "type": "skin",
   "name": "Frontier",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "apiVersion": 1,
   "author": "Vellum",
   "description": "Smoke, brush strokes and wood type, in the style of Red Dead Redemption 2's menus. Fan-made; no game assets.",
@@ -98,9 +98,29 @@
       },
       {
         "id": "engravings",
-        "label": "Catalogue listing as engravings",
+        "label": "Catalogue advertisement art as engravings",
         "type": "toggle",
         "default": true
+      },
+      {
+        "id": "adverts",
+        "label": "Catalogue advertisements",
+        "type": "select",
+        "default": "sparing",
+        "choices": [
+          {
+            "value": "none",
+            "label": "None"
+          },
+          {
+            "value": "sparing",
+            "label": "Sparing"
+          },
+          {
+            "value": "generous",
+            "label": "Generous"
+          }
+        ]
       },
       {
         "id": "figureArt",

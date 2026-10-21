@@ -1,6 +1,10 @@
-// Redline: the help bar for each view, a wipe between views, and the title screen.
+// Grand Tourer: the help bar for each view, a wipe between views, the title screen and the menu
+// sounds.
 import vellum from "/__vellum/sdk.js";
 import { installIgnition } from "./ignition.js";
+import { installMenuSounds } from "./menu-sounds.js";
+import { notePlaytime } from "./condition.js";
+import { ui } from "./sound.js";
 
 const reduced = matchMedia("(prefers-reduced-motion: reduce)");
 const moving = () => vellum.skin.options.motion !== false && !reduced.matches;
@@ -92,7 +96,10 @@ function boot() {
   }
   if (seen || vellum.skin.options.boot === false || !moving()) return;
   el.hidden = false;
-  const done = () => {
+  const done = (e) => {
+    if (el.classList.contains("out")) return;
+    // Pressed through (a key or a click lets audio play): the title chord.
+    if (e) ui("start");
     el.classList.add("out");
     setTimeout(() => (el.hidden = true), 400);
     removeEventListener("keydown", done, true);
@@ -100,7 +107,7 @@ function boot() {
   };
   addEventListener("keydown", done, true);
   addEventListener("pointerdown", done, true);
-  setTimeout(done, 2600);
+  setTimeout(() => done(), 2600);
 }
 
 function applyOptions() {
@@ -110,6 +117,11 @@ function applyOptions() {
 await vellum.ready();
 applyOptions();
 installIgnition();
+installMenuSounds();
+// Hours on the clock wear a game too: read the odometers now and whenever the library changes
+// (Steam records playtime when a game closes, and Vellum rescans).
+notePlaytime(vellum.library.all());
+vellum.library.on("change", () => notePlaytime(vellum.library.all()));
 boot();
 onState(vellum.state.get());
 vellum.state.on("change", onState);

@@ -1,11 +1,11 @@
 {
   "id": "redline",
   "type": "skin",
-  "name": "Redline",
-  "version": "1.1.0",
+  "name": "Grand Tourer",
+  "version": "1.2.0",
   "apiVersion": 1,
   "author": "Vellum",
-  "description": "Pearl, chrome and glossy blue: a racing-showroom menu in the style of early-2000s console games, with a Garage view.",
+  "description": "Pearl, chrome and glossy blue: a racing-showroom menu in the style of early-2000s grand-touring games, with a Garage view, engine sounds and menu chimes.",
   "entry": "index.html",
   "skin": {
     "preview": "preview.jpg",
@@ -56,6 +56,12 @@
       {
         "id": "sounds",
         "label": "Engine sounds",
+        "type": "toggle",
+        "default": true
+      },
+      {
+        "id": "menuSounds",
+        "label": "Menu sounds (cursor ticks, chimes)",
         "type": "toggle",
         "default": true
       },

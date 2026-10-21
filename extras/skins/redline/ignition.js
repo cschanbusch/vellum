@@ -1,4 +1,4 @@
-// The ignition sequence that runs before every start in Redline: the starter cranks (sound and
+// The ignition sequence that runs before every start in Grand Tourer: the starter cranks (sound and
 // a twitching tachometer), then the engine either fires and the game launches, or, if the game
 // is worn below RISKY, it may fail to turn over. Then: crank again, service it, or give up.
 import vellum from "/__vellum/sdk.js";
@@ -155,7 +155,7 @@ function ignite(entry) {
   });
 }
 
-/** Installs the ignition in front of every launch Redline starts. */
+/** Installs the ignition in front of every launch Grand Tourer starts. */
 export function installIgnition() {
   return vellum.actions.onBeforeLaunch(async (id) => {
     if (busy) return false; // already starting something

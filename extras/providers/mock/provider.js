@@ -54,6 +54,8 @@ function makeGame(i) {
     },
     // A few entries are hidden by the "store", to exercise hidden handling.
     hidden: i % 29 === 28,
+    // Most games have been played a while; drawn last so the values above stay as they were.
+    playtimeMinutes: r() < 0.7 ? Math.floor(r() * 6000) : undefined,
   };
 }
 

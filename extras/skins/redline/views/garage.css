@@ -1,4 +1,4 @@
-/* Redline Garage view (views/garage.js): a showroom turntable, a spec card and a model strip. */
+/* Grand Tourer Garage view (views/garage.js): a showroom turntable, a spec card and a model strip. */
 
 .rl-garage {
   flex: 1;
@@ -104,9 +104,13 @@
   margin-top: calc(var(--h) * -1);
   perspective: 1600px;
 }
-/* The reflection: a mirrored copy of the model in the polished floor. */
+/* The reflection in the polished floor. A floor mirrors the model in 3D, seen from the same eye;
+   that is the same as flipping a view of the model taken from an eye mirrored below the floor.
+   The model's eye is at its centre (50%), its base at 100%, so the mirrored eye is at 150%. Then
+   every corner of the base meets its own reflection, however the model turns. */
 .rl-gar-turn.is-mirror {
-  top: calc(80% + var(--h) + 4px);
+  top: calc(80% + var(--h));
+  perspective-origin: 50% 150%;
   transform: scaleY(-1);
   opacity: 0.28;
   -webkit-mask: linear-gradient(0deg, #000, transparent 32%);
@@ -114,8 +118,6 @@
   pointer-events: none;
 }
 .rl-gar-turn.is-mirror.is-arriving { animation: none; }
-/* Mirrored, front faces point away from the viewer; draw both sides and let depth sort them. */
-.rl-gar-turn.is-mirror .rl-gar-face { backface-visibility: visible; }
 :root:not([data-opt-reflections]) .rl-gar-turn.is-mirror { display: none; }
 .rl-gar-model {
   position: absolute;
@@ -229,7 +231,7 @@
 .rl-gar-class.is-c .rl-gar-class-value,
 .rl-gar-class.is-d .rl-gar-class-value { color: #ff7a6e; }
 
-.rl-gar-figures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; }
+.rl-gar-figures { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
 .rl-gar-figure {
   min-width: 0;
   overflow: hidden;

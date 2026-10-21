@@ -244,6 +244,8 @@ interface Entry {
   lastLaunched: string | null;      // ISO time Vellum last launched it; not playtime
   addedAt: string;                  // ISO time Vellum first saw it
   sizeBytes?: number;
+  playtimeMinutes?: number;         // minutes played as the store counts them (Steam), any launcher
+  lastPlayed?: string;              // ISO time the store last saw it played
   metadata: { developer?: string; publisher?: string; releaseDate?: string; genres?: string[]; description?: string };
   art: { cover: string; hero: string; logo: string; header: string; icon: string };
   artStatus: { cover: "local" | "remote" | "placeholder"; /* …per kind */ };
@@ -1158,17 +1160,37 @@ built-ins keep their keys wherever they sit.
 
 ### Example: a view with its own focus container
 
-*Frontier's Catalogue* (`extras/skins/frontier/views/catalogue.js` and `catalogue.css`) lays the
-library out as an open mail-order catalogue: a paginated listing on the left page, the selected
-game's plate on the right and department tabs on the fore-edge. It shows how to:
+*Frontier's Catalogue* (`extras/skins/frontier/views/catalogue.js`, `leaf.js`,
+`catalogue-ads.js` and `catalogue.css`) lays the library out as a bound mail-order catalogue,
+read a spread (two facing pages) at a time. It has a title page, Contents listing every game
+with its page number, a divider page per department, one game per page, and advertisements in
+the gaps. It shows how to:
 
 - make your own collection a **focus container** (`vellumNav`, `vellumFocusBox`, `vellumEnter`,
-  `vellumConfirm`): arrows move the selection, the page turns at the edges, Page Up/Down jump
-  between departments, and Up from the top row leaves for the toolbar;
-- keep kit components (`<vellum-play-button>`) and plain `data-vellum-focus` buttons *outside*
-  the container, so the focus manager moves between them normally;
-- paginate to the space available, measured with a `ResizeObserver`;
-- ask for styled art per element: `vellum.art.url(id, "cover", 160, "sketch")` prints the plates
-  as engravings, whatever the skin's own art style;
+  `vellumConfirm`): Left/Right move between the two pages and turn the leaf at the edge, Up/Down
+  move through the Contents lines, Page Up/Down jump between departments, and Up from a game's
+  page leaves for the toolbar. Elements inside a container (here the Play button) are skipped
+  by the focus manager, so keep tabs and other buttons outside it;
+- take **Back** for yourself with `vellum.input.on("nav", e => …)` and `e.preventDefault()`
+  (Back returns to the Contents), but only when focus is inside your view, so popovers and the
+  search box keep their own Back;
+- paginate to the space available, measured with a `ResizeObserver`, and draw only the pages on
+  screen;
+- animate with `requestAnimationFrame`, changing only `transform` and `opacity` per frame, so the
+  page content is painted once (`leaf.js` turns a leaf of eight hinged strips, each showing its
+  slice of a copy of the page). Respect `prefers-reduced-motion`; the Catalogue cross-fades;
+- ask for styled art per element: `vellum.art.url(id, "hero", 1280, "watercolor")` prints the
+  figure hand-coloured, whatever the skin's own art style;
+- import other modules of your skin from a view (`import … from "./leaf.js"`) and find files
+  next to it with `new URL("../textures/x.svg", import.meta.url)`;
 - load a view's stylesheet with `@import` from the main stylesheet, and fonts with `url()`
   relative to that file.
+
+**Adding an advertisement to the Catalogue.** Append an object to the list in
+`views/catalogue-ads.js`. The comment at the top documents the fields: `sizes` says where it may
+go (`"full"` page, `"box"` panel or `"strip"`), `when(ctx)` limits it to libraries it suits, and
+`render(ctx)` returns the copy (headline, body, price, fine print, a stamp such as "Not Available
+by Mail", and an ornament or a game's art). `ctx` offers facts about the library, such as the
+most neglected installed game, the newest arrival or the largest department. Placement is
+seeded by the library, so an advertisement stays on the same page between visits. Engravings
+for ornaments go in `textures/ads/`.

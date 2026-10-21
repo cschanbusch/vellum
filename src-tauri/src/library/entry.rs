@@ -49,6 +49,11 @@ pub struct Entry {
     pub added_at: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub size_bytes: Option<u64>,
+    /// Store-reported minutes played and last session (see `ProviderGame`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub playtime_minutes: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_played: Option<String>,
     pub metadata: Metadata,
     /// Art URLs on the skin's own origin, versioned so they can be cached as immutable.
     pub art: BTreeMap<&'static str, String>,
@@ -97,6 +102,8 @@ impl Entry {
             last_launched: user.last_launched,
             added_at: user.first_seen.unwrap_or_default(),
             size_bytes: g.size_bytes,
+            playtime_minutes: g.playtime_minutes,
+            last_played: g.last_played.clone(),
             metadata: g.metadata.clone(),
             art: ART_KINDS.iter().map(|k| (*k, art::url(&id, k, &art::version(art::pick(cands, k), &g.title)))).collect(),
             art_status: ART_KINDS.iter().map(|k| (*k, if art::pick(cands, k).is_some() { "local" } else { "placeholder" })).collect(),

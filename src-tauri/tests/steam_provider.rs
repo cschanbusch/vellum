@@ -44,6 +44,9 @@ fn scans_installed_games_across_libraries_with_collections() {
     assert_eq!(portal.kind, GameKind::Game);
     assert_eq!(portal.size_bytes, Some(12_000_000_000));
     assert_eq!(portal.launch_data, json!({ "appid": "620" }));
+    // Playtime is the active account's (22222), not the other account's.
+    assert_eq!(portal.playtime_minutes, Some(754));
+    assert_eq!(portal.last_played.as_deref(), Some("2025-10-09T08:53:20.000Z"));
     let mut cats = portal.categories.clone();
     cats.sort();
     assert_eq!(cats, ["Co-op", "Steam favorites"], "deleted, dynamic and other-account collections are ignored");
@@ -118,12 +121,12 @@ fn actions_open_steam_uris() {
 }
 
 #[test]
-fn watch_lists_manifest_folders_and_collections() {
+fn watch_lists_manifest_folders_collections_and_playtime() {
     let fx = steam_fixture();
     let mut h = harness(&fx, Map::new());
     let targets = h.call(Method::Watch, None).unwrap().value;
     let globs: Vec<&str> = targets.as_array().unwrap().iter().map(|t| t["glob"].as_str().unwrap()).collect();
-    assert_eq!(globs, ["libraryfolders.vdf", "appmanifest_*.acf", "appmanifest_*.acf", "cloud-storage-namespace-1.json"]);
+    assert_eq!(globs, ["libraryfolders.vdf", "appmanifest_*.acf", "appmanifest_*.acf", "cloud-storage-namespace-1.json", "localconfig.vdf"]);
 }
 
 #[test]

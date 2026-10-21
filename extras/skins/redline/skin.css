@@ -1,7 +1,7 @@
 @import url("views/garage.css");
 @import url("overlays.css");
 
-/* Redline: a racing-showroom menu in the style of early-2000s console games. Original design;
+/* Grand Tourer: a racing-showroom menu in the style of early-2000s console games. Original design;
    no game assets or names.
 
    The look: pearl and silver under studio light, frosted glass panels with a bright specular
@@ -547,7 +547,7 @@ vellum-play-button::part(via) {
   filter: drop-shadow(0 2px 0 #fff) drop-shadow(0 10px 18px rgb(40 60 90 / 0.25));
   animation: rl-boot-in 700ms cubic-bezier(0.2, 1.2, 0.4, 1) both, rl-boot-glint 1.6s 600ms ease-in-out both;
 }
-.rl-boot-sub { font: 700 1rem var(--rl-saira); letter-spacing: 0.5em; text-transform: uppercase; color: var(--rl-steel); animation: rl-fade 500ms 400ms both; }
+.rl-boot-sub { font: 700 1rem var(--rl-saira); letter-spacing: 0.34em; text-transform: uppercase; color: var(--rl-steel); animation: rl-fade 500ms 400ms both; }
 .rl-boot-press {
   margin-top: 2.2rem;
   font: 400 0.95rem var(--rl-wide);

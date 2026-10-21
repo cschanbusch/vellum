@@ -1,4 +1,4 @@
-// Redline's Garage view: a showroom. The selected game stands on a turntable under studio
+// Grand Tourer's Garage view: a showroom. The selected game stands on a turntable under studio
 // lights, a spec card gives its model year, manufacturer (developer), body type (genre) and
 // condition, and a model-select strip runs along the bottom, one body type at a time (or the
 // current grouping).
@@ -6,7 +6,7 @@
 // The strip is a focus container: Left/Right choose the model, Up/Down change body type, Enter
 // starts the game and S services it. The card's buttons sit outside it, so the focus manager
 // reaches them normally.
-import { condition, describe, failChance, grade, serviced } from "../condition.js";
+import { condition, describe, failChance, grade, lastWear, serviced } from "../condition.js";
 import { openService } from "../service.js";
 
 let api = null;
@@ -53,6 +53,16 @@ function bodyType(e) {
 
 function shortDate(iso) {
   return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+
+/** What the last wear cost: a start, or hours of play since the odometer was last read. */
+function wearNote(id) {
+  const w = lastWear(id);
+  if (!w) return null;
+  const pct = Math.max(1, Math.round(w.w * 100));
+  if (w.kind !== "play") return `Last start took ${pct}% off`;
+  const h = w.minutes / 60;
+  return `${h >= 10 ? Math.round(h) : h.toFixed(1)} h on the road since the last check: ${pct}% off`;
 }
 
 const art = (e, kind, width) => api.art.url(e.id, kind, width, null);
@@ -230,7 +240,10 @@ function renderModel(force = false) {
   const body = bodyType(e);
   const bodyFig = figure("Body type", body ?? "—");
   bodyFig.classList.add("is-text");
-  figures.append(figure("Model year", y ? String(y) : "—"), bodyFig, figure("Displacement", sv, su));
+  // Mileage: hours on the clock, as the store counts them.
+  const hours = e.playtimeMinutes ? e.playtimeMinutes / 60 : null;
+  const mileage = hours == null ? figure("Mileage", "—") : figure("Mileage", hours >= 10 ? Math.round(hours).toLocaleString() : hours.toFixed(1), "h");
+  figures.append(figure("Model year", y ? String(y) : "—"), bodyFig, figure("Displacement", sv, su), mileage);
 
   // Condition: a segmented gauge, its state, and a warning when it may not start.
   const cond = el("section", "rl-gar-cond");
@@ -250,7 +263,7 @@ function renderModel(force = false) {
   const note = el(
     "p",
     `rl-gar-cond-note${risk ? " is-warn" : ""}`,
-    risk ? `May not start (${Math.round(risk * 100)}% chance). Service recommended.` : svc ? `Last serviced ${shortDate(svc)}` : "Factory fresh until you start it",
+    risk ? `May not start (${Math.round(risk * 100)}% chance). Service recommended.` : wearNote(e.id) ?? (svc ? `Last serviced ${shortDate(svc)}` : "Factory fresh until you start it"),
   );
   cond.append(condHead, gauge, note);
 

@@ -31,6 +31,10 @@ export interface Entry {
   lastLaunched: string | null;
   addedAt: string;
   sizeBytes?: number;
+  /** Minutes played as the store counts them (every session, not only Vellum's launches). Steam only, for now. */
+  playtimeMinutes?: number;
+  /** ISO time the store last saw the game played. */
+  lastPlayed?: string;
   metadata: { developer?: string; publisher?: string; releaseDate?: string; genres?: string[]; description?: string };
   /** Art URLs on the skin's own origin, at full size. Use `vellum.art.url` for sized variants. */
   art: Record<ArtKind, string>;

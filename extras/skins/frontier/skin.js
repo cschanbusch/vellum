@@ -42,8 +42,8 @@ const PROMPTS = {
     ["Enter", "Order"],
     ["←→", "Turn page"],
     ["PgUp PgDn", "Department"],
+    ["Esc", "Contents"],
     ["Ctrl D", "Want list"],
-    ["Menu", "Options"],
   ],
   spotlight: [
     ["Enter", "Play"],

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 130" fill="none" stroke="#221910" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- A telegraph key on its wooden base, with a coil and wires. -->
+  <path d="M10 98h180v16H10z"/>
+  <path d="M16 106h168" stroke-width="1"/>
+  <path d="M40 98V84h20v14M140 98V80h24v18"/>
+  <path d="M50 84l100-22"/>
+  <circle cx="150" cy="58" r="10"/>
+  <path d="M150 48v-6M144 40h12" />
+  <path d="M146 80c0-6 12-6 12 0" stroke-width="1.4"/>
+  <path d="M84 98V74h24v24" />
+  <path d="M84 80h24M84 86h24M84 92h24" stroke-width="1.2"/>
+  <path d="M30 98c-10-30-20-50 -20-80M180 98c4-20 10-40 10-70" stroke-width="1.4"/>
+  <g stroke-width="1" opacity="0.8"><path d="M20 110l6-6M40 110l6-6M60 110l6-6M80 110l6-6M100 110l6-6M120 110l6-6M140 110l6-6M160 110l6-6"/></g>
+</svg>

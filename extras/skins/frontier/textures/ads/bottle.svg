@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 200" fill="none" stroke="#221910" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- A patent-medicine bottle with a paper label. -->
+  <path d="M50 8h20v10H50z" fill="#221910"/>
+  <path d="M52 18v22c0 6-28 18-28 46v96c0 6 4 10 10 10h52c6 0 10-4 10-10V86c0-28-28-40-28-46V18"/>
+  <path d="M32 98h56v62H32z"/>
+  <path d="M38 108h44M38 150h44" stroke-width="1.4"/>
+  <path d="M44 120h32M48 128h24M44 136h32" stroke-width="1.6"/>
+  <g stroke-width="1" opacity="0.8">
+    <path d="M30 70l10-8M28 82l18-14M28 94l4-3M90 92l2-2M88 168l4-4M86 180l6-6M30 172l2-2"/>
+    <path d="M92 104v50M94 110v40M28 104v50" />
+  </g>
+  <path d="M60 170c6 0 10-2 12-4" stroke-width="1.2"/>
+</svg>
