@@ -204,8 +204,9 @@ function turntable(topTex) {
 
 export class CaseStage {
   /**
-   * `host`: the element the canvas fills. `still()`: true when cases must not rotate or slide.
-   * `reflect()`: whether the turntables show the cases' reflections.
+   * `host`: the element the canvas fills, or null to build the stage off-page (attach() it
+   * later). `still()`: true when cases must not rotate or slide. `reflect()`: whether the
+   * turntables show the cases' reflections.
    */
   constructor(host, { still, reflect = () => true }) {
     this.host = host;
@@ -218,7 +219,7 @@ export class CaseStage {
     this.renderer.setClearColor(0x000000, 0);
     this.canvas = this.renderer.domElement;
     this.canvas.className = "rl-gar-gl";
-    host.append(this.canvas);
+    host?.append(this.canvas);
     this.aniso = this.renderer.capabilities.getMaxAnisotropy();
 
     const scene = (this.scene = new THREE.Scene());
@@ -260,9 +261,16 @@ export class CaseStage {
 
     this.resize = this.resize.bind(this);
     this.ro = new ResizeObserver(this.resize);
-    this.ro.observe(host);
+    if (host) this.ro.observe(host);
+    else this.paused = true;
     this.bindPointer();
     this.resize();
+  }
+
+  /** Compiles the shaders for everything in the scene without blocking (where the GPU driver
+   *  allows), so the first frame on screen doesn't stall. */
+  async warm() {
+    await this.renderer.compileAsync(this.scene, this.camera);
   }
 
   /** The case on the centre turntable (or arriving there). */
@@ -605,8 +613,8 @@ export class CaseStage {
   // ---- camera ----------------------------------------------------------------------------------
 
   resize() {
-    const w = this.host.clientWidth;
-    const h = this.host.clientHeight;
+    const w = this.host?.clientWidth;
+    const h = this.host?.clientHeight;
     if (!w || !h) return;
     this.renderer.setSize(w, h, false);
     const cam = this.camera;
@@ -730,6 +738,29 @@ export class CaseStage {
     });
   }
 
+  /** Moves the stage into `host` (the Garage, mounted again) and draws again. The scene, its cases
+   *  and their textures were kept, so this is instant. */
+  attach(host) {
+    this.host = host;
+    host.append(this.canvas);
+    this.ro.disconnect();
+    this.ro.observe(host);
+    this.paused = false;
+    this.resize();
+    this.pose();
+    this.render();
+    this.kick();
+  }
+
+  /** Takes the canvas out of the page and stops drawing, keeping everything else for later. */
+  detach() {
+    this.finishSlide();
+    this.flushFade();
+    this.pause(true);
+    this.ro.disconnect();
+    this.canvas.remove();
+  }
+
   /** Stops drawing while something covers the stage (a dialog), and picks up again after. */
   pause(on) {
     this.paused = on;
@@ -838,7 +869,7 @@ export class CaseStage {
   }
 
   render() {
-    if (!this.host.isConnected) return;
+    if (!this.host?.isConnected) return;
     this.renderer.render(this.scene, this.camera);
   }
 

@@ -502,7 +502,8 @@ vellum-play-button::part(via) {
 /* ---- flash between views ------------------------------------------------------------------------- */
 
 /* A full-screen flash, like a game menu cutting to a new screen: it peaks at once, hiding the swap
-   of views underneath, and fades out. Pearl white into the skin's pale blue, never pure white. */
+   of views underneath, holds until the new view is ready, and fades out. Pearl white into the
+   skin's pale blue, never pure white. */
 .rl-wipe {
   position: fixed;
   inset: 0;
@@ -511,12 +512,9 @@ vellum-play-button::part(via) {
   opacity: 0;
   background: radial-gradient(120% 95% at 50% 42%, rgb(255 255 255 / 0.95), rgb(226 238 252 / 0.92) 55%, rgb(150 192 240 / 0.88));
 }
-.rl-wipe.go { animation: rl-flash 460ms cubic-bezier(0.25, 0.6, 0.3, 1); }
-@keyframes rl-flash {
-  0% { opacity: 0.88; }
-  14% { opacity: 0.92; }
-  100% { opacity: 0; }
-}
+/* On at once; it holds while the next view gets ready (skin.js), then fades. */
+.rl-wipe.on { opacity: 0.92; }
+.rl-wipe.fade { opacity: 0; transition: opacity 380ms cubic-bezier(0.25, 0.6, 0.3, 1); }
 
 /* ---- title screen --------------------------------------------------------------------------------- */
 

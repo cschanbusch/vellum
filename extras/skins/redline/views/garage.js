@@ -224,6 +224,26 @@ function showCase(e) {
   dropQueued(ids);
 }
 
+// ---- ready: tells the flash between views (skin.js) when the Garage is worth showing ----------
+
+let readyAt = 0;
+
+/** Announces "rl-view-ready" once the centre case is up with its finished print, or after a
+ *  short wait for a slow print (its plain cover stands in), or at once without WebGL. */
+function announceReady() {
+  const t0 = performance.now();
+  readyAt = t0;
+  const check = () => {
+    if (readyAt !== t0) return; // unmounted, or mounted again
+    const c = cases3d?.center;
+    const waited = performance.now() - t0;
+    const up = stageFailed || !current() || (c?.real && (!c.model.quick || waited > 900)) || waited > 1500;
+    if (up) dispatchEvent(new CustomEvent("rl-view-ready", { detail: { view: "garage" } }));
+    else requestAnimationFrame(check);
+  };
+  requestAnimationFrame(check);
+}
+
 // ---- the backdrop: the focused game's hero art behind the turntables -------------------------
 
 const SLIDE = { duration: 450, easing: "cubic-bezier(0.33, 1, 0.68, 1)" };
@@ -247,8 +267,9 @@ function showBackdrop(e, dir) {
   }
 }
 
-/** Composes (or fetches from the cache) a case's full wrap and hands it to the stage. */
-async function load(e, priority) {
+/** Composes (or fetches from the cache) a case's full wrap and hands it to the stage, if the
+ *  Garage still wants it (`anyway`: always, for prewarm()). */
+async function load(e, priority, anyway = false) {
   let rec;
   try {
     rec = await requestWrap(e, "full", caseCtx(), priority);
@@ -258,7 +279,7 @@ async function load(e, priority) {
   const stageNow = cases3d;
   if (!stageNow) return;
   const list = makers[maker]?.entries ?? [];
-  const wanted = [list[sel - 1], current(), list[sel + 1]].some((x) => x?.id === e.id);
+  const wanted = anyway || [list[sel - 1], current(), list[sel + 1]].some((x) => x?.id === e.id);
   if (!wanted) return;
   const have = stageNow.models.get(e.id);
   if (have?.key === rec.key) return;
@@ -301,6 +322,17 @@ function onModal() {
 }
 
 function startStage(floor) {
+  // The stage outlives the view (and may have been built ahead by prewarm()): the Garage reuses
+  // it, cases and all.
+  if (cases3d) {
+    cases3d.attach(floor); // the view's rebuild() then puts its trio on the turntables
+    return;
+  }
+  createStage(floor);
+}
+
+/** Builds the stage, in `floor` or (null) off-page, and loads the catalogue and surface maps. */
+function createStage(floor) {
   try {
     cases3d = new CaseStage(floor, {
       still: () => document.documentElement.hasAttribute("data-rl-still"),
@@ -313,15 +345,36 @@ function startStage(floor) {
   }
   const mine = cases3d;
   window.__rlCaseStage = cases3d; // for tests and the case gallery
-  loadCases()
-    .then((c) => {
+  const ready = Promise.all([
+    loadCases().then((c) => {
       cases = c;
-      if (cases3d === mine) renderModel(true);
-    })
-    .catch((err) => console.warn("Grand Tour: cases.json", err));
-  surfaceMaps()
-    .then((maps) => cases3d === mine && mine.setSurfaceMaps(maps))
-    .catch((err) => console.warn("Grand Tour: surface maps", err));
+      if (cases3d === mine && root) renderModel(true);
+    }),
+    surfaceMaps().then((maps) => cases3d === mine && mine.setSurfaceMaps(maps)),
+  ]).catch((err) => console.warn("Grand Tour: case setup", err));
+  return ready;
+}
+
+/**
+ * Builds the Garage's stage before the Garage is first shown: off-page, with the selected game
+ * and its neighbours on the turntables and their shaders compiled, so switching to the Garage is
+ * instant. Grand Tour calls this when idle (skin.js).
+ */
+export async function prewarm(vellum) {
+  if (cases3d || stageFailed || root) return;
+  api = vellum;
+  await createStage(null);
+  if (!cases3d || root || !cases) return;
+  const list = api.library.query();
+  const i = Math.max(0, list.findIndex((e) => e.id === api.state.get().selectedId));
+  const trio = [list[i - 1], list[i], list[i + 1]];
+  if (!trio[1]) return;
+  for (const e of trio) if (e) ensureModel(e);
+  cases3d.setSlots(trio.map((e) => e?.id ?? null), 0);
+  cases3d.flushFade();
+  // Their finished prints too (composed now, or from the cache), then the shaders.
+  await Promise.all(trio.map((e, k) => e && load(e, k === 1 ? 0 : 1, true)));
+  await cases3d.warm();
 }
 
 function renderModel(force = false) {
@@ -554,7 +607,10 @@ export default {
 
     root.append(stage, dock);
     host.append(root);
+    // Grand Tour's flash between views holds until the Garage has its cases up (skin.js).
+    dispatchEvent(new CustomEvent("rl-view-busy", { detail: { view: "garage" } }));
     startStage(floor);
+    announceReady();
 
     const s = vellum.state.get();
     key = JSON.stringify([s.query, s.filters, s.sort, s.groupBy]);
@@ -596,9 +652,10 @@ export default {
   unmount() {
     unsubs.forEach((u) => u());
     unsubs = [];
-    cases3d?.dispose();
-    cases3d = null;
+    // Kept for next time (see startStage); a jump back in crossfades from what it showed.
+    cases3d?.detach();
     shownCenter = null;
+    readyAt = 0;
     stageFailed = false;
     root = stage = card = makersEl = strip = null;
     modelFor = "";

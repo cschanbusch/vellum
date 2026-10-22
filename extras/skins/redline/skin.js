@@ -69,17 +69,45 @@ function renderHelp() {
 
 const wipe = document.querySelector(".rl-wipe");
 let lastView = "";
+let flashes = 0;
+/** Views that said they're still getting ready ("rl-view-busy"), until "rl-view-ready". */
+const busy = new Set();
+addEventListener("rl-view-busy", (e) => busy.add(e.detail.view));
+addEventListener("rl-view-ready", (e) => busy.delete(e.detail.view));
+
+/**
+ * Flashes the screen for a change of view: on at once, held until the new view is mounted and
+ * ready (a view with work to do says so with rl-view-busy / rl-view-ready, like the Garage), and
+ * never longer than MAX_HOLD; then it fades.
+ */
+const MIN_HOLD = 90;
+const MAX_HOLD = 1600;
+function flash(view) {
+  const n = ++flashes;
+  const t0 = performance.now();
+  wipe.classList.remove("fade");
+  wipe.classList.add("on");
+  const check = () => {
+    if (n !== flashes) return; // a newer change of view took over
+    const held = performance.now() - t0;
+    const ready = !!document.querySelector(`.v-view[data-view="${CSS.escape(view)}"]`) && !busy.has(view);
+    if ((ready && held >= MIN_HOLD) || held >= MAX_HOLD) {
+      // One more frame, so the new view has painted under the flash.
+      requestAnimationFrame(() => {
+        if (n !== flashes) return;
+        wipe.classList.remove("on");
+        wipe.classList.add("fade");
+      });
+    } else requestAnimationFrame(check);
+  };
+  requestAnimationFrame(check);
+}
 
 function onState(s) {
-  if (lastView && s.view !== lastView && moving()) {
-    wipe.classList.remove("go");
-    void wipe.offsetWidth; // restart the flash
-    wipe.classList.add("go");
-  }
+  if (lastView && s.view !== lastView && moving()) flash(s.view);
   lastView = s.view;
   renderHelp();
 }
-wipe.addEventListener("animationend", () => wipe.classList.remove("go"));
 
 // ---- title screen ------------------------------------------------------------------------------
 
@@ -141,6 +169,15 @@ notePlaytime(vellum.library.all());
 vellum.library.on("change", () => notePlaytime(vellum.library.all()));
 boot();
 onState(vellum.state.get());
+// Build the Garage in the background (its code, the 3D library, the case catalogue, the print
+// worker and the turntables with their shaders compiled), so even the first switch is instant.
+const warm = () => {
+  import("./views/garage.js")
+    .then((m) => m.prewarm(vellum))
+    .catch((err) => console.warn("Grand Tour: Garage warm-up", err));
+};
+if ("requestIdleCallback" in window) requestIdleCallback(warm, { timeout: 4000 });
+else setTimeout(warm, 2000);
 vellum.state.on("change", onState);
 vellum.skin.on("options", applyOptions);
 reduced.addEventListener("change", applyOptions);
