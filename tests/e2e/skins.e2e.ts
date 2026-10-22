@@ -524,6 +524,47 @@ test.describe("Grand Tour", () => {
     await page.screenshot({ path: "test-artifacts/views/redline-garage-case.png" });
   });
 
+  test("Grand Tour's Garage keeps the right cases on the turntables through fast, mixed navigation", async ({ page }) => {
+    const frame = await open(page, 5226);
+    await show(page, "garage");
+    await expect(frame.locator(".rl-gar-thumb").first()).toBeVisible();
+    await frame.locator(".rl-gar-strip").focus();
+    // Each turntable must hold the selected game's neighbour, with meshes and a live model.
+    const skin = page.frames().find((f) => f.url().includes("127.0.0.1"))!;
+    const problems = () =>
+      skin.evaluate(() => {
+        const s = (window as unknown as { __rlCaseStage: { shown: { slot: string; id: string; real: unknown; mats: { insert: { map: { image: unknown } | null } } | null }[]; models: Map<string, unknown> } }).__rlCaseStage;
+        const thumbs = [...document.querySelectorAll(".rl-gar-thumb")];
+        const i = thumbs.findIndex((t) => t.classList.contains("is-selected"));
+        const title = (k: number) => thumbs[k]?.getAttribute("aria-label") ?? null;
+        const want: Record<string, string | null> = { L: title(i - 1), C: title(i), R: title(i + 1) };
+        const got: Record<string, string | null> = { L: null, C: null, R: null };
+        const out: string[] = [];
+        for (const c of s.shown) {
+          if (c.slot === "out") out.push(`leaving case still on stage`);
+          else got[c.slot] = window.vellum.library.all().find((e) => e.id === c.id)?.title ?? c.id;
+          if (!c.real || !c.mats?.insert?.map?.image || !s.models.has(c.id)) out.push(`${c.slot} isn't drawable`);
+        }
+        for (const k of ["L", "C", "R"]) if (want[k] !== got[k]) out.push(`${k}: want ${want[k]}, got ${got[k]}`);
+        return out;
+      });
+    // Quick steps, jumps between body types, and steps straight after a jump (inside its crossfade).
+    const rounds = [
+      ["ArrowRight", "ArrowRight", "ArrowUp"],
+      ["ArrowDown", "ArrowRight"],
+      ["ArrowRight", "ArrowLeft", "ArrowRight", "ArrowRight"],
+      ["ArrowUp", "ArrowLeft", "ArrowRight"],
+      ["ArrowDown", "ArrowDown", "ArrowRight", "ArrowLeft"],
+    ];
+    for (const keys of rounds) {
+      for (const k of keys) {
+        await page.keyboard.press(k);
+        await page.waitForTimeout(60);
+      }
+      await expect.poll(problems, { timeout: 3000, message: keys.join(" ") }).toEqual([]);
+    }
+  });
+
   test("Grand Tour's case gallery: every profile composes every awkward mock game", async ({ page }) => {
     page.on("pageerror", (e) => errors.push(e.message));
     page.on("console", (m) => m.type() === "error" && errors.push(m.text()));

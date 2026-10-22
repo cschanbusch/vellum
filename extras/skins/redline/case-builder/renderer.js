@@ -348,6 +348,11 @@ export class CaseStage {
    */
   setSlots(ids, dir = 0) {
     const want = { L: ids[0] ?? null, C: ids[1] ?? null, R: ids[2] ?? null };
+    // The cases asked for are kept: finishing an earlier slide or crossfade below frees models
+    // that aren't, and these may have only just been loaded.
+    for (const id of ids) if (id) this.keepIds.add(id);
+    // A crossfade still waiting would otherwise land after this and put back what it showed.
+    this.flushFade();
     const same = this.shown.filter((c) => c.slot !== "out").every((c) => want[c.slot] === c.id) && ["L", "C", "R"].every((s) => !want[s] || this.shown.some((c) => c.slot === s && c.id === want[s]));
     if (same) return;
     this.finishSlide();
@@ -679,16 +684,28 @@ export class CaseStage {
     return from + ((((angle - from) % t) + t * 1.5) % t) - t / 2;
   }
 
-  /** A jump, or reduced motion: no sliding; the change crossfades. */
+  /** A jump, or reduced motion: no sliding; the change crossfades (applied once faded out). */
   crossfade(apply) {
     this.canvas.classList.add("is-fading");
     clearTimeout(this.fadeTimer);
-    this.fadeTimer = setTimeout(() => {
+    const prior = this.pending;
+    this.pending = () => {
+      prior?.();
       apply();
-      this.pose();
-      this.render();
-      this.canvas.classList.remove("is-fading");
-    }, 140);
+    };
+    this.fadeTimer = setTimeout(() => this.flushFade(), 140);
+  }
+
+  /** Applies a crossfade still waiting to happen, now. */
+  flushFade() {
+    const run = this.pending;
+    if (!run) return;
+    clearTimeout(this.fadeTimer);
+    this.pending = null;
+    run();
+    this.pose();
+    this.render();
+    this.canvas.classList.remove("is-fading");
   }
 
   /** Click opens or closes the case; right click holds its front, then its back, then lets go.
@@ -828,6 +845,7 @@ export class CaseStage {
   dispose() {
     cancelAnimationFrame(this.frame);
     clearTimeout(this.fadeTimer);
+    this.pending = null;
     this.ro.disconnect();
     for (const c of [...this.shown]) this.drop(c);
     for (const m of this.models.values()) this.release(m);
