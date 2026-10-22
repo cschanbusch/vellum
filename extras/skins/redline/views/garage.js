@@ -591,6 +591,11 @@ export default {
     const lights = el("div", "rl-gar-lights");
     const tips = el("p", "rl-gar-tips", "Click to open · Right-click: front, back, turn");
     floor.append(backdrop, lights, tips);
+    // Clicking the case (open it, or right-click for its faces) would leave keyboard focus on the
+    // page, and the next arrow would only bring it back to the strip instead of stepping.
+    const refocus = () => strip?.focus({ preventScroll: true });
+    floor.addEventListener("pointerup", refocus);
+    floor.addEventListener("contextmenu", refocus);
     card = el("aside", "rl-gar-card");
     stage.append(banner, floor, card);
 

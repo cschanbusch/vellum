@@ -565,6 +565,18 @@ test.describe("Grand Tour", () => {
     }
   });
 
+  test("Grand Tour's Garage: after clicking the case open, the first arrow still steps", async ({ page }) => {
+    const frame = await open(page, 5226);
+    await show(page, "garage");
+    await expect(frame.locator(".rl-gar-thumb").first()).toBeVisible();
+    await frame.locator(".rl-gar-strip").focus();
+    const selected = () => frame.locator(".rl-gar-thumb.is-selected").getAttribute("data-i");
+    const before = await selected();
+    await frame.locator(".rl-gar-gl").click(); // opens the case
+    await page.keyboard.press("ArrowRight");
+    await expect.poll(selected).toBe(String(Number(before) + 1));
+  });
+
   test("Grand Tour's Garage: a library update that changes nothing redraws no art", async ({ page }) => {
     const frame = await open(page, 5226);
     await show(page, "garage");
