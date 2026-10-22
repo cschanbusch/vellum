@@ -1,12 +1,16 @@
-// Grand Tourer's Garage view: a showroom. The selected game stands on a turntable under studio
-// lights, a spec card gives its model year, manufacturer (developer), body type (genre) and
+// Grand Tour's Garage view: a showroom. The selected game's case (built for it by the case
+// builder, ../case-builder) stands on a turntable under studio lights, a spec card gives its model year, manufacturer (developer), body type (genre) and
 // condition, and a model-select strip runs along the bottom, one body type at a time (or the
 // current grouping).
 //
 // The strip is a focus container: Left/Right choose the model, Up/Down change body type, Enter
-// starts the game and S services it. The card's buttons sit outside it, so the focus manager
-// reaches them normally.
+// starts the game and S services it. On the case: drag turns it, click opens it, right click holds
+// its front, then its back. The card's buttons sit outside it, so the focus manager reaches them
+// normally.
+import { caseFor, dropQueued, loadCases, requestWrap, surfaceMaps } from "../case-builder/compose.js";
+import { CaseStage, quickWrap } from "../case-builder/renderer.js";
 import { condition, describe, failChance, grade, lastWear, serviced } from "../condition.js";
+import { modalOpen } from "../modal.js";
 import { openService } from "../service.js";
 
 let api = null;
@@ -16,6 +20,10 @@ let card = null;
 let makersEl = null;
 let strip = null;
 let unsubs = [];
+
+let cases = null; // cases.json, once loaded
+let cases3d = null; // the WebGL case stage
+let stageFailed = false;
 
 let makers = []; // { label, entries }
 let maker = 0;
@@ -169,48 +177,130 @@ function reveal(smooth = true) {
 
 let modelFor = "";
 
+// ---- the case -------------------------------------------------------------------------------
+
+const caseCtx = () => ({ cases, options: api.skin.options, providers: api.providers.list() });
+
+/** Puts `e`'s case on the turntable: at once with its cover, then with its composed wrap. */
+function showCase(e) {
+  if (!cases3d || !cases) {
+    if (stageFailed) showFlat(e);
+    return;
+  }
+  const wear = 1 - condition(e.id);
+  const ids = [e.id];
+  if (!cases3d.has(e.id)) {
+    // Until the wrap is ready: the plain cover on the front, the shell color elsewhere.
+    const c = caseFor(e, cases, api.skin.options);
+    cases3d.preload({ id: e.id, case: c, wrap: quickWrap(c, null), wear, quick: true });
+    const img = new Image();
+    img.onload = () => {
+      if (cases3d?.models.get(e.id)?.quick) cases3d.preload({ id: e.id, case: c, wrap: quickWrap(c, img), wear, quick: true });
+    };
+    img.src = art(e, "cover", 320);
+  }
+  cases3d.show(e.id);
+  cases3d.setWear(e.id, wear);
+  load(e, 0);
+  // Its neighbours, so left and right are instant.
+  const list = makers[maker]?.entries ?? [];
+  for (const n of [list[sel - 1], list[sel + 1]]) {
+    if (!n) continue;
+    ids.push(n.id);
+    load(n, 1);
+  }
+  cases3d.keep(ids);
+  dropQueued(ids);
+}
+
+/** Composes (or fetches from the cache) a case's full wrap and hands it to the stage. */
+async function load(e, priority) {
+  let rec;
+  try {
+    rec = await requestWrap(e, "full", caseCtx(), priority);
+  } catch {
+    return; // dropped (the focus moved on) or failed: the quick wrap stays
+  }
+  const stageNow = cases3d;
+  if (!stageNow) return;
+  const list = makers[maker]?.entries ?? [];
+  const wanted = [list[sel - 1], current(), list[sel + 1]].some((x) => x?.id === e.id);
+  if (!wanted) return;
+  const have = stageNow.models.get(e.id);
+  if (have?.key === rec.key) return;
+  const opts = { premultiplyAlpha: "none", colorSpaceConversion: "none" };
+  const [wrap, disc, emboss] = await Promise.all([
+    createImageBitmap(rec.wrap, opts),
+    rec.disc ? createImageBitmap(rec.disc, opts) : null,
+    rec.emboss ? createImageBitmap(rec.emboss, opts) : null,
+  ]);
+  if (cases3d !== stageNow) return;
+  stageNow.preload({ id: e.id, key: rec.key, case: rec.case, wrap, disc, emboss, wear: 1 - condition(e.id) });
+  stage?.querySelector(".rl-gar-floor")?.setAttribute("data-case", current()?.id === e.id ? "ready" : "loading");
+}
+
+/** Without WebGL: the cover, standing flat on the floor. */
+function showFlat(e) {
+  const floor = stage.querySelector(".rl-gar-floor");
+  let img = floor.querySelector(".rl-gar-flat");
+  if (!img) {
+    img = el("img", "rl-gar-flat");
+    img.alt = "";
+    floor.append(img);
+  }
+  img.src = art(e, "cover", 640);
+}
+
+/** Every case is rebuilt when an option that shapes them changes (forms, rich backs). */
+function onOptions() {
+  if (!cases3d) return;
+  cases3d.pose();
+  cases3d.keep([]);
+  modelFor = "";
+  renderModel(true);
+}
+
+/** An overlay (ignition, service) covers the turntable: stop drawing until it closes. */
+function onModal() {
+  cases3d?.pause(modalOpen());
+}
+
+function startStage(floor) {
+  try {
+    cases3d = new CaseStage(floor, {
+      still: () => document.documentElement.hasAttribute("data-rl-still"),
+      reflect: () => api.skin.options.reflections !== false,
+    });
+  } catch (err) {
+    console.warn("Grand Tour: WebGL unavailable, showing flat covers", err);
+    stageFailed = true;
+    return;
+  }
+  const mine = cases3d;
+  window.__rlCaseStage = cases3d; // for tests and the case gallery
+  loadCases()
+    .then((c) => {
+      cases = c;
+      if (cases3d === mine) renderModel(true);
+    })
+    .catch((err) => console.warn("Grand Tour: cases.json", err));
+  surfaceMaps()
+    .then((maps) => cases3d === mine && mine.setSurfaceMaps(maps))
+    .catch((err) => console.warn("Grand Tour: surface maps", err));
+}
+
 function renderModel(force = false) {
   const e = current();
   if (!force && (e?.id ?? "") === modelFor) return;
   modelFor = e?.id ?? "";
   if (!e) {
-    for (const m of stage.querySelectorAll(".rl-gar-model")) m.replaceChildren();
+    cases3d?.clear();
     card.replaceChildren(el("p", "rl-gar-empty", "The showroom is empty."));
     return;
   }
 
-  // The turntable: a cover slab with spines and a back, turning slowly.
-  const model = stage.querySelector(".rl-gar-turn:not(.is-mirror) .rl-gar-model");
-  const front = el("div", "rl-gar-face rl-gar-front");
-  const img = el("img");
-  img.alt = "";
-  img.draggable = false;
-  img.src = art(e, "cover", 640);
   const c = condition(e.id);
-  const grimeFront = el("span", "rl-grime");
-  grimeFront.style.setProperty("--wear", String(1 - c));
-  front.append(img, grimeFront);
-  const back = el("div", "rl-gar-face rl-gar-back");
-  back.append(el("span", "rl-gar-back-title", e.title), el("span", "rl-gar-back-line", "Vellum collection"), el("span", "rl-gar-barcode"));
-  const spineL = el("div", "rl-gar-face rl-gar-spine rl-gar-spine-l");
-  spineL.append(el("span", null, e.title));
-  const spineR = el("div", "rl-gar-face rl-gar-spine rl-gar-spine-r");
-  spineR.append(el("span", null, e.title));
-  model.replaceChildren(front, back, spineL, spineR);
-  // The floor reflection is the same model, mirrored.
-  const mirror = stage.querySelector(".rl-gar-turn.is-mirror .rl-gar-model");
-  mirror.replaceChildren(...[...model.children].map((c) => c.cloneNode(true)));
-  // Restart the turn (both copies, in step) so it begins facing front.
-  for (const turn of stage.querySelectorAll(".rl-gar-turn")) {
-    turn.classList.remove("is-arriving");
-    for (const m of turn.querySelectorAll(".rl-gar-model")) {
-      m.style.animation = "none";
-      void m.offsetWidth;
-      m.style.animation = "";
-    }
-    void turn.offsetWidth;
-    turn.classList.add("is-arriving");
-  }
+  showCase(e);
 
   const m = makers[maker];
   stage.querySelector(".rl-gar-banner-maker").textContent = m.label;
@@ -393,13 +483,8 @@ export default {
     const banner = el("div", "rl-gar-banner");
     banner.append(el("span", "rl-gar-banner-label", "Showroom"), el("span", "rl-gar-banner-maker"), el("span", "rl-gar-banner-count"));
     const lights = el("div", "rl-gar-lights");
-    const disc = el("div", "rl-gar-disc");
-    disc.append(el("div", "rl-gar-disc-face"));
-    const mirror = el("div", "rl-gar-turn is-mirror");
-    mirror.append(el("div", "rl-gar-model"));
-    const turn = el("div", "rl-gar-turn");
-    turn.append(el("div", "rl-gar-model"));
-    floor.append(lights, disc, mirror, turn);
+    const tips = el("p", "rl-gar-tips", "Drag to turn · Click to open · Right-click front / back");
+    floor.append(lights, tips);
     card = el("aside", "rl-gar-card");
     stage.append(banner, floor, card);
 
@@ -431,12 +516,20 @@ export default {
 
     root.append(stage, dock);
     host.append(root);
+    startStage(floor);
 
     const s = vellum.state.get();
     key = JSON.stringify([s.query, s.filters, s.sort, s.groupBy]);
     rebuild();
     addEventListener("rl-condition", onCondition);
-    unsubs = [vellum.library.on("change", rebuild), () => removeEventListener("rl-condition", onCondition)];
+    addEventListener("rl-modal", onModal);
+    unsubs = [
+      vellum.library.on("change", rebuild),
+      vellum.skin.on("options", onOptions),
+      vellum.providers.on("change", onOptions),
+      () => removeEventListener("rl-condition", onCondition),
+      () => removeEventListener("rl-modal", onModal),
+    ];
   },
 
   onState(s) {
@@ -465,6 +558,9 @@ export default {
   unmount() {
     unsubs.forEach((u) => u());
     unsubs = [];
+    cases3d?.dispose();
+    cases3d = null;
+    stageFailed = false;
     root = stage = card = makersEl = strip = null;
     modelFor = "";
   },

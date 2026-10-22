@@ -1,0 +1,4 @@
+# Link the C runtime statically, so the starter runs on PCs without the Visual C++ Redistributable
+# (the app gets the same from tauri-build). package-portable.ps1 sets the same flag.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

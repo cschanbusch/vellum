@@ -1,11 +1,11 @@
 {
   "id": "redline",
   "type": "skin",
-  "name": "Grand Tourer",
-  "version": "1.2.0",
+  "name": "Grand Tour",
+  "version": "1.4.0",
   "apiVersion": 1,
   "author": "Vellum",
-  "description": "Pearl, chrome and glossy blue: a racing-showroom menu in the style of early-2000s grand-touring games, with a Garage view, engine sounds and menu chimes.",
+  "description": "Pearl, chrome and glossy blue: a racing-showroom menu in the style of early-2000s grand-touring games, with a Garage view where every game gets a 3D case of its own, engine sounds and menu chimes.",
   "entry": "index.html",
   "skin": {
     "preview": "preview.jpg",
@@ -54,6 +54,26 @@
         "default": true
       },
       {
+        "id": "tuneUp",
+        "label": "Tune-up timing",
+        "type": "select",
+        "default": "standard",
+        "choices": [
+          {
+            "value": "relaxed",
+            "label": "Relaxed"
+          },
+          {
+            "value": "standard",
+            "label": "Standard"
+          },
+          {
+            "value": "tricky",
+            "label": "Tricky"
+          }
+        ]
+      },
+      {
         "id": "sounds",
         "label": "Engine sounds",
         "type": "toggle",
@@ -79,6 +99,132 @@
         "label": "Floor reflection in the Garage",
         "type": "toggle",
         "default": true
+      },
+      {
+        "id": "caseSteam",
+        "label": "Steam games' cases",
+        "type": "select",
+        "default": "keepcase-dvd",
+        "choices": [
+          {
+            "value": "keepcase-dvd",
+            "label": "DVD keep case"
+          },
+          {
+            "value": "keepcase-bd",
+            "label": "Blu-ray keep case"
+          },
+          {
+            "value": "bigbox",
+            "label": "PC big box"
+          }
+        ]
+      },
+      {
+        "id": "caseEpic",
+        "label": "Epic games' cases",
+        "type": "select",
+        "default": "keepcase-dvd",
+        "choices": [
+          {
+            "value": "keepcase-dvd",
+            "label": "DVD keep case"
+          },
+          {
+            "value": "keepcase-bd",
+            "label": "Blu-ray keep case"
+          },
+          {
+            "value": "bigbox",
+            "label": "PC big box"
+          }
+        ]
+      },
+      {
+        "id": "caseGog",
+        "label": "GOG games' cases",
+        "type": "select",
+        "default": "bigbox",
+        "choices": [
+          {
+            "value": "keepcase-dvd",
+            "label": "DVD keep case"
+          },
+          {
+            "value": "keepcase-bd",
+            "label": "Blu-ray keep case"
+          },
+          {
+            "value": "bigbox",
+            "label": "PC big box"
+          }
+        ]
+      },
+      {
+        "id": "caseXbox",
+        "label": "Xbox games' cases",
+        "type": "select",
+        "default": "keepcase-bd",
+        "choices": [
+          {
+            "value": "keepcase-dvd",
+            "label": "DVD keep case"
+          },
+          {
+            "value": "keepcase-bd",
+            "label": "Blu-ray keep case"
+          },
+          {
+            "value": "bigbox",
+            "label": "PC big box"
+          }
+        ]
+      },
+      {
+        "id": "casePcsx2",
+        "label": "PCSX2 games' cases",
+        "type": "select",
+        "default": "keepcase-dvd",
+        "choices": [
+          {
+            "value": "keepcase-dvd",
+            "label": "DVD keep case"
+          },
+          {
+            "value": "keepcase-bd",
+            "label": "Blu-ray keep case"
+          },
+          {
+            "value": "bigbox",
+            "label": "PC big box"
+          }
+        ]
+      },
+      {
+        "id": "caseOther",
+        "label": "Other games' cases",
+        "type": "select",
+        "default": "keepcase-dvd",
+        "choices": [
+          {
+            "value": "keepcase-dvd",
+            "label": "DVD keep case"
+          },
+          {
+            "value": "keepcase-bd",
+            "label": "Blu-ray keep case"
+          },
+          {
+            "value": "bigbox",
+            "label": "PC big box"
+          }
+        ]
+      },
+      {
+        "id": "richBacks",
+        "label": "Rich case backs (blurred hero art)",
+        "type": "toggle",
+        "default": false
       },
       {
         "id": "crt",

@@ -1,4 +1,4 @@
-// Grand Tourer's sounds, synthesized with Web Audio: a starter motor cranking, an engine catching
+// Grand Tour's sounds, synthesized with Web Audio: a starter motor cranking, an engine catching
 // or stalling, a pressure washer, the tune-up beeps, and the menu's glassy ticks and chimes.
 // Nothing is recorded, so there are no files to load and nothing borrowed.
 import vellum from "/__vellum/sdk.js";

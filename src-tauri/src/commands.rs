@@ -11,7 +11,7 @@ use crate::scanner::{self, Action, ActionResult, Notice, ProviderStatus};
 use crate::userdata::games::GameUserData;
 use crate::userdata::settings::{Settings, UiSettings};
 use crate::skins::{self, SkinInfo};
-use crate::{platform, AppState, APP_NAME, APP_VERSION, EVENT_PLUGINS_CHANGED};
+use crate::{platform, versions, AppState, APP_NAME, APP_VERSION, EVENT_PLUGINS_CHANGED};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -187,7 +187,7 @@ pub fn run_action(app: AppHandle, entry_id: String, action: Action, provider: Op
 
 #[tauri::command]
 pub fn open_plugins_folder(state: State<AppState>) -> Result<(), String> {
-    let dir = &state.paths.plugins_dir;
+    let dir = state.paths.user_plugins_dir();
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     platform::open_folder(dir).map_err(|e| e.to_string())
 }
@@ -396,4 +396,69 @@ pub fn skin_preview(state: State<AppState>, id: String) -> Option<String> {
     }
     let bytes = std::fs::read(&full).ok().filter(|b| b.len() <= 4 * 1024 * 1024)?;
     Some(format!("data:{};base64,{}", crate::protocols::content_type(&full), crate::util::base64(&bytes)))
+}
+
+// ---- versions (Settings → Versions; see versions.rs) --------------------------------------
+
+/// Event with download and unpack progress for an install.
+pub const EVENT_VERSION_PROGRESS: &str = "vellum://version-progress";
+
+/// Installed versions, and GitHub's releases when `fetch` (otherwise the last fetched list).
+#[tauri::command(async)]
+pub fn versions_info(state: State<AppState>, fetch: bool) -> versions::VersionsView {
+    versions::view(state.paths.version_root.as_deref(), &versions::running_version(&state.paths.exe_dir), fetch)
+}
+
+fn version_root(state: &AppState) -> Result<&std::path::Path, String> {
+    state.paths.version_root.as_deref().ok_or_else(|| "Versions can only be managed in an installed copy of Vellum (not a development build).".to_string())
+}
+
+#[tauri::command(async)]
+pub fn version_install(app: AppHandle, state: State<AppState>, tag: String, extras: bool) -> Result<versions::Installed, String> {
+    let root = version_root(&state)?;
+    let mut last = std::time::Instant::now() - std::time::Duration::from_secs(1);
+    let running = versions::running_version(&state.paths.exe_dir);
+    versions::install(root, &running, &tag, extras, |p| {
+        // Plenty for a progress bar, without flooding the bridge.
+        if p.phase != "download" || last.elapsed().as_millis() >= 100 || p.done == p.total {
+            last = std::time::Instant::now();
+            let _ = app.emit(EVENT_VERSION_PROGRESS, p);
+        }
+    })
+}
+
+#[tauri::command(async)]
+pub fn version_remove(state: State<AppState>, version: String) -> Result<(), String> {
+    versions::remove(version_root(&state)?, &versions::running_version(&state.paths.exe_dir), &version)
+}
+
+/// Makes `version` the one Vellum starts with, then restarts into it through the starter.
+#[tauri::command]
+pub fn version_activate(app: AppHandle, state: State<AppState>, version: String) -> Result<(), String> {
+    let root = version_root(&state)?;
+    versions::activate(root, &versions::running_version(&state.paths.exe_dir), &state.paths.data_dir, &version)?;
+    state.settings.flush();
+    state.userdata.flush();
+    state.library.flush();
+    app.state::<crate::window_state::Tracker>().save();
+    std::process::Command::new(root.join(versions::EXE_NAME))
+        .current_dir(root)
+        .spawn()
+        .map_err(|e| format!("Couldn't restart Vellum: {e}"))?;
+    app.exit(0);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn open_versions_folder(state: State<AppState>) -> Result<(), String> {
+    platform::open_folder(&version_root(&state)?.join(versions::VERSIONS_DIR)).map_err(|e| e.to_string())
+}
+
+/// Opens a release's page on GitHub in the browser (GitHub links only).
+#[tauri::command]
+pub fn open_release_page(url: String) -> Result<(), String> {
+    if !url.starts_with("https://github.com/") {
+        return Err("Only GitHub links open from here.".into());
+    }
+    platform::open_uri(&url).map_err(|e| e.to_string())
 }

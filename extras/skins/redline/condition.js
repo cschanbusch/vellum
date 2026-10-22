@@ -1,10 +1,10 @@
-// Grand Tourer's wear and tear. Every game starts in showroom condition. Each start through Vellum
+// Grand Tour's wear and tear. Every game starts in showroom condition. Each start through Vellum
 // wears it by a varying amount, and so does every hour on the clock: when the store reports more
 // playtime than was last seen (Steam counts all play, wherever the game was started), the extra
 // hours cost condition too. Below RISKY the engine may fail to turn over, more often the more
 // worn it is (never always, so cranking again can still catch). A service restores it.
 //
-// Kept in the skin's own storage, so it is Grand Tourer's game, not library data. Per game:
+// Kept in the skin's own storage, so it is Grand Tour's game, not library data. Per game:
 //   c     condition, 0..1 (absent: showroom fresh)
 //   p     the store's playtime in minutes when last seen (the odometer)
 //   last  the most recent wear: { kind: "start" | "play", w, minutes?, at }
@@ -75,7 +75,7 @@ export function playWear(minutes, random = Math.random) {
 
 /**
  * Reads the odometer of every entry that has store playtime and charges the hours played since
- * it was last read. The first reading only records it, so play from before Grand Tourer costs
+ * it was last read. The first reading only records it, so play from before Grand Tour costs
  * nothing. A counter that went down (a reset, another account) is simply re-read.
  */
 export function notePlaytime(entries, random = Math.random) {

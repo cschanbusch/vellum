@@ -18,6 +18,12 @@ pub struct AppPaths {
     /// Debug builds also scan `tests/fixtures/dev-plugins` so broken example plugins
     /// show up in the Plugins page without ever being shipped.
     pub dev_plugins_dir: Option<PathBuf>,
+    /// The install root when this is a managed version (`<root>/versions/<version>/` with
+    /// `<root>/active.json`); see versions.rs. Data, `portable.flag` and the user's own plugins
+    /// then live at the root, shared by every version.
+    pub version_root: Option<PathBuf>,
+    /// `<root>/plugins`: plugins the user added, shared by every installed version.
+    pub shared_plugins_dir: Option<PathBuf>,
 }
 
 impl AppPaths {
@@ -34,10 +40,12 @@ impl AppPaths {
 
     /// Pure resolution logic, separated for tests.
     pub fn resolve_from(exe_dir: &Path, roaming: &Path, repo: Option<&Path>, args: &Args) -> Self {
-        let portable = exe_dir.join(PORTABLE_FLAG).is_file();
+        let version_root = crate::versions::managed_root(exe_dir);
+        let base = version_root.as_deref().unwrap_or(exe_dir);
+        let portable = base.join(PORTABLE_FLAG).is_file();
         let data_dir = match &args.data_dir {
             Some(d) => d.clone(),
-            None if portable => exe_dir.join("data"),
+            None if portable => base.join("data"),
             None => roaming.join(APP_NAME),
         };
 
@@ -55,11 +63,18 @@ impl AppPaths {
             .map(|r| r.join("tests").join("fixtures").join("dev-plugins"))
             .filter(|d| d.is_dir() && std::env::var_os("VELLUM_NO_DEV_PLUGINS").is_none());
 
-        AppPaths { exe_dir: exe_dir.to_path_buf(), data_dir, portable, plugins_dir, extras_dir, dev_plugins_dir }
+        let shared_plugins_dir = version_root.as_ref().map(|r| r.join("plugins"));
+        AppPaths { exe_dir: exe_dir.to_path_buf(), data_dir, portable, plugins_dir, extras_dir, dev_plugins_dir, version_root, shared_plugins_dir }
+    }
+
+    /// The folder for plugins the user adds: shared by every version when versions are managed.
+    pub fn user_plugins_dir(&self) -> &Path {
+        self.shared_plugins_dir.as_deref().unwrap_or(&self.plugins_dir)
     }
 
     pub fn plugin_roots(&self) -> Vec<PathBuf> {
         std::iter::once(self.plugins_dir.clone())
+            .chain(self.shared_plugins_dir.clone().filter(|d| d.is_dir()))
             .chain(self.extras_dir.clone())
             .chain(self.dev_plugins_dir.clone())
             .collect()
@@ -115,5 +130,20 @@ mod tests {
         let p = AppPaths::resolve_from(exe.path(), Path::new("R:\\"), Some(repo.path()), &Args::default());
         assert_eq!(p.plugins_dir, exe.path().join("plugins"));
         assert_eq!(p.extras_dir, None, "a packaged plugins folder already holds its extras");
+    }
+
+    #[test]
+    fn a_managed_version_keeps_data_and_user_plugins_at_the_root() {
+        let root = tempfile::tempdir().unwrap();
+        let exe = root.path().join("versions").join("0.2.0");
+        std::fs::create_dir_all(&exe).unwrap();
+        std::fs::write(root.path().join("active.json"), r#"{"active":"0.2.0"}"#).unwrap();
+        std::fs::write(root.path().join(PORTABLE_FLAG), "").unwrap();
+        let p = AppPaths::resolve_from(&exe, Path::new("R:\\"), None, &Args::default());
+        assert_eq!(p.version_root.as_deref(), Some(root.path()));
+        assert!(p.portable);
+        assert_eq!(p.data_dir, root.path().join("data"));
+        assert_eq!(p.plugins_dir, exe.join("plugins"));
+        assert_eq!(p.user_plugins_dir(), root.path().join("plugins"));
     }
 }

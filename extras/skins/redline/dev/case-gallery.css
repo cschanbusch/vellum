@@ -1,0 +1,12 @@
+:root { color-scheme: light; }
+body { margin: 0; padding: 24px; background: #e9eef4; color: #18202b; font: 15px/1.45 system-ui, sans-serif; }
+header { max-width: 70rem; margin-bottom: 20px; }
+h1 { margin: 0 0 4px; font-size: 1.5rem; }
+h2 { margin: 28px 0 10px; font-size: 1.15rem; }
+header p { margin: 0 0 8px; color: #4a5566; }
+.row { display: grid; grid-template-columns: repeat(auto-fill, minmax(460px, 1fr)); gap: 18px; }
+figure { margin: 0; padding: 10px; border-radius: 8px; background: #fff; box-shadow: 0 1px 3px rgb(20 30 50 / 0.15); }
+figure img { display: block; width: 100%; height: auto; background: repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 / 16px 16px; }
+figcaption { margin-top: 6px; font-size: 0.85rem; color: #4a5566; }
+figcaption b { color: #18202b; }
+figure.is-error { outline: 2px solid #c62828; }

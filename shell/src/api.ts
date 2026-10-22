@@ -74,6 +74,59 @@ export interface ActionResult {
   providerName: string;
 }
 
+export interface VersionActive {
+  active: string;
+  previous: string | null;
+  trial: boolean;
+  failedStarts: number;
+  rolledBackFrom: string | null;
+}
+
+export interface InstalledVersion {
+  version: string;
+  extras: boolean;
+  installedAt: string | null;
+  sizeBytes: number;
+}
+
+export interface ReleaseAsset {
+  name: string;
+  size: number;
+  apiUrl: string;
+  digest: string | null;
+}
+
+export interface Release {
+  tag: string;
+  version: string;
+  name: string;
+  prerelease: boolean;
+  publishedAt: string | null;
+  notes: string;
+  url: string;
+  core: ReleaseAsset | null;
+  extras: ReleaseAsset | null;
+  unavailable: string | null;
+}
+
+export interface VersionsView {
+  managed: boolean;
+  running: string;
+  active: VersionActive | null;
+  installed: InstalledVersion[];
+  releases: Release[] | null;
+  releasesError: string | null;
+  repo: string;
+}
+
+export interface VersionProgress {
+  tag: string;
+  phase: "download" | "extract" | "done";
+  file: string;
+  done: number;
+  total: number;
+}
+
 export const api = {
   appInfo: () => invoke<AppInfo>("app_info"),
   listPlugins: () => invoke<PluginView[]>("list_plugins"),
@@ -114,6 +167,14 @@ export const api = {
   openLogsFolder: () => invoke<void>("open_logs_folder"),
   runDiagnostics: () => invoke<string>("run_diagnostics"),
   skinPreview: (id: string) => invoke<string | null>("skin_preview", { id }),
+  versionsInfo: (fetch: boolean) => invoke<VersionsView>("versions_info", { fetch }),
+  versionInstall: (tag: string, extras: boolean) => invoke<InstalledVersion>("version_install", { tag, extras }),
+  versionRemove: (version: string) => invoke<void>("version_remove", { version }),
+  versionActivate: (version: string) => invoke<void>("version_activate", { version }),
+  openVersionsFolder: () => invoke<void>("open_versions_folder"),
+  openReleasePage: (url: string) => invoke<void>("open_release_page", { url }),
+  onVersionProgress: (cb: (p: VersionProgress) => void): Promise<UnlistenFn> =>
+    listen<VersionProgress>("vellum://version-progress", (e) => cb(e.payload)),
   onProvidersChanged: (cb: () => void): Promise<UnlistenFn> => listen("vellum://providers-changed", cb),
 
   /** Folder picker; resolves to null when cancelled. */

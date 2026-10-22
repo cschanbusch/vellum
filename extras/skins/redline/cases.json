@@ -1,0 +1,123 @@
+{
+  "profiles": {
+    "keepcase-dvd": {
+      "label": "DVD keep case",
+      "outer": {
+        "h": 190,
+        "w": 127.5,
+        "d": 15
+      },
+      "panel": {
+        "h": 183,
+        "w": 122
+      },
+      "spine": 14,
+      "band": 14,
+      "cornerRadius": 4,
+      "fillet": {
+        "spine": 3,
+        "edge": 1.2
+      },
+      "material": "plastic-sleeve",
+      "opens": true,
+      "disc": true,
+      "heightmaps": {
+        "shell": "grain",
+        "sleeve": "wave",
+        "insert": "paper"
+      }
+    },
+    "keepcase-bd": {
+      "label": "Blu-ray keep case",
+      "outer": {
+        "h": 171.5,
+        "w": 115.2,
+        "d": 13
+      },
+      "panel": {
+        "h": 164.5,
+        "w": 109.7
+      },
+      "spine": 12,
+      "band": 12,
+      "cornerRadius": 4,
+      "fillet": {
+        "spine": 3,
+        "edge": 1.2
+      },
+      "material": "plastic-sleeve",
+      "opens": true,
+      "disc": true,
+      "heightmaps": {
+        "shell": "grain",
+        "sleeve": "wave",
+        "insert": "paper"
+      }
+    },
+    "bigbox": {
+      "label": "PC big box",
+      "outer": {
+        "h": 235,
+        "w": 190,
+        "d": 50
+      },
+      "panel": {
+        "h": 235,
+        "w": 190
+      },
+      "spine": 50,
+      "band": 14,
+      "cornerRadius": 1,
+      "fillet": {
+        "spine": 1.6,
+        "edge": 1
+      },
+      "material": "cardboard",
+      "opens": false,
+      "disc": false,
+      "emboss": true,
+      "heightmaps": {
+        "shell": "fiber",
+        "insert": "fiber"
+      }
+    }
+  },
+  "stores": {
+    "steam": {
+      "profile": "keepcase-dvd",
+      "shell": "#1d232b",
+      "accent": "#5aa7e0",
+      "band": "none"
+    },
+    "epic": {
+      "profile": "keepcase-dvd",
+      "shell": "#3a3d44",
+      "accent": "#e4e6ea",
+      "band": "none"
+    },
+    "gog": {
+      "profile": "bigbox",
+      "shell": "#4a3260",
+      "accent": "#c7a6ee",
+      "band": "none"
+    },
+    "xbox": {
+      "profile": "keepcase-bd",
+      "shell": "#262b2f",
+      "accent": "#8fd19e",
+      "band": "none"
+    },
+    "pcsx2": {
+      "profile": "keepcase-dvd",
+      "shell": "#2b2f38",
+      "accent": "#8aa4e0",
+      "band": "none"
+    },
+    "default": {
+      "profile": "keepcase-dvd",
+      "shell": "#202020",
+      "accent": "#9aa0a6",
+      "band": "none"
+    }
+  }
+}

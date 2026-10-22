@@ -1,4 +1,4 @@
-// Grand Tourer's menu sounds: which input makes which sound (the sounds are in sound.js).
+// Grand Tour's menu sounds: which input makes which sound (the sounds are in sound.js).
 //
 // Keyboard and controller steps tick when they move the cursor (the selection or focus changed)
 // and knock softly when they hit an edge. Confirm and Back chime up and down, a mode change

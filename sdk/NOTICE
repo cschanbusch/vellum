@@ -1,0 +1,11 @@
+Vellum Game Launcher: Vellum SDK
+Copyright 2026 Charles Schanbusch
+
+Based on the Vellum SDK of Vellum Game Launcher by Charles Schanbusch (https://github.com/cschanbusch/vellum).
+
+This work is licensed under the Apache License, Version 2.0 (see LICENSE). Under section 4(d) of
+that licence, anyone redistributing this work, or a work based on it, must keep the attribution
+above in a NOTICE file, in their source, or wherever they display third-party notices.
+
+Third-party parts, under their own licences:
+  assets/fonts/Inter-LICENSE.txt: the Inter typeface, SIL Open Font License 1.1.

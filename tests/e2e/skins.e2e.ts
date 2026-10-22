@@ -332,191 +332,258 @@ test("Frontier's Catalogue: the contents turn to a game; arrows turn leaves; tab
   await host(page, (h) => h.setState({ query: "" }));
 });
 
-test("Grand Tourer's ignition: a worn game can stall; a service restores it; a start wears it", async ({ page }) => {
-  const frame = await open(page, 5226);
-  await show(page, "garage");
-  const skin = page.frames().find((f) => f.url().includes("127.0.0.1"))!;
-  await frame.locator(".rl-gar-strip").focus();
-  const id = await skin.evaluate(() => window.vellum.state.get().selectedId!);
-  const launched = () => host(page, (h) => h.entries.find((e) => e.id === h.state.selectedId)?.lastLaunched ?? null);
+// Grand Tour's Garage draws its case in WebGL, so these run in the "gpu" project (see
+// playwright.config.ts).
+test.describe("Grand Tour", () => {
+  test("Grand Tour's ignition: a worn game can stall; a service restores it; a start wears it", async ({ page }) => {
+    const frame = await open(page, 5226);
+    await show(page, "garage");
+    const skin = page.frames().find((f) => f.url().includes("127.0.0.1"))!;
+    await frame.locator(".rl-gar-strip").focus();
+    const id = await skin.evaluate(() => window.vellum.state.get().selectedId!);
+    const launched = () => host(page, (h) => h.entries.find((e) => e.id === h.state.selectedId)?.lastLaunched ?? null);
 
-  // Worn out and unlucky: the engine won't turn over, and nothing launches.
-  await skin.evaluate(async (id) => {
-    const c = await import(new URL("condition.js", location.href).href);
-    c.setCondition(id, 0.05);
-    Math.random = () => 0.01;
-  }, id);
-  await expect(frame.locator(".rl-gar-cond-note.is-warn")).toBeVisible();
-  await page.keyboard.press("Enter");
-  await expect(frame.locator(".rl-ign")).toBeVisible();
-  await expect(frame.locator(".rl-ign.is-stalled")).toBeVisible({ timeout: 8000 });
-  expect(await launched()).toBeNull();
-
-  // Service: pressure-wash (hold Enter), then three presses with the needle in the green band.
-  await page.keyboard.press("s");
-  await expect(frame.locator(".rl-svc")).toBeVisible();
-  await expect
-    .poll(async () => {
-      await page.keyboard.down("Enter");
-      return frame.locator(".rl-svc-dial").count();
-    }, { timeout: 15_000, intervals: [60] })
-    .toBe(1);
-  await page.keyboard.up("Enter");
-  for (let i = 0; i < 3; i++) {
-    // Press from inside the page, the moment the needle is in the band, so timing is exact.
-    await skin.evaluate(
-      () =>
-        new Promise<void>((resolve) => {
-          const dial = document.querySelector<HTMLElement>(".rl-svc-dial")!;
-          const tick = () => {
-            const [a, b] = (dial.dataset.zone ?? "0 0").split(" ").map(Number);
-            const rpm = Number(dial.dataset.rpm);
-            if (rpm > a + 0.08 && rpm < b - 0.08) {
-              dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
-              resolve();
-            } else requestAnimationFrame(tick);
-          };
-          tick();
-        }),
-    );
-    // The third hit completes the service, which replaces the lamps.
-    if (i < 2) await expect(frame.locator(".rl-svc-lamp.is-on")).toHaveCount(i + 1);
-  }
-  await expect(frame.locator(".rl-svc-done")).toBeVisible();
-  await page.keyboard.press("Enter");
-
-  // Serviced, it cranks again by itself, fires, and launches; the start costs some condition.
-  await expect.poll(launched, { timeout: 10_000 }).not.toBeNull();
-  await expect(frame.locator(".rl-ign")).toHaveCount(0, { timeout: 5000 });
-  // A start costs 5-14%; with the dice loaded low, just over 5%.
-  await expect(frame.locator(".rl-gar-cond-pct")).toHaveText("95%");
-  await expect(frame.locator(".rl-gar-cond-note")).toHaveText("Last start took 5% off");
-});
-
-test("Grand Tourer's wear: hours on the store's clock cost condition, but past play doesn't", async ({ page }) => {
-  const frame = await open(page, 5226);
-  await show(page, "garage");
-  const skin = page.frames().find((f) => f.url().includes("127.0.0.1"))!;
-  await expect(frame.locator(".rl-gar-thumb").first()).toBeVisible();
-  const id = await skin.evaluate(() => window.vellum.state.get().selectedId!);
-  const cond = () =>
-    skin.evaluate(async (id) => {
+    // Worn out and unlucky: the engine won't turn over, and nothing launches.
+    await skin.evaluate(async (id) => {
       const c = await import(new URL("condition.js", location.href).href);
-      return c.condition(id);
+      c.setCondition(id, 0.05);
+      Math.random = () => 0.01;
     }, id);
-  const read = (minutes: number) =>
-    skin.evaluate(
-      async ([id, minutes]) => {
-        const c = await import(new URL("condition.js", location.href).href);
-        c.notePlaytime([{ id, playtimeMinutes: minutes }], () => 0.5);
-      },
-      [id, minutes] as const,
-    );
-  // The odometer as first seen is history: it costs nothing. (The real reading already happened
-  // at start-up from the mock library; a lower one resets it.)
-  await read(10);
-  await read(10);
-  expect(await cond()).toBe(1);
-  // Two more hours at the average rate (3% an hour): 6% off.
-  await read(130);
-  expect(await cond()).toBeCloseTo(0.94, 5);
-  await expect(frame.locator(".rl-gar-cond-pct")).toHaveText("94%");
-  await expect(frame.locator(".rl-gar-cond-note")).toHaveText("2.0 h on the road since the last check: 6% off");
-  // A marathon is capped: worn, not wrecked.
-  await read(130 + 60 * 100);
-  expect(await cond()).toBeCloseTo(0.34, 5);
-  // The spec card shows the mileage (the reading the card's entry carries, from the mock library).
-  await expect(frame.locator(".rl-gar-figure-label", { hasText: "Mileage" })).toBeVisible();
-});
+    await expect(frame.locator(".rl-gar-cond-note.is-warn")).toBeVisible();
+    await page.keyboard.press("Enter");
+    await expect(frame.locator(".rl-ign")).toBeVisible();
+    await expect(frame.locator(".rl-ign.is-stalled")).toBeVisible({ timeout: 8000 });
+    expect(await launched()).toBeNull();
 
-test("Grand Tourer's Garage: left/right pick the model, up/down change maker, the card follows", async ({ page }) => {
-  const frame = await open(page, 5226);
-  await show(page, "garage");
-  const strip = frame.locator(".rl-gar-strip");
-  await expect(frame.locator(".rl-gar-thumb").first()).toBeVisible();
-  await strip.focus();
-  await page.keyboard.press("ArrowRight");
-  await expect(frame.locator(".rl-gar-thumb.is-selected")).toHaveAttribute("data-i", "1");
-  // The card shows the selected model, and the shell ends up with the same selection.
-  const name = await frame.locator(".rl-gar-name").textContent();
-  await expect.poll(() => host(page, (h) => h.entries.find((e) => e.id === h.state.selectedId)?.title)).toBe(name);
-  // Down changes maker; the banner and the current maker tab follow.
-  const maker = await frame.locator(".rl-gar-banner-maker").textContent();
-  await page.keyboard.press("ArrowDown");
-  await expect(frame.locator(".rl-gar-banner-maker")).not.toHaveText(maker!);
-  await expect(frame.locator('.rl-gar-maker[aria-current="true"]')).toHaveCount(1);
-  await expect(strip).toBeFocused();
-  // Selecting elsewhere moves the Garage there.
-  const other = await host(page, (h) => h.entries[h.entries.length - 1]);
-  await host(page, (h) => h.setState({ selectedId: h.entries[h.entries.length - 1].id }));
-  await expect(frame.locator(".rl-gar-name")).toHaveText(other.title);
-  await page.waitForTimeout(800);
-  await page.screenshot({ path: "test-artifacts/views/redline-garage.png" });
-});
+    // Service: pressure-wash (hold Enter), then three presses with the needle in the green band.
+    await page.evaluate(() => (document.querySelector("vellum-harness") as HarnessEl).backend.setOption("redline", "tuneUp", "relaxed"));
+    await page.keyboard.press("s");
+    await expect(frame.locator(".rl-svc")).toBeVisible();
+    const washFrom = Date.now();
+    await expect
+      .poll(async () => {
+        await page.keyboard.down("Enter");
+        return frame.locator(".rl-svc-dial").count();
+      }, { timeout: 40_000, intervals: [60] })
+      .toBe(1);
+    await page.keyboard.up("Enter");
+    // The held wash is paced by the clock (about six seconds a pass), whatever the frame rate.
+    expect(Date.now() - washFrom).toBeGreaterThan(3500);
+    // The tune-up timing option sets the needle's pace.
+    await expect(frame.locator(".rl-svc-dial")).toHaveAttribute("data-speed", "0.50");
+    for (let i = 0; i < 3; i++) {
+      // Press from inside the page, the moment the needle is in the band, so timing is exact.
+      await skin.evaluate(
+        () =>
+          new Promise<void>((resolve) => {
+            const dial = document.querySelector<HTMLElement>(".rl-svc-dial")!;
+            const tick = () => {
+              const [a, b] = (dial.dataset.zone ?? "0 0").split(" ").map(Number);
+              const rpm = Number(dial.dataset.rpm);
+              if (rpm > a + 0.08 && rpm < b - 0.08) {
+                dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+                resolve();
+              } else requestAnimationFrame(tick);
+            };
+            tick();
+          }),
+      );
+      // The third hit completes the service, which replaces the lamps.
+      if (i < 2) await expect(frame.locator(".rl-svc-lamp.is-on")).toHaveCount(i + 1);
+    }
+    await expect(frame.locator(".rl-svc-done")).toBeVisible();
+    await page.keyboard.press("Enter");
 
-test("Grand Tourer's menu sounds: steps tick, a dead end knocks, Back and a mode change have their own sounds", async ({ page }) => {
-  // Record the pitch of every oscillator the skin starts: each menu sound has its own.
-  await page.addInitScript(() => {
-    const w = window as unknown as { __tones: number[] };
-    w.__tones = [];
-    if (!window.AudioContext) return;
-    const freqs = new WeakSet<AudioParam>();
-    const create = AudioContext.prototype.createOscillator;
-    AudioContext.prototype.createOscillator = function () {
-      const o = create.call(this);
-      freqs.add(o.frequency);
-      return o;
-    };
-    const value = Object.getOwnPropertyDescriptor(AudioParam.prototype, "value")!;
-    Object.defineProperty(AudioParam.prototype, "value", {
-      ...value,
-      set(v: number) {
-        if (freqs.has(this)) w.__tones.push(Math.round(v));
-        value.set!.call(this, v);
-      },
-    });
-    const at = AudioParam.prototype.setValueAtTime;
-    AudioParam.prototype.setValueAtTime = function (v: number, t: number) {
-      if (freqs.has(this)) w.__tones.push(Math.round(v));
-      return at.call(this, v, t);
-    };
+    // Serviced, it cranks again by itself, fires, and launches; the start costs some condition.
+    await expect.poll(launched, { timeout: 10_000 }).not.toBeNull();
+    await expect(frame.locator(".rl-ign")).toHaveCount(0, { timeout: 5000 });
+    // A start costs 5-14%; with the dice loaded low, just over 5%.
+    await expect(frame.locator(".rl-gar-cond-pct")).toHaveText("95%");
+    await expect(frame.locator(".rl-gar-cond-note")).toHaveText("Last start took 5% off");
   });
-  const frame = await open(page, 5226);
-  await show(page, "garage");
-  const skin = page.frames().find((f) => f.url().includes("127.0.0.1"))!;
-  const heard = () => skin.evaluate(() => (window as unknown as { __tones: number[] }).__tones.splice(0));
-  const strip = frame.locator(".rl-gar-strip");
-  await expect(frame.locator(".rl-gar-thumb").first()).toBeVisible();
-  await strip.focus();
-  await page.keyboard.press("Shift"); // dismisses the title screen, if it is up
-  await page.waitForTimeout(100);
-  await heard();
 
-  // A step right ticks high, a step left ticks lower.
-  await page.keyboard.press("ArrowRight");
-  await expect.poll(heard).toContain(1880);
-  await page.keyboard.press("ArrowLeft");
-  await expect.poll(heard).toContain(1720);
-  // Page Up on the first model goes nowhere: a knock, not a tick.
-  await page.keyboard.press("PageUp");
-  await expect.poll(heard).toContain(240);
-  expect(await heard()).not.toContain(1720);
-  // Back falls from E to A; a mode change swooshes with a high bell.
-  await page.keyboard.press("Escape");
-  await expect.poll(heard).toEqual(expect.arrayContaining([1319, 880]));
-  await host(page, (h) => h.switchView("covers"));
-  await expect.poll(heard).toContain(2349);
-  // Picking a cover with the mouse ticks too.
-  await frame.locator("vellum-grid .cell").nth(2).click();
-  await expect.poll(heard).toContain(1720);
+  test("Grand Tour's wear: hours on the store's clock cost condition, but past play doesn't", async ({ page }) => {
+    const frame = await open(page, 5226);
+    await show(page, "garage");
+    const skin = page.frames().find((f) => f.url().includes("127.0.0.1"))!;
+    await expect(frame.locator(".rl-gar-thumb").first()).toBeVisible();
+    const id = await skin.evaluate(() => window.vellum.state.get().selectedId!);
+    const cond = () =>
+      skin.evaluate(async (id) => {
+        const c = await import(new URL("condition.js", location.href).href);
+        return c.condition(id);
+      }, id);
+    const read = (minutes: number) =>
+      skin.evaluate(
+        async ([id, minutes]) => {
+          const c = await import(new URL("condition.js", location.href).href);
+          c.notePlaytime([{ id, playtimeMinutes: minutes }], () => 0.5);
+        },
+        [id, minutes] as const,
+      );
+    // The odometer as first seen is history: it costs nothing. (The real reading already happened
+    // at start-up from the mock library; a lower one resets it.)
+    await read(10);
+    await read(10);
+    expect(await cond()).toBe(1);
+    // Two more hours at the average rate (3% an hour): 6% off.
+    await read(130);
+    expect(await cond()).toBeCloseTo(0.94, 5);
+    await expect(frame.locator(".rl-gar-cond-pct")).toHaveText("94%");
+    await expect(frame.locator(".rl-gar-cond-note")).toHaveText("2.0 h on the road since the last check: 6% off");
+    // A marathon is capped: worn, not wrecked.
+    await read(130 + 60 * 100);
+    expect(await cond()).toBeCloseTo(0.34, 5);
+    // The spec card shows the mileage (the reading the card's entry carries, from the mock library).
+    await expect(frame.locator(".rl-gar-figure-label", { hasText: "Mileage" })).toBeVisible();
+  });
 
-  // Menu sounds have their own switch.
-  await page.evaluate(() => (document.querySelector("vellum-harness") as HarnessEl).backend.setOption("redline", "menuSounds", false));
-  await page.waitForTimeout(200);
-  await heard();
-  await frame.locator("vellum-grid .cell").nth(3).click();
-  await page.waitForTimeout(300);
-  expect(await heard()).toEqual([]);
+  test("Grand Tour's Garage: left/right pick the model, up/down change maker, the card follows", async ({ page }) => {
+    const frame = await open(page, 5226);
+    await show(page, "garage");
+    const strip = frame.locator(".rl-gar-strip");
+    await expect(frame.locator(".rl-gar-thumb").first()).toBeVisible();
+    await strip.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(frame.locator(".rl-gar-thumb.is-selected")).toHaveAttribute("data-i", "1");
+    // The card shows the selected model, and the shell ends up with the same selection.
+    const name = await frame.locator(".rl-gar-name").textContent();
+    await expect.poll(() => host(page, (h) => h.entries.find((e) => e.id === h.state.selectedId)?.title)).toBe(name);
+    // Down changes maker; the banner and the current maker tab follow.
+    const maker = await frame.locator(".rl-gar-banner-maker").textContent();
+    await page.keyboard.press("ArrowDown");
+    await expect(frame.locator(".rl-gar-banner-maker")).not.toHaveText(maker!);
+    await expect(frame.locator('.rl-gar-maker[aria-current="true"]')).toHaveCount(1);
+    await expect(strip).toBeFocused();
+    // Selecting elsewhere moves the Garage there.
+    const other = await host(page, (h) => h.entries[h.entries.length - 1]);
+    await host(page, (h) => h.setState({ selectedId: h.entries[h.entries.length - 1].id }));
+    await expect(frame.locator(".rl-gar-name")).toHaveText(other.title);
+    await page.waitForTimeout(800);
+    await page.screenshot({ path: "test-artifacts/views/redline-garage.png" });
+  });
+
+  test("Grand Tour's Garage builds each game a case: composed wrap, neighbours preloaded, front/back hold, open, forms", async ({ page }) => {
+    const frame = await open(page, 5226);
+    await show(page, "garage");
+    const skin = page.frames().find((f) => f.url().includes("127.0.0.1"))!;
+    const probe = <T>(fn: string) => skin.evaluate(`(() => { const s = window.__rlCaseStage; return ${fn}; })()`) as Promise<T>;
+    // The focused case gets its composed wrap (a DVD keep case for the mock store), and its neighbour
+    // is preloaded for an instant step.
+    await expect.poll(() => probe<string | null>("s.current?.key ?? null"), { timeout: 30_000 }).toContain("|keepcase-dvd|full|");
+    await expect.poll(() => probe<number>("s.models.size"), { timeout: 30_000 }).toBeGreaterThanOrEqual(2);
+    await expect(frame.locator(".rl-gar-gl")).toBeVisible();
+
+    // Right click holds the front, then the back; a click opens it on its disc and lets go.
+    const gl = frame.locator(".rl-gar-gl");
+    await gl.click({ button: "right" });
+    expect(await probe<string | null>("s.facing")).toBe("front");
+    await gl.click({ button: "right" });
+    expect(await probe<string | null>("s.facing")).toBe("back");
+    await gl.click();
+    expect(await probe<number>("s.lidTarget")).toBeGreaterThan(2.5);
+    expect(await probe<string | null>("s.facing")).toBeNull();
+    await expect.poll(() => probe<boolean>("s.real.disc.visible")).toBe(true);
+    await gl.click();
+    expect(await probe<number>("s.lidTarget")).toBe(0);
+    await frame.locator(".rl-gar-strip").focus();
+
+    // The form is a skin option per store: the change rebuilds the case without a restart. Big
+    // boxes don't open.
+    const setOption = (k: string, v: unknown) =>
+      page.evaluate(([k, v]) => (document.querySelector("vellum-harness") as HarnessEl).backend.setOption("redline", k as string, v), [k, v] as const);
+    await setOption("caseOther", "bigbox");
+    await expect.poll(() => probe<string | null>("s.current?.key ?? null"), { timeout: 30_000 }).toContain("|bigbox|full|");
+    await gl.click();
+    expect(await probe<number>("s.lidTarget")).toBe(0);
+    // The floor reflection option hides the mirrored copy.
+    await setOption("reflections", false);
+    await expect.poll(() => probe<boolean>("s.mirror.visible")).toBe(false);
+    await setOption("reflections", true);
+    await setOption("caseOther", "keepcase-dvd");
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: "test-artifacts/views/redline-garage-case.png" });
+  });
+
+  test("Grand Tour's case gallery: every profile composes every awkward mock game", async ({ page }) => {
+    page.on("pageerror", (e) => errors.push(e.message));
+    page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+    errors.length = 0;
+    await page.goto("http://127.0.0.1:5227/dev/case-gallery.html");
+    await page.waitForFunction(() => document.body.dataset.ready === "1", null, { timeout: 120_000 });
+    await expect(page.locator("figure")).toHaveCount(21);
+    await expect(page.locator("figure.is-error")).toHaveCount(0);
+    await expect(page.locator("figure[data-ready]")).toHaveCount(21);
+    // Every wrap decoded, at the medium tier's size (front panel 640 px wide plus back, spine and bleed).
+    const widths = await page.locator("figure img").evaluateAll((imgs) => imgs.map((i) => (i as HTMLImageElement).naturalWidth));
+    expect(widths.every((w) => w > 1300)).toBe(true);
+    await page.screenshot({ path: "test-artifacts/views/redline-case-gallery.png", fullPage: true });
+  });
+
+  test("Grand Tour's menu sounds: steps tick, a dead end knocks, Back and a mode change have their own sounds", async ({ page }) => {
+    // Record the pitch of every oscillator the skin starts: each menu sound has its own.
+    await page.addInitScript(() => {
+      const w = window as unknown as { __tones: number[] };
+      w.__tones = [];
+      if (!window.AudioContext) return;
+      const freqs = new WeakSet<AudioParam>();
+      const create = AudioContext.prototype.createOscillator;
+      AudioContext.prototype.createOscillator = function () {
+        const o = create.call(this);
+        freqs.add(o.frequency);
+        return o;
+      };
+      const value = Object.getOwnPropertyDescriptor(AudioParam.prototype, "value")!;
+      Object.defineProperty(AudioParam.prototype, "value", {
+        ...value,
+        set(v: number) {
+          if (freqs.has(this)) w.__tones.push(Math.round(v));
+          value.set!.call(this, v);
+        },
+      });
+      const at = AudioParam.prototype.setValueAtTime;
+      AudioParam.prototype.setValueAtTime = function (v: number, t: number) {
+        if (freqs.has(this)) w.__tones.push(Math.round(v));
+        return at.call(this, v, t);
+      };
+    });
+    const frame = await open(page, 5226);
+    await show(page, "garage");
+    const skin = page.frames().find((f) => f.url().includes("127.0.0.1"))!;
+    const heard = () => skin.evaluate(() => (window as unknown as { __tones: number[] }).__tones.splice(0));
+    const strip = frame.locator(".rl-gar-strip");
+    await expect(frame.locator(".rl-gar-thumb").first()).toBeVisible();
+    await strip.focus();
+    await page.keyboard.press("Shift"); // dismisses the title screen, if it is up
+    await page.waitForTimeout(100);
+    await heard();
+
+    // A step right ticks high, a step left ticks lower.
+    await page.keyboard.press("ArrowRight");
+    await expect.poll(heard).toContain(1880);
+    await page.keyboard.press("ArrowLeft");
+    await expect.poll(heard).toContain(1720);
+    // Page Up on the first model goes nowhere: a knock, not a tick.
+    await page.keyboard.press("PageUp");
+    await expect.poll(heard).toContain(240);
+    expect(await heard()).not.toContain(1720);
+    // Back falls from E to A; a mode change swooshes with a high bell.
+    await page.keyboard.press("Escape");
+    await expect.poll(heard).toEqual(expect.arrayContaining([1319, 880]));
+    await host(page, (h) => h.switchView("covers"));
+    await expect.poll(heard).toContain(2349);
+    // Picking a cover with the mouse ticks too.
+    await frame.locator("vellum-grid .cell").nth(2).click();
+    await expect.poll(heard).toContain(1720);
+
+    // Menu sounds have their own switch.
+    await page.evaluate(() => (document.querySelector("vellum-harness") as HarnessEl).backend.setOption("redline", "menuSounds", false));
+    await page.waitForTimeout(200);
+    await heard();
+    await frame.locator("vellum-grid .cell").nth(3).click();
+    await page.waitForTimeout(300);
+    expect(await heard()).toEqual([]);
+  });
 });
 
 for (const [id, port] of [["synthwave", 5210], ["aero", 5212], ["gridline", 5214], ["calling-card", 5216], ["ficsit", 5218], ["frontier", 5224], ["redline", 5226]] as const) {

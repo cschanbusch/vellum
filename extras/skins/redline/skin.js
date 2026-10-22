@@ -1,4 +1,4 @@
-// Grand Tourer: the help bar for each view, a wipe between views, the title screen and the menu
+// Grand Tour: the help bar for each view, a wipe between views, the title screen and the menu
 // sounds.
 import vellum from "/__vellum/sdk.js";
 import { installIgnition } from "./ignition.js";

@@ -14,6 +14,7 @@ pub mod scanner;
 pub mod skins;
 pub mod userdata;
 pub mod util;
+pub mod versions;
 pub mod window_state;
 
 use std::sync::{Arc, RwLock};
@@ -134,6 +135,11 @@ pub fn run() {
                 app.state::<window_state::Tracker>().restore(&win);
             }
             skins::update_dev_watch(app.handle());
+            // Reaching the window means this version starts: it is no longer on trial.
+            let paths = &app.state::<AppState>().paths;
+            if let Some(root) = &paths.version_root {
+                versions::confirm_start(root, &versions::running_version(&paths.exe_dir));
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -166,6 +172,12 @@ pub fn run() {
             commands::open_logs_folder,
             commands::run_diagnostics,
             commands::skin_preview,
+            commands::versions_info,
+            commands::version_install,
+            commands::version_remove,
+            commands::version_activate,
+            commands::open_versions_folder,
+            commands::open_release_page,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

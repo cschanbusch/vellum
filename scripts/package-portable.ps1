@@ -1,15 +1,20 @@
 <#
 .SYNOPSIS
-  Builds Vellum in release mode and assembles the portable distribution folder:
+  Builds Vellum in release mode and assembles the portable distribution folder, laid out for
+  version management (src-tauri/src/versions.rs):
 
     dist/Vellum/
-      Vellum Game Launcher.exe
-      plugins/providers|skins|modules/...   core plugins from plugins/, plus extras/ unless -NoExtras
-      portable.flag          (only with -Portable)
+      Vellum Game Launcher.exe     the starter (starter/): launches the active version
+      active.json                  which version starts
+      portable.flag                (only with -Portable)
+      versions/<version>/
+        Vellum Game Launcher.exe   the app
+        plugins/providers|skins|modules/...   core plugins from plugins/, plus extras/ unless -NoExtras
 
   Core plugins are what the launcher needs on its own (the store providers and the default skin).
-  Extras are optional: the other skins, the QoL modules and the mock provider. They install into
-  the same plugins folder, so the extras zip is extracted over the main one.
+  Extras are optional: the other skins, the QoL modules and the mock provider. The release zips
+  use the same layout, so the extras zip extracts over the core one, and Vellum's Versions page
+  installs a release straight from them.
 
 .EXAMPLE
   ./scripts/package-portable.ps1
@@ -83,34 +88,87 @@ try {
   }
   if (-not (Test-Path $exe)) { throw "Release binary not found at $exe" }
 
-  # Empty the folder rather than deleting it: an Explorer window or terminal open in
-  # dist\Vellum holds the folder itself and would make removing it fail half-way.
+  # The licences that cover the exe, and the notices for the third-party code built into it.
+  $notices = Join-Path $repo 'dist\THIRD-PARTY-NOTICES.txt'
+  node (Join-Path $repo 'scripts\third-party-notices.mjs') $notices
+  if ($LASTEXITCODE -ne 0) { throw 'third-party-notices.mjs failed' }
+  function Copy-Legal([string]$to) {
+    foreach ($f in 'LICENSE', 'LICENSE-EXCEPTION.md', 'LICENSING.md', 'TRADEMARKS.md') { Copy-Item (Join-Path $repo $f) $to }
+    Copy-Item $notices $to
+  }
+
+  # The starter: the small exe at the root that launches the active version (starter/).
+  $starterTarget = Join-Path $baseTarget 'starter'
+  $starter = Join-Path $starterTarget 'release\vellum-starter.exe'
+  if (-not $SkipBuild -or -not (Test-Path $starter)) {
+    $ErrorActionPreference = 'Continue'
+    # The C runtime linked in, so the starter runs without the Visual C++ Redistributable.
+    $savedFlags = $env:RUSTFLAGS
+    $env:RUSTFLAGS = '-C target-feature=+crt-static'
+    cargo build --release --manifest-path (Join-Path $repo 'starter\Cargo.toml') --target-dir $starterTarget
+    $builtStarter = $LASTEXITCODE
+    $env:RUSTFLAGS = $savedFlags
+    if ($builtStarter) { throw "starter build failed ($builtStarter)" }
+    $ErrorActionPreference = 'Stop'
+  }
+
+  $version = (Get-Content (Join-Path $repo 'src-tauri\tauri.conf.json') -Raw | ConvertFrom-Json).version
+
+  # The managed layout (src-tauri/src/versions.rs):
+  #   Vellum/  starter exe, active.json, licences, [portable.flag]
+  #   Vellum/versions/<version>/  the app exe, its plugins and licences
+  function Write-Root([string]$to) {
+    New-Item -ItemType Directory -Force $to | Out-Null
+    Copy-Item $starter (Join-Path $to 'Vellum Game Launcher.exe')
+    Copy-Legal $to
+    if ($Portable) { New-Item -ItemType File -Force (Join-Path $to 'portable.flag') | Out-Null }
+  }
+  function Write-Version([string]$to, [bool]$withExtras) {
+    New-Item -ItemType Directory -Force $to | Out-Null
+    Copy-Item $exe (Join-Path $to 'Vellum Game Launcher.exe')
+    Copy-Legal $to
+    Copy-Plugins (Join-Path $repo 'plugins') $to
+    if ($withExtras) { Copy-Plugins (Join-Path $repo 'extras') $to }
+  }
+  function Write-Active([string]$root, [string]$previous) {
+    $a = [ordered]@{ active = $version; previous = $(if ($previous -and $previous -ne $version) { $previous } else { $null }); trial = $false; failedStarts = 0; rolledBackFrom = $null }
+    [IO.File]::WriteAllText((Join-Path $root 'active.json'), ($a | ConvertTo-Json))
+  }
+
+  # Refresh dist\Vellum in place. Other installed versions, the user's own plugins and a
+  # portable data folder stay; the root files and this version's folder are replaced. (Emptying
+  # rather than deleting, since an Explorer window open in it would make removal fail half-way.)
   New-Item -ItemType Directory -Force $out | Out-Null
-  Get-ChildItem $out -Force | Remove-Item -Recurse -Force
-  Copy-Item $exe (Join-Path $out 'Vellum Game Launcher.exe')
-
-  Copy-Plugins (Join-Path $repo 'plugins') $out
-  if (-not $NoExtras) { Copy-Plugins (Join-Path $repo 'extras') $out }
-
-  if ($Portable) { New-Item -ItemType File (Join-Path $out 'portable.flag') | Out-Null }
+  # A folder from before version management: its plugins/ held the packaged plugins, not the
+  # user's own, so it goes too.
+  $keep = if (Test-Path (Join-Path $out 'active.json')) { 'versions', 'plugins', 'data', 'portable.flag', 'active.json' } else { 'data', 'portable.flag' }
+  Get-ChildItem $out -Force | Where-Object { $keep -notcontains $_.Name } | Remove-Item -Recurse -Force
+  $previous = $null
+  if (Test-Path (Join-Path $out 'active.json')) { $previous = (Get-Content (Join-Path $out 'active.json') -Raw | ConvertFrom-Json).active }
+  $thisVersion = Join-Path $out "versions\$version"
+  if (Test-Path $thisVersion) { Remove-Item $thisVersion -Recurse -Force }
+  Write-Root $out
+  Write-Version $thisVersion (-not $NoExtras)
+  Write-Active $out $previous
 
   if ($Zip) {
-    $version = (Get-Content (Join-Path $repo 'src-tauri\tauri.conf.json') -Raw | ConvertFrom-Json).version
     $stage = Join-Path $repo 'dist\.stage'
     if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
-    # Core: the exe and the core plugins, in a Vellum folder.
-    $core = Join-Path $stage 'core\Vellum'
-    New-Item -ItemType Directory -Force $core | Out-Null
-    Copy-Item $exe (Join-Path $core 'Vellum Game Launcher.exe')
-    if ($Portable) { New-Item -ItemType File (Join-Path $core 'portable.flag') | Out-Null }
-    Copy-Plugins (Join-Path $repo 'plugins') $core
-    # Extras: the same Vellum\plugins\... layout, so extracting it where the core zip went merges them.
-    Copy-Plugins (Join-Path $repo 'extras') (Join-Path $stage 'extras\Vellum')
+    # Core: the starter and this version with the core plugins. Extract it anywhere and run it.
+    Write-Root (Join-Path $stage 'core\Vellum')
+    Write-Version (Join-Path $stage "core\Vellum\versions\$version") $false
+    Write-Active (Join-Path $stage 'core\Vellum') $null
+    # Extras: the same layout, so extracting it over the core zip merges them; the updater reads
+    # Vellum/versions/<version>/ from both.
+    Copy-Plugins (Join-Path $repo 'extras') (Join-Path $stage "extras\Vellum\versions\$version")
     $zips = [ordered]@{ core = "Vellum-Game-Launcher-$version-windows-x64.zip"; extras = "Vellum-Game-Launcher-$version-extras.zip" }
     foreach ($part in $zips.Keys) {
       $zipPath = Join-Path $repo "dist\$($zips[$part])"
       if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
-      Compress-Archive -Path (Join-Path $stage "$part\Vellum") -DestinationPath $zipPath
+      # Windows' tar writes standard zips (forward slashes); Compress-Archive in PowerShell 5.1
+      # writes backslashes into entry names.
+      tar.exe -a -c -f $zipPath -C (Join-Path $stage $part) Vellum
+      if ($LASTEXITCODE) { throw "zip of $part failed ($LASTEXITCODE)" }
       Write-Host "Wrote $zipPath"
     }
     Remove-Item $stage -Recurse -Force

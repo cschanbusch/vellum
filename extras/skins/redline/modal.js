@@ -5,6 +5,10 @@ import vellum from "/__vellum/sdk.js";
 /** Open overlays, topmost last. Only the topmost gets input. */
 const stack = [];
 
+/** Whether an overlay is open. `rl-modal` fires on window whenever that changes. */
+export const modalOpen = () => stack.length > 0;
+const announce = () => dispatchEvent(new CustomEvent("rl-modal", { detail: { open: stack.length > 0 } }));
+
 const KEYS = { Enter: "confirm", " ": "confirm", Escape: "back", Backspace: "back", s: "alt", S: "alt" };
 
 addEventListener(
@@ -49,10 +53,14 @@ export function modal(el, actions) {
   document.body.append(el);
   const prevFocus = document.activeElement;
   stack.push(actions);
+  if (stack.length === 1) announce();
   requestAnimationFrame(() => el.classList.add("is-open"));
   return () => {
     const i = stack.indexOf(actions);
-    if (i >= 0) stack.splice(i, 1);
+    if (i >= 0) {
+      stack.splice(i, 1);
+      if (!stack.length) announce();
+    }
     el.classList.remove("is-open");
     el.classList.add("is-closing");
     setTimeout(() => el.remove(), 260);

@@ -17,6 +17,13 @@ export default defineConfig({
   workers: 1,
   reporter: [["list"]],
   use: { viewport: { width: 1600, height: 950 } },
+  projects: [
+    { name: "software", grepInvert: /Grand Tour/ },
+    // Grand Tour's Garage draws its case in WebGL. Those tests run on the GPU (ANGLE on Direct3D
+    // 11): the software renderer is slow enough to skew every timing around it. The rest keep the
+    // software renderer, which the performance budgets were measured on.
+    { name: "gpu", grep: /Grand Tour/, use: { launchOptions: { args: ["--use-angle=d3d11", "--ignore-gpu-blocklist"] } } },
+  ],
   webServer: [
     harness("plugins/skins/basis", 5190),
     harness("tests/fixtures/dev-plugins/skins/token-test", 5192),

@@ -9,6 +9,19 @@ import { beep, hiss } from "./sound.js";
 const W = 180; // grime canvas resolution; drawn scaled up, so reading it back is cheap
 const H = 270;
 
+// Hold-to-wash: the zig-zag runs 60 steps a row, a row every 20 px, over WASH_PASS ms. 90% clean
+// (the goal) comes a little before the pass ends.
+const PASS_STEPS = 60 * Math.ceil((H + 20) / 20);
+const WASH_PASS = 6000;
+
+// Tune-up difficulty (option `tuneUp`): needle speed in sweeps per second and how much faster each
+// hit makes it; the green band's width in thousands of rpm and how much each hit narrows it.
+const TUNE = {
+  relaxed: { speed: 0.5, faster: 0.1, band: 2.2, narrow: 0.3 },
+  standard: { speed: 0.8, faster: 0.15, band: 1.8, narrow: 0.3 },
+  tricky: { speed: 1.25, faster: 0.25, band: 1.5, narrow: 0.35 },
+};
+
 function rng(seed) {
   let a = seed >>> 0;
   return () => ((a = (a * 1664525 + 1013904223) >>> 0) / 4294967296);
@@ -185,10 +198,13 @@ export function openService(entry) {
     canvas.addEventListener("pointercancel", up);
 
     // Keyboard / controller: hold to pressure-wash along a zig-zag.
+    // Paced by the clock, not the frame rate: a full pass over the case takes about WASH_PASS ms.
     let path = 0;
+    let along = 0; // path, unrounded
     let spraying = 0;
     let sprayUntil = 0;
-    const sprayFrame = () => {
+    let sprayAt = 0;
+    const sprayFrame = (now) => {
       if (done || stageNo !== 1) return;
       if (performance.now() > sprayUntil) {
         spraying = 0;
@@ -198,7 +214,9 @@ export function openService(entry) {
         measure();
         return;
       }
-      for (let k = 0; k < 7; k++) {
+      along += Math.max(0, Math.min(now - sprayAt, 250)) * (PASS_STEPS / WASH_PASS);
+      sprayAt = now;
+      while (path < Math.floor(along)) {
         path += 1;
         const row = Math.floor(path / 60);
         const t = (path % 60) / 59;
@@ -217,6 +235,7 @@ export function openService(entry) {
       if (!spraying) {
         stopHiss = stopHiss ?? hiss();
         sponge.classList.add("is-on");
+        sprayAt = performance.now();
         spraying = requestAnimationFrame(sprayFrame);
       }
     };
@@ -242,14 +261,16 @@ export function openService(entry) {
       dial.append(tach.svg);
       stage.replaceChildren(dial, side);
       let hits = 0;
-      let speed = 1.25; // sweeps per second
+      const level = TUNE[vellum.skin.options.tuneUp] ?? TUNE.standard;
+      let speed = level.speed; // sweeps per second
       let zone = [0, 0];
       const newZone = () => {
-        const width = 1.5 - hits * 0.35;
+        const width = level.band - hits * level.narrow;
         const from = 1.2 + Math.random() * (5.8 - width);
         zone = [from, from + width];
         tach.band(...zone);
         dial.dataset.zone = zone.map((z) => z.toFixed(2)).join(" "); // for tests
+        dial.dataset.speed = speed.toFixed(2);
       };
       newZone();
       const t0 = performance.now();
@@ -274,7 +295,7 @@ export function openService(entry) {
         lamps[hits].classList.add("is-on");
         hits += 1;
         hint.textContent = `Press Enter / A (or click) when the needle is in the green band. ${["Three", "Two", "One"][hits] ?? "None"} to go.`;
-        speed += 0.25;
+        speed += level.faster;
         if (hits === 3) {
           cancelAnimationFrame(needleFrame);
           complete();

@@ -1,5 +1,16 @@
 # Decisions
 
+## 2026-10-22 — Version management from GitHub releases
+
+- **Versions side by side, behind a starter.** The spec ruled out auto-update; the user asked for a Versions page that downloads, switches between and removes releases. A running exe can't replace itself on Windows, and Tauri's updater replaces the single install, so a managed install is a small starter exe (`starter/`) at the root plus `versions/<version>/` folders. `active.json` names the version the starter launches. Release zips use the same layout, so one zip works for a first install by hand and for the in-app updater (which takes only `Vellum/versions/<version>/` out of it).
+- **Shared data, per-version plugins.** Data, `portable.flag` and the user's own plugins (`<root>/plugins`) are shared by every version; the core and extras plugins ship inside each version folder, so a version always runs with the plugins it was built with.
+- **Trial starts and rollback.** Activating writes `trial: true`. The starter counts each start of a trial version; the version clears it on reaching its window. After two failed starts the starter goes back to the previous version and records `rolledBackFrom`, which the Versions page reports.
+- **No signing, by choice.** The user's GitHub account is the trust anchor and nothing installs without the user asking. Downloads are still checked against the SHA-256 digest GitHub publishes for each asset, which catches corrupt or truncated downloads.
+- **Backups.** Before switching, the data folder (not caches or logs) is copied to `data/backups/`, newest five kept, since a newer version may change data formats an older one can't read.
+- **A version is its folder.** The running version identifies itself by its folder's name, not its built-in version number, so a folder and the build inside it can never disagree about confirmation.
+- **Releases before 0.2.0** are listed but can't be installed in-app: their zips predate the layout.
+- **Private repository.** The releases API only works anonymously for public repositories; `VELLUM_GITHUB_TOKEN` lets the developer try it before the repository is public. `VELLUM_RELEASES_API` points the updater at a test server.
+
 ## 2026-10-21 — Window placement; store playtime; Grand Tourer's varied wear and floor reflection
 
 - **The window comes back where it was.** `window_state.rs` saves the normal (un-maximized) position and size, in physical pixels, and whether the window was maximized.
