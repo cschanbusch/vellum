@@ -1,4 +1,4 @@
-// Grand Tour: the help bar for each view, a wipe between views, the title screen and the menu
+// Grand Tour: the help bar for each view, a flash between views, the title screen and the menu
 // sounds.
 import vellum from "/__vellum/sdk.js";
 import { installIgnition } from "./ignition.js";
@@ -65,7 +65,7 @@ function renderHelp() {
   );
 }
 
-// ---- wipe between views ------------------------------------------------------------------------
+// ---- flash between views -----------------------------------------------------------------------
 
 const wipe = document.querySelector(".rl-wipe");
 let lastView = "";
@@ -73,7 +73,7 @@ let lastView = "";
 function onState(s) {
   if (lastView && s.view !== lastView && moving()) {
     wipe.classList.remove("go");
-    void wipe.offsetWidth; // restart the animation
+    void wipe.offsetWidth; // restart the flash
     wipe.classList.add("go");
   }
   lastView = s.view;
