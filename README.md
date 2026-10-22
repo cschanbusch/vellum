@@ -112,7 +112,7 @@ library with art URLs on its own origin. The full specification is
 | GOG and custom-games providers | Planned (Phase 5; placeholders for now) |
 | Modules (Quick Launch, Random Pick) | Planned (Phase 6; placeholders for now) |
 | Version management from GitHub releases | Done |
-| Skin catalog (Settings → Get skins, from `vellum-skins`) | Done (0.2.1, unreleased) |
+| Skin catalog (Settings → Get skins, from `vellum-skins`) | Done (0.2.1) |
 | Library model, search, filters, sorting, groups, favorites, tags | Done |
 | Skin system: protocol, CSP, SDK, kit components, tokens, options, dev mode, hot reload | Done |
 | Views: List, Covers (shelves), Spotlight, and skin-defined views with placement and hotkeys | Done |

@@ -2,6 +2,15 @@
 
 Work in progress, so the next session can pick it up.
 
+## Frontier Catalogue: an arrow key sometimes doesn't turn the page (open, 2026-10-22)
+
+The e2e test "Frontier's Catalogue…" fails intermittently (2 of 5 runs on 2026-10-22) at the
+same step: after an arrow key, `expect.poll(folios).not.toBe(spread)` (tests/e2e/skins.e2e.ts,
+around line 301) times out, so the spread never turned. Not yet investigated. Likely suspect: a
+key arriving while the previous leaf turn is still animating is dropped instead of queued
+(views/catalogue.js, leaf.js). Frontier ships through the vellum-skins catalog, not in Vellum's
+release zip.
+
 ## Covers grid drew only some rows in the real app: not a bug (closed 2026-10-20)
 
 **Reported (by me):** a `PrintWindow` capture of the packaged app with the FICSIT skin and a
