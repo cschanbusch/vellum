@@ -457,6 +457,9 @@ test.describe("Grand Tour", () => {
     await expect(frame.locator(".rl-gar-banner-maker")).not.toHaveText(maker!);
     await expect(frame.locator('.rl-gar-maker[aria-current="true"]')).toHaveCount(1);
     await expect(strip).toBeFocused();
+    // Let the Garage's new selection reach the shell before choosing elsewhere.
+    const shown = await frame.locator(".rl-gar-name").textContent();
+    await expect.poll(() => host(page, (h) => h.entries.find((e) => e.id === h.state.selectedId)?.title)).toBe(shown);
     // Selecting elsewhere moves the Garage there.
     const other = await host(page, (h) => h.entries[h.entries.length - 1]);
     await host(page, (h) => h.setState({ selectedId: h.entries[h.entries.length - 1].id }));
@@ -476,6 +479,20 @@ test.describe("Grand Tour", () => {
     await expect.poll(() => probe<number>("s.models.size"), { timeout: 30_000 }).toBeGreaterThanOrEqual(2);
     await expect(frame.locator(".rl-gar-gl")).toBeVisible();
 
+    // The neighbours stand on the side turntables; a step right slides them all one over, and the
+    // backdrop's hero slides with them.
+    const slots = () => probe<Record<string, string>>("Object.fromEntries(s.shown.filter((c) => c.slot !== 'out').map((c) => [c.slot, c.id]))");
+    const before = await slots();
+    expect(before.C).toBeTruthy();
+    expect(before.R, "the next game stands on the right").toBeTruthy();
+    await frame.locator(".rl-gar-strip").focus();
+    await page.keyboard.press("ArrowRight");
+    expect(await probe<number>("s.slide"), "a step slides").toBeGreaterThan(0);
+    await expect.poll(slots).toMatchObject({ L: before.C, C: before.R });
+    await expect(frame.locator(".rl-gar-hero")).toHaveCount(1, { timeout: 2000 });
+    await page.keyboard.press("ArrowLeft");
+    await expect.poll(slots).toMatchObject({ C: before.C, R: before.R });
+
     // Right click holds the front, then the back; a click opens it on its disc and lets go.
     const gl = frame.locator(".rl-gar-gl");
     await gl.click({ button: "right" });
@@ -485,7 +502,7 @@ test.describe("Grand Tour", () => {
     await gl.click();
     expect(await probe<number>("s.lidTarget")).toBeGreaterThan(2.5);
     expect(await probe<string | null>("s.facing")).toBeNull();
-    await expect.poll(() => probe<boolean>("s.real.disc.visible")).toBe(true);
+    await expect.poll(() => probe<boolean>("s.center.real.disc.visible")).toBe(true);
     await gl.click();
     expect(await probe<number>("s.lidTarget")).toBe(0);
     await frame.locator(".rl-gar-strip").focus();
@@ -500,7 +517,7 @@ test.describe("Grand Tour", () => {
     expect(await probe<number>("s.lidTarget")).toBe(0);
     // The floor reflection option hides the mirrored copy.
     await setOption("reflections", false);
-    await expect.poll(() => probe<boolean>("s.mirror.visible")).toBe(false);
+    await expect.poll(() => probe<boolean>("s.center.mirror.visible")).toBe(false);
     await setOption("reflections", true);
     await setOption("caseOther", "keepcase-dvd");
     await page.waitForTimeout(500);

@@ -14,17 +14,29 @@ export const BLEED = 2; // mm, as the wrap is composed (compose.worker.js)
 const SPINE_INSET = 1.1; // the shell's spine wall sits inside the insert's larger spine fillet
 const STRIP_GAP = 0.2; // insert above the shell
 const SLEEVE_GAP = 0.2; // sleeve above the insert
-const LID = 2; // lid thickness
+/** The finger notch on a keep case's open edge: its radius (and depth), in mm. */
+const NOTCH = 4.5;
 
 /** Detail levels: segments per fillet and per plan corner. */
 export const LOD = { focused: { fillet: 8, corner: 8 }, near: { fillet: 3, corner: 4 } };
 
-/** A rectangle with its own radius per corner (tl, tr, br, bl), as a Shape. */
-function roundedRect(x0, y0, x1, y1, [tl, tr, br, bl]) {
+/**
+ * A rectangle with its own radius per corner (tl, tr, br, bl), as a Shape. `notch` ({ cx, cy, r })
+ * cuts a half-round finger notch into the right edge: a circle centred at (cx, cy), at or beyond
+ * the edge.
+ */
+function roundedRect(x0, y0, x1, y1, [tl, tr, br, bl], notch = null) {
   const s = new THREE.Shape();
   s.moveTo(x0 + bl, y0);
   s.lineTo(x1 - br, y0);
   if (br) s.quadraticCurveTo(x1, y0, x1, y0 + br);
+  if (notch) {
+    // Where the circle meets the edge line, then round through the inside.
+    const dx = x1 - notch.cx;
+    const k = Math.sqrt(Math.max(0, notch.r ** 2 - dx ** 2));
+    s.lineTo(x1, notch.cy - k);
+    s.absarc(notch.cx, notch.cy, notch.r, Math.atan2(-k, dx), Math.atan2(k, dx), true);
+  }
   s.lineTo(x1, y1 - tr);
   if (tr) s.quadraticCurveTo(x1, y1, x1 - tr, y1);
   s.lineTo(x0 + tl, y1);
@@ -36,12 +48,16 @@ function roundedRect(x0, y0, x1, y1, [tl, tr, br, bl]) {
 
 /**
  * A filleted slab: the outline (x0..x1, 0..h) extruded from z0 to z1, every edge rounded by
- * `edge`. Corner radii are for the outer outline.
+ * `edge`. Corner radii are for the outer outline; `notch` is a finger notch's radius, cut into
+ * the right edge at mid-height.
  */
-function slab(x0, x1, h, z0, z1, radii, edge, lod) {
+function slab(x0, x1, h, z0, z1, radii, edge, lod, notch = 0) {
   const e = Math.min(edge, (z1 - z0) / 2 - 0.05);
   const inner = radii.map((r) => Math.max(0, r - e));
-  const shape = roundedRect(x0 + e, e, x1 - e, h - e, inner);
+  // The bevel grows the outline by e, so the inner notch is centred on the outer edge with its
+  // radius grown by e: after the bevel, the notch has radius `notch` on the outer edge.
+  const cut = notch ? { cx: x1, cy: h / 2, r: notch + e } : null;
+  const shape = roundedRect(x0 + e, e, x1 - e, h - e, inner, cut);
   const geo = new THREE.ExtrudeGeometry(shape, {
     depth: Math.max(0.01, z1 - z0 - 2 * e),
     bevelEnabled: true,
@@ -169,13 +185,16 @@ export function caseGeometry(name, p, level = "focused") {
   out.wrapMm = wrapMm;
 
   if (p.opens) {
-    // Tray: the back half with the spine; the lid hinges where the front fillet meets the front.
+    // A clamshell split down the middle of its thickness: the tray (the back half, with the
+    // spine) and the lid (the front half), which hinges on the spine side of that middle line.
+    // Both halves carry a finger notch at mid-height on the open edge.
+    const LID = D / 2;
     const hx = ins.hinge.x;
     out.hinge = { x: hx, z: D / 2 - LID };
-    out.tray = slab(xSpine, W / 2, H, -D / 2, D / 2 - LID, [cr, cr, cr, cr], edge, lod);
+    out.tray = slab(xSpine, W / 2, H, -D / 2, D / 2 - LID, [cr, cr, cr, cr], edge, lod, NOTCH);
     out.spineCap = slab(xSpine, hx + 0.6, H, D / 2 - LID - 0.5, D / 2, [cr, 0, 0, cr], Math.min(edge, 0.8), lod);
     // Lid geometry is built relative to the hinge, so it rotates about its own origin.
-    const lid = slab(hx, W / 2, H, D / 2 - LID, D / 2, [0, cr, cr, 0], Math.min(edge, 0.9), lod);
+    const lid = slab(hx, W / 2, H, D / 2 - LID, D / 2, [0, cr, cr, 0], edge, lod, NOTCH);
     lid.translate(-hx, 0, -(D / 2 - LID));
     out.lid = lid;
     // Split the strips where the front begins: the front part rides on the lid.
@@ -215,7 +234,7 @@ export function caseGeometry(name, p, level = "focused") {
     // Centred on the tray beside the hinge; scaled down where a narrow case can't hold 120 mm.
     const hx = ins.hinge.x;
     const scale = Math.min(1, (W / 2 - hx) / 2 / 61);
-    out.disc = { label, hub, edge: edgeG, x: (hx + W / 2) / 2, y: H / 2, z: D / 2 - LID + 1.2, scale };
+    out.disc = { label, hub, edge: edgeG, x: (hx + W / 2) / 2, y: H / 2, z: 1.2, scale };
   }
   cache.set(key, out);
   return out;

@@ -181,36 +181,70 @@ let modelFor = "";
 
 const caseCtx = () => ({ cases, options: api.skin.options, providers: api.providers.list() });
 
-/** Puts `e`'s case on the turntable: at once with its cover, then with its composed wrap. */
+/** Gives the stage `e`'s case at once (its plain cover) if it has none yet; the composed wrap
+ *  replaces it when ready. */
+function ensureModel(e) {
+  if (cases3d.has(e.id)) return;
+  const c = caseFor(e, cases, api.skin.options);
+  const wear = 1 - condition(e.id);
+  cases3d.preload({ id: e.id, case: c, wrap: quickWrap(c, null), wear, quick: true });
+  const img = new Image();
+  img.onload = () => {
+    if (cases3d?.models.get(e.id)?.quick) cases3d.preload({ id: e.id, case: c, wrap: quickWrap(c, img), wear, quick: true });
+  };
+  img.src = art(e, "cover", 320);
+}
+
+let shownCenter = null; // the game on the centre turntable
+
+/**
+ * Puts `e`'s case on the centre turntable and its neighbours on either side. When the old centre
+ * game is now a neighbour, that was a step: the cases (and the backdrop) slide; otherwise they
+ * crossfade.
+ */
 function showCase(e) {
   if (!cases3d || !cases) {
     if (stageFailed) showFlat(e);
     return;
   }
-  const wear = 1 - condition(e.id);
-  const ids = [e.id];
-  if (!cases3d.has(e.id)) {
-    // Until the wrap is ready: the plain cover on the front, the shell color elsewhere.
-    const c = caseFor(e, cases, api.skin.options);
-    cases3d.preload({ id: e.id, case: c, wrap: quickWrap(c, null), wear, quick: true });
-    const img = new Image();
-    img.onload = () => {
-      if (cases3d?.models.get(e.id)?.quick) cases3d.preload({ id: e.id, case: c, wrap: quickWrap(c, img), wear, quick: true });
-    };
-    img.src = art(e, "cover", 320);
-  }
-  cases3d.show(e.id);
-  cases3d.setWear(e.id, wear);
-  load(e, 0);
-  // Its neighbours, so left and right are instant.
   const list = makers[maker]?.entries ?? [];
-  for (const n of [list[sel - 1], list[sel + 1]]) {
-    if (!n) continue;
-    ids.push(n.id);
-    load(n, 1);
-  }
+  const prev = list[sel - 1] ?? null;
+  const next = list[sel + 1] ?? null;
+  const dir = shownCenter && prev?.id === shownCenter ? 1 : shownCenter && next?.id === shownCenter ? -1 : 0;
+  shownCenter = e.id;
+  const trio = [prev, e, next].filter(Boolean);
+  for (const x of trio) ensureModel(x);
+  cases3d.setSlots([prev?.id, e.id, next?.id], dir);
+  cases3d.setWear(e.id, 1 - condition(e.id));
+  showBackdrop(e, dir);
+  load(e, 0);
+  for (const n of [prev, next]) if (n) load(n, 1);
+  const ids = trio.map((x) => x.id);
   cases3d.keep(ids);
   dropQueued(ids);
+}
+
+// ---- the backdrop: the focused game's hero art behind the turntables -------------------------
+
+const SLIDE = { duration: 450, easing: "cubic-bezier(0.33, 1, 0.68, 1)" };
+
+/** Shows `e`'s hero behind the turntables, sliding in from the side the cases come from. */
+function showBackdrop(e, dir) {
+  const host = stage?.querySelector(".rl-gar-backdrop");
+  if (!host) return;
+  const hero = e.artStatus?.hero !== "placeholder";
+  const layer = el("div", `rl-gar-hero${hero ? "" : " is-cover"}`);
+  layer.style.backgroundImage = `url("${art(e, hero ? "hero" : "cover", hero ? 1920 : 640)}")`;
+  const old = [...host.children];
+  host.append(layer);
+  const still = document.documentElement.hasAttribute("data-rl-still");
+  if (dir && !still) {
+    layer.animate([{ transform: `translateX(${dir * 100}%)` }, { transform: "none" }], SLIDE);
+    for (const o of old) o.animate([{ transform: "none" }, { transform: `translateX(${-dir * 100}%)` }], { ...SLIDE, fill: "forwards" }).finished.then(() => o.remove(), () => o.remove());
+  } else {
+    layer.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200 });
+    for (const o of old) setTimeout(() => o.remove(), 200);
+  }
 }
 
 /** Composes (or fetches from the cache) a case's full wrap and hands it to the stage. */
@@ -255,7 +289,8 @@ function showFlat(e) {
 function onOptions() {
   if (!cases3d) return;
   cases3d.pose();
-  cases3d.keep([]);
+  cases3d.clear();
+  shownCenter = null;
   modelFor = "";
   renderModel(true);
 }
@@ -295,6 +330,8 @@ function renderModel(force = false) {
   modelFor = e?.id ?? "";
   if (!e) {
     cases3d?.clear();
+    shownCenter = null;
+    stage.querySelector(".rl-gar-backdrop")?.replaceChildren();
     card.replaceChildren(el("p", "rl-gar-empty", "The showroom is empty."));
     return;
   }
@@ -482,9 +519,10 @@ export default {
     const floor = el("div", "rl-gar-floor");
     const banner = el("div", "rl-gar-banner");
     banner.append(el("span", "rl-gar-banner-label", "Showroom"), el("span", "rl-gar-banner-maker"), el("span", "rl-gar-banner-count"));
+    const backdrop = el("div", "rl-gar-backdrop");
     const lights = el("div", "rl-gar-lights");
     const tips = el("p", "rl-gar-tips", "Click to open · Right-click: front, back, turn");
-    floor.append(lights, tips);
+    floor.append(backdrop, lights, tips);
     card = el("aside", "rl-gar-card");
     stage.append(banner, floor, card);
 
@@ -560,6 +598,7 @@ export default {
     unsubs = [];
     cases3d?.dispose();
     cases3d = null;
+    shownCenter = null;
     stageFailed = false;
     root = stage = card = makersEl = strip = null;
     modelFor = "";

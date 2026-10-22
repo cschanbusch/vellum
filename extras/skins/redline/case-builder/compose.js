@@ -18,7 +18,7 @@ const DISPLAY_FONT = "Michroma";
 const BODY_FONT = "Saira Semi Condensed";
 
 /** Bump when the composer's drawing changes, so cached wraps are composed again. */
-const BUILDER = 4;
+const BUILDER = 5;
 
 /** Front panel width in pixels for each tier. */
 export const TIERS = { small: 320, medium: 640, full: 1200 };
@@ -88,7 +88,7 @@ function makeJob(entry, tier, { cases, options = {}, providers = [] }) {
       cover: artUrl(entry, "cover", frontPx),
       hero: artUrl(entry, "hero", frontPx),
       logo: artUrl(entry, "logo", Math.min(640, frontPx)),
-      header: artUrl(entry, "header", frontPx * 0.45),
+      header: artUrl(entry, "header", frontPx), // the back cover's banner
       icon: artUrl(entry, "icon", p.spine * k * 0.8),
     },
     badges,

@@ -477,12 +477,12 @@ async function composeWrap(job) {
     g.fillText(v, bx + m + mm(34), y);
   });
 
-  // Hero strip, and the description below it (or a taller strip without one).
+  // Banner (the header art), and the description below it (or a taller strip without one).
   const stripW = iw;
   const textBottom = (pairs.length ? mdTop : footY - mm(4)) - mm(5);
-  const strip = heroImg ?? headerImg ?? coverImg;
+  const strip = headerImg ?? heroImg ?? coverImg; // the header carries the logo; the hero is the Garage backdrop
   const desc = md.description?.trim();
-  // The hero whole (never cropped), at most a quarter of the panel tall; narrower art is centred.
+  // The banner whole (never cropped), at most a quarter of the panel tall; narrower art is centred.
   let stripH = 0;
   if (strip) {
     const maxH = desc ? bh * 0.25 : Math.max(bh * 0.25, textBottom - (by + m));

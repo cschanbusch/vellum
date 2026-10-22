@@ -1,7 +1,9 @@
-// The focused case in WebGL: one renderer and canvas for the whole skin, reused as the focus
-// moves. The case stands on a turntable whose top is glass over a mirror: an upside-down copy of
-// the case is drawn beneath it (masked to the turntable with the stencil), and the glass, mostly
-// opaque, lets it through faintly.
+// The Garage's cases in WebGL: one renderer and canvas for the whole skin, reused as the focus
+// moves. Three turntables stand in a row: the focused case turns on the centre one, its
+// neighbours stand still on either side, and stepping left or right slides every case one
+// turntable over. Each turntable's top is glass over a mirror: an upside-down copy of each case is
+// drawn beneath it (masked to the turntable tops with the stencil), and the glass lets it through
+// faintly.
 //
 // Lighting: a soft key light from the upper left, a dim rim light and a small neutral room
 // environment for reflections; no shadow maps and no transmission (one pass). Frames are drawn
@@ -12,10 +14,24 @@ import { caseGeometry, contactShadow } from "./geometry.js";
 
 const TURN_PERIOD = 18; // seconds per turn of the turntable
 const STILL_YAW = 0.42; // a resting angle that shows the front and a sliver of spine
+const SIDE_YAW = 0.5; // neighbours turn this far toward the centre
 const OPEN_YAW = 0.18;
 const LID_OPEN = (160 * Math.PI) / 180;
 const FLOOR = new THREE.Color("#f3f6f9");
-const TABLE_R = 122; // turntable radius, mm
+const TABLE_R = 112; // turntable radius, mm
+const SPACING = 262; // centre to centre of the turntables
+const BACK = 70; // the side turntables stand this much further back
+const SLIDE_MS = 450;
+const ease = (t) => 1 - (1 - t) ** 3;
+
+/** Turntable positions: the slots, and just off-screen either side. */
+const SLOTS = {
+  L: { x: -SPACING, z: -BACK, yaw: SIDE_YAW },
+  C: { x: 0, z: 0, yaw: STILL_YAW },
+  R: { x: SPACING, z: -BACK, yaw: -SIDE_YAW },
+  offL: { x: -SPACING * 2, z: -BACK * 2, yaw: SIDE_YAW },
+  offR: { x: SPACING * 2, z: -BACK * 2, yaw: -SIDE_YAW },
+};
 
 const grimeImg = new Image();
 grimeImg.src = new URL("../textures/grime.svg", import.meta.url).href;
@@ -158,10 +174,38 @@ function mirrored(m, fade) {
   return r;
 }
 
+
+/** A turntable: chrome wall, glass top (whose stencil mask lets reflections show), a soft shadow. */
+function turntable(topTex) {
+  const g = new THREE.Group();
+  const wall = new THREE.Mesh(
+    new THREE.CylinderGeometry(TABLE_R, TABLE_R * 1.015, 7, 128, 1, true),
+    new THREE.MeshStandardMaterial({ color: 0xdfe5ec, metalness: 1, roughness: 0.2 }),
+  );
+  wall.position.y = -3.5;
+  const topGeo = new THREE.CircleGeometry(TABLE_R, 128).rotateX(-Math.PI / 2);
+  const top = new THREE.Mesh(
+    topGeo,
+    new THREE.MeshPhysicalMaterial({ map: topTex, transparent: true, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.05, depthWrite: false }),
+  );
+  top.renderOrder = 2;
+  // The mask: where a turntable's top is, mirrored cases may draw.
+  const mask = new THREE.Mesh(topGeo, new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false }));
+  Object.assign(mask.material, { stencilWrite: true, stencilRef: 1, stencilFunc: THREE.AlwaysStencilFunc, stencilZPass: THREE.ReplaceStencilOp });
+  mask.renderOrder = -10;
+  const under = new THREE.Mesh(
+    new THREE.PlaneGeometry(TABLE_R * 3, TABLE_R * 3).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ map: tex(softDisc(0.35)), transparent: true, depthWrite: false }),
+  );
+  under.position.y = -7.2;
+  g.add(wall, top, mask, under);
+  return { group: g, top };
+}
+
 export class CaseStage {
   /**
    * `host`: the element the canvas fills. `still()`: true when cases must not rotate or slide.
-   * `reflect()`: whether the turntable shows the case's reflection.
+   * `reflect()`: whether the turntables show the cases' reflections.
    */
   constructor(host, { still, reflect = () => true }) {
     this.host = host;
@@ -187,59 +231,28 @@ export class CaseStage {
     const rim = new THREE.DirectionalLight(0xdfe9ff, 1.1);
     rim.position.set(1.4, 0.8, -1.4);
     scene.add(key, rim);
-    this.camera = new THREE.PerspectiveCamera(26, 1, 10, 6000);
+    this.camera = new THREE.PerspectiveCamera(26, 1, 10, 8000);
 
-    // The turntable: chrome wall, glass top, a soft shadow beneath; it turns with the case.
-    this.table = new THREE.Group();
-    scene.add(this.table);
-    const wall = new THREE.Mesh(
-      new THREE.CylinderGeometry(TABLE_R, TABLE_R * 1.015, 7, 128, 1, true),
-      new THREE.MeshStandardMaterial({ color: 0xdfe5ec, metalness: 1, roughness: 0.2 }),
-    );
-    wall.position.y = -3.5;
-    const topGeo = new THREE.CircleGeometry(TABLE_R, 128).rotateX(-Math.PI / 2);
+    // The three turntables. The centre one's markings turn with its case.
     this.topTex = tex(tableTop(), { aniso: this.aniso });
-    const top = new THREE.Mesh(
-      topGeo,
-      new THREE.MeshPhysicalMaterial({ map: this.topTex, transparent: true, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.05, depthWrite: false }),
-    );
-    top.renderOrder = 2;
-    // The mask: where the turntable's top is, the mirrored case may draw.
-    const mask = new THREE.Mesh(topGeo, new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false }));
-    Object.assign(mask.material, {
-      stencilWrite: true,
-      stencilRef: 1,
-      stencilFunc: THREE.AlwaysStencilFunc,
-      stencilZPass: THREE.ReplaceStencilOp,
-    });
-    mask.renderOrder = -10;
-    const under = new THREE.Mesh(
-      new THREE.PlaneGeometry(TABLE_R * 3, TABLE_R * 3).rotateX(-Math.PI / 2),
-      new THREE.MeshBasicMaterial({ map: tex(softDisc(0.35)), transparent: true, depthWrite: false }),
-    );
-    under.position.y = -7.2;
-    this.contact = new THREE.Mesh(
-      new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
-      new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, opacity: 0.55 }),
-    );
-    this.contact.position.y = 0.05;
-    this.contact.renderOrder = 3;
-    this.table.add(wall, top, mask, under, this.contact);
-    this.mirror = new THREE.Group();
-    this.mirror.scale.y = -1;
-    this.table.add(this.mirror);
+    this.tables = {};
+    for (const slot of ["L", "C", "R"]) {
+      const t = turntable(this.topTex);
+      t.group.position.set(SLOTS[slot].x, 0, SLOTS[slot].z);
+      scene.add(t.group);
+      this.tables[slot] = t;
+    }
 
-    this.own = [];
-    this.sleeveTex = null;
     this.surface = null; // shared surface maps (THREE textures by name)
-    this.models = new Map(); // id -> { textures } (focused and neighbours, at most three)
-    this.current = null;
-    this.yaw = STILL_YAW;
+    this.models = new Map(); // id -> textures, for the shown cases (and those about to be)
+    this.keepIds = new Set();
+    this.shown = []; // cases in the scene: { id, model, slot, …, see place() }
+    this.yaw = STILL_YAW; // the centre case's angle
     this.yawTarget = null;
-    this.lid = 0;
+    this.lid = 0; // the centre case's lid
     this.lidTarget = 0;
     this.facing = null;
-    this.arrive = 1;
+    this.slide = 0; // start time of the current slide, or 0
     this.last = 0;
     this.drawn = 0;
     this.frame = 0;
@@ -252,6 +265,19 @@ export class CaseStage {
     this.resize();
   }
 
+  /** The case on the centre turntable (or arriving there). */
+  get center() {
+    return this.shown.find((c) => c.slot === "C") ?? null;
+  }
+
+  get current() {
+    return this.center?.model ?? null;
+  }
+
+  get profile() {
+    return this.center?.model.case.profile ?? null;
+  }
+
   // ---- shared maps ----------------------------------------------------------------------------
 
   setSurfaceMaps(maps) {
@@ -259,7 +285,8 @@ export class CaseStage {
     for (const [name, m] of Object.entries(maps)) {
       this.surface[name] = { normal: tex(m.normal, { srgb: false }), rough: tex(m.rough, { srgb: false }) };
     }
-    if (this.current) this.build(); // re-dress the case with grain
+    for (const c of this.shown) this.dress(c); // re-dress the cases with grain
+    this.render();
   }
 
   // ---- models ---------------------------------------------------------------------------------
@@ -271,17 +298,21 @@ export class CaseStage {
   preload(model) {
     const old = this.models.get(model.id);
     if (old && old.wrapSrc === model.wrap) return;
-    if (old) this.release(old);
     const m = { ...model, wrapSrc: model.wrap };
     m.wrapTex = tex(model.wrap, { aniso: this.aniso });
     m.discTex = model.disc ? tex(model.disc, { aniso: this.aniso }) : null;
     m.embossTex = model.emboss ? tex(model.emboss, { srgb: false }) : null;
     for (const t of [m.wrapTex, m.discTex, m.embossTex]) if (t) this.renderer.initTexture(t);
     this.models.set(model.id, m);
-    if (this.current?.id === model.id) {
-      this.current = m;
-      this.build();
+    // A shown case takes its new textures where it stands.
+    for (const c of this.shown) {
+      if (c.id === model.id) {
+        c.model = m;
+        this.dress(c);
+      }
     }
+    if (old) this.release(old);
+    this.render();
   }
 
   release(m) {
@@ -290,11 +321,16 @@ export class CaseStage {
     if (m.disc instanceof ImageBitmap) m.disc.close?.();
   }
 
-  /** Disposes the textures of every case not in `ids`. */
+  /** Disposes the textures of every case not in `ids` (once it has left the stage). */
   keep(ids) {
-    const want = new Set(ids);
+    this.keepIds = new Set(ids);
+    this.prune();
+  }
+
+  prune() {
+    const onStage = new Set(this.shown.map((c) => c.id));
     for (const [id, m] of this.models) {
-      if (!want.has(id)) {
+      if (!this.keepIds.has(id) && !onStage.has(id)) {
         this.release(m);
         this.models.delete(id);
       }
@@ -305,29 +341,86 @@ export class CaseStage {
     return this.models.has(id);
   }
 
-  /** Shows a preloaded case. */
-  show(id) {
-    const m = this.models.get(id);
-    if (!m) return;
-    const changed = this.current?.id !== id;
-    this.current = m;
-    if (changed) {
-      this.facing = null;
-      this.lid = this.lidTarget = 0;
-      this.yawTarget = null;
-      if (this.still()) this.crossfade(() => this.build());
-      else {
-        this.arrive = 0;
-        this.build();
-      }
+  /**
+   * Shows `ids` = [previous, focused, next] (ids or null) on the three turntables. `dir` is +1
+   * or -1 after a step right or left, sliding every case one turntable over; 0 (a jump) or
+   * reduced motion crossfades instead.
+   */
+  setSlots(ids, dir = 0) {
+    const want = { L: ids[0] ?? null, C: ids[1] ?? null, R: ids[2] ?? null };
+    const same = this.shown.filter((c) => c.slot !== "out").every((c) => want[c.slot] === c.id) && ["L", "C", "R"].every((s) => !want[s] || this.shown.some((c) => c.slot === s && c.id === want[s]));
+    if (same) return;
+    this.finishSlide();
+    const oldCenter = this.center;
+    if (!dir || this.still()) {
+      const apply = () => {
+        for (const c of [...this.shown]) this.drop(c);
+        for (const s of ["L", "C", "R"]) if (want[s] && this.models.has(want[s])) this.place(want[s], s, SLOTS[s]);
+        this.resetCenter(oldCenter);
+        this.prune();
+        this.resize();
+      };
+      if (this.shown.length) this.crossfade(apply);
+      else apply();
+      this.kick();
+      return;
     }
+    // Slide: every case moves to the turntable its id now has, or off the edge it's pushed to.
+    const exit = dir > 0 ? SLOTS.offL : SLOTS.offR;
+    const enter = dir > 0 ? SLOTS.offR : SLOTS.offL;
+    for (const c of this.shown) {
+      const slot = Object.keys(want).find((s) => want[s] === c.id);
+      c.from = this.poseOf(c);
+      c.slot = slot ?? "out";
+      c.to = slot ? SLOTS[slot] : exit;
+    }
+    for (const s of ["L", "C", "R"]) {
+      if (!want[s] || this.shown.some((c) => c.id === want[s]) || !this.models.has(want[s])) continue;
+      const c = this.place(want[s], s, enter);
+      c.from = { ...enter };
+      c.to = SLOTS[s];
+    }
+    this.resetCenter(oldCenter);
+    this.slide = performance.now();
+    this.resize();
     this.kick();
   }
 
-  /** An empty turntable. */
+  /** A new centre case starts turning from where it stands; the old one closes and settles. */
+  resetCenter(oldCenter) {
+    const c = this.center;
+    if (oldCenter && oldCenter !== c) {
+      oldCenter.lid = this.lid;
+      oldCenter.yaw = this.yaw;
+    }
+    if (c && c !== oldCenter) {
+      this.yaw = c.yaw ?? STILL_YAW;
+      this.yawTarget = this.still() ? this.nearest(STILL_YAW) : null;
+      this.lid = this.lidTarget = 0;
+      this.facing = null;
+    }
+  }
+
+  /** Snaps a slide in progress to its end (a new step arrived before it finished). */
+  finishSlide() {
+    if (!this.slide) return;
+    this.slide = 0;
+    for (const c of [...this.shown]) {
+      if (c.slot === "out") this.drop(c);
+      else {
+        c.x = SLOTS[c.slot].x;
+        c.z = SLOTS[c.slot].z;
+        c.from = c.to = null;
+        if (c.slot !== "C") c.yaw = SLOTS[c.slot].yaw;
+      }
+    }
+    this.prune();
+  }
+
+  /** An empty showroom. */
   clear() {
-    this.clearCase();
-    this.current = null;
+    this.finishSlide();
+    for (const c of [...this.shown]) this.drop(c);
     this.keep([]);
     this.render();
   }
@@ -337,24 +430,51 @@ export class CaseStage {
     const m = this.models.get(id);
     if (!m || m.wear === wear) return;
     m.wear = wear;
-    if (this.current?.id === id) this.dressSleeve();
+    for (const c of this.shown) if (c.id === id) this.dressSleeve(c);
+    this.render();
   }
 
-  // ---- building the scene ----------------------------------------------------------------------
+  // ---- building cases ----------------------------------------------------------------------------
 
-  /** (Re)builds the case meshes for the current model, and its mirrored copy. */
-  build() {
-    this.clearCase();
-    const m = this.current;
-    const c = m.case;
-    const p = c.profile;
-    const geo = caseGeometry(c.profileName, p, "focused");
+  /** Puts a case in the scene at `pos` ({ x, z, yaw }), assigned to `slot`. */
+  place(id, slot, pos) {
+    const c = { id, model: this.models.get(id), slot, x: pos.x, z: pos.z, yaw: pos.yaw, lid: 0, from: null, to: null, own: [], mats: null, mirrorMats: null };
+    c.group = new THREE.Group();
+    c.mirror = new THREE.Group();
+    c.mirror.scale.y = -1;
+    c.contact = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, opacity: 0.55 }));
+    c.contact.position.y = 0.05;
+    c.contact.renderOrder = 3;
+    c.group.add(c.contact);
+    this.scene.add(c.group, c.mirror);
+    this.shown.push(c);
+    this.dress(c);
+    return c;
+  }
+
+  /** Removes a case from the scene and frees what was made for it (not its model's textures). */
+  drop(c) {
+    this.undress(c);
+    c.group.removeFromParent();
+    c.mirror.removeFromParent();
+    c.contact.material.map?.dispose();
+    c.contact.material.dispose();
+    c.contact.geometry.dispose();
+    this.shown = this.shown.filter((x) => x !== c);
+  }
+
+  /** (Re)builds a case's meshes and materials, and its mirrored copy, from its model. */
+  dress(c) {
+    this.undress(c);
+    const m = c.model;
+    const p = m.case.profile;
+    const geo = caseGeometry(m.case.profileName, p, "focused");
     const card = p.material === "cardboard";
     const sf = this.surface;
-    const own = (t) => (t && this.own.push(t), t); // textures made for this build, disposed with it
+    const own = (t) => (t && c.own.push(t), t); // textures made for this case, disposed with it
     const shellMap = sf?.[p.heightmaps?.shell];
     const shell = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(c.style.shell),
+      color: new THREE.Color(m.case.style.shell),
       roughness: card ? 0.92 : 0.45,
       metalness: 0,
       normalMap: shellMap ? own(tiled(shellMap.normal, card ? 30 : 10)) : null,
@@ -384,48 +504,52 @@ export class CaseStage {
           normalMap: sleeveMap ? own(tiled(sleeveMap.normal, 120, 1)) : null,
           normalScale: new THREE.Vector2(0.15, 0.15),
         });
-    this.mats = { shell, insert, sleeve };
+    c.mats = { shell, insert, sleeve };
     if (p.disc) {
-      this.mats.label = new THREE.MeshStandardMaterial({ map: m.discTex, transparent: true, roughness: 0.35, metalness: 0.1 });
-      this.mats.hub = new THREE.MeshPhysicalMaterial({
+      c.mats.label = new THREE.MeshStandardMaterial({ map: m.discTex, transparent: true, roughness: 0.35, metalness: 0.1 });
+      c.mats.hub = new THREE.MeshPhysicalMaterial({
         color: 0xe8edf3,
         metalness: 0.9,
         roughness: 0.18,
         normalMap: sf?.rings ? sf.rings.normal : null,
         normalScale: new THREE.Vector2(0.6, 0.6),
       });
-      this.mats.edge = new THREE.MeshStandardMaterial({ color: 0xc9d1db, metalness: 1, roughness: 0.25 });
+      c.mats.edge = new THREE.MeshStandardMaterial({ color: 0xc9d1db, metalness: 1, roughness: 0.25 });
     }
-    this.dressSleeve();
-
     const fade = p.outer.h * 0.7;
-    const mirrorMats = Object.fromEntries(Object.entries(this.mats).map(([k, v]) => [k, mirrored(v, fade)]));
-    this.mirrorMats = mirrorMats;
-    this.real = this.assemble(geo, p, this.mats);
-    this.refl = this.assemble(geo, p, mirrorMats);
+    c.mirrorMats = Object.fromEntries(Object.entries(c.mats).map(([k, v]) => [k, mirrored(v, fade)]));
+    this.dressSleeve(c);
+    c.real = this.assemble(geo, c.mats);
+    c.refl = this.assemble(geo, c.mirrorMats);
     // After the mask, before everything else. Meshes only: a group's renderOrder orders its whole
     // subtree ahead of the mask.
-    this.refl.root.traverse((x) => {
+    c.refl.root.traverse((x) => {
       if (x.isMesh) x.renderOrder = x.material.transparent ? 0 : -5;
     });
-    this.table.add(this.real.root);
-    this.mirror.add(this.refl.root);
-
-    // The contact shadow under this footprint.
+    c.group.add(c.real.root);
+    c.mirror.add(c.refl.root);
     const sh = contactShadow(p);
-    this.contact.material.map?.dispose();
-    this.contact.material.map = tex(sh.canvas);
-    this.contact.material.needsUpdate = true;
-    this.contact.scale.set(sh.span, 1, sh.span);
-
-    this.profile = p;
-    this.resize();
+    c.contact.material.map?.dispose();
+    c.contact.material.map = tex(sh.canvas);
+    c.contact.material.needsUpdate = true;
+    c.contact.scale.set(sh.span, 1, sh.span);
     this.pose();
-    this.render();
   }
 
-  /** One copy of the case: shell, insert, sleeve, and (if it opens) the lid and the disc. */
-  assemble(geo, p, mats) {
+  undress(c) {
+    c.real?.root.removeFromParent();
+    c.refl?.root.removeFromParent();
+    for (const set of [c.mats, c.mirrorMats]) for (const mat of Object.values(set ?? {})) mat.dispose();
+    // Wraps and the shared surface maps stay; textures made for this case go.
+    for (const t of c.own) t.dispose();
+    c.own = [];
+    c.sleeveTex?.dispose();
+    c.sleeveTex = null;
+    c.real = c.refl = c.mats = c.mirrorMats = null;
+  }
+
+  /** One copy of a case: shell, insert, sleeve, and (if it opens) the lid and the disc. */
+  assemble(geo, mats) {
     const root = new THREE.Group();
     const body = new THREE.Group();
     root.add(body);
@@ -461,30 +585,16 @@ export class CaseStage {
     return { root, body, lid, disc };
   }
 
-  dressSleeve() {
-    const m = this.current;
-    const p = m.case.profile;
+  dressSleeve(c) {
+    const p = c.model.case.profile;
     const card = p.material === "cardboard";
-    this.sleeveTex?.dispose();
-    this.sleeveTex = tex(grimeCanvas(p, m.wear ?? 0, card ? 0 : 0.12));
-    for (const mat of [this.mats?.sleeve, this.mirrorMats?.sleeve]) {
+    c.sleeveTex?.dispose();
+    c.sleeveTex = tex(grimeCanvas(p, c.model.wear ?? 0, card ? 0 : 0.12));
+    for (const mat of [c.mats?.sleeve, c.mirrorMats?.sleeve]) {
       if (!mat) continue;
-      mat.map = this.sleeveTex;
+      mat.map = c.sleeveTex;
       mat.needsUpdate = true;
     }
-    this.render();
-  }
-
-  clearCase() {
-    for (const a of [this.real, this.refl]) a?.root.removeFromParent();
-    for (const set of [this.mats, this.mirrorMats]) for (const mat of Object.values(set ?? {})) mat.dispose();
-    // Wraps and the shared surface maps stay; textures made for this build go.
-    for (const t of this.own) t.dispose();
-    this.own = [];
-    this.sleeveTex?.dispose();
-    this.sleeveTex = null;
-    this.real = this.refl = null;
-    this.mats = this.mirrorMats = null;
   }
 
   // ---- camera ----------------------------------------------------------------------------------
@@ -497,8 +607,9 @@ export class CaseStage {
     const cam = this.camera;
     cam.aspect = w / h;
     const H = this.profile?.outer.h ?? 190;
-    // The case fills about 60% of the height (a big box a little more), its base at 80%.
-    const frac = Math.min(0.72, 0.6 * (H / 190) ** 0.35);
+    // The focused case fills about half the height (a big box a little more), its base at 80%,
+    // leaving room for the neighbours at the edges.
+    const frac = Math.min(0.6, 0.5 * (H / 190) ** 0.35);
     const fov = THREE.MathUtils.degToRad(cam.fov);
     const dist = H / (frac * 2 * Math.tan(fov / 2));
     const el = THREE.MathUtils.degToRad(10);
@@ -524,11 +635,11 @@ export class CaseStage {
   }
 
   /**
-   * Right click: holds the case square to its front, then its back, then lets it turn again.
-   * Opening the case lets it go too.
+   * Right click: holds the centre case square to its front, then its back, then lets it turn
+   * again. Opening the case lets it go too.
    */
   toggleFace() {
-    if (!this.current) return;
+    if (!this.center) return;
     this.facing = this.facing === null ? "front" : this.facing === "front" ? "back" : null;
     this.lidTarget = 0;
     const apply = () => {
@@ -544,9 +655,9 @@ export class CaseStage {
     this.kick();
   }
 
-  /** Opens the case to show the disc, or closes it. */
+  /** Opens the centre case to show the disc, or closes it. */
   toggleOpen() {
-    if (!this.current || !this.canOpen) return;
+    if (!this.center || !this.canOpen) return;
     const open = !(this.lidTarget > 0);
     const apply = () => {
       this.facing = null;
@@ -562,16 +673,17 @@ export class CaseStage {
     this.kick();
   }
 
-  /** `angle` plus whole turns, nearest the current yaw. */
-  nearest(angle) {
+  /** `angle` plus whole turns, nearest `from` (the centre case's yaw by default). */
+  nearest(angle, from = this.yaw) {
     const t = Math.PI * 2;
-    return this.yaw + ((((angle - this.yaw) % t) + t * 1.5) % t) - t / 2;
+    return from + ((((angle - from) % t) + t * 1.5) % t) - t / 2;
   }
 
-  /** Reduced motion: no rotation or sliding; the change crossfades. */
+  /** A jump, or reduced motion: no sliding; the change crossfades. */
   crossfade(apply) {
     this.canvas.classList.add("is-fading");
-    setTimeout(() => {
+    clearTimeout(this.fadeTimer);
+    this.fadeTimer = setTimeout(() => {
       apply();
       this.pose();
       this.render();
@@ -624,7 +736,7 @@ export class CaseStage {
     const still = this.still();
     let moving = false;
     const spinning = !still && this.yawTarget == null && this.lidTarget === 0 && !this.facing;
-    if (spinning && this.current) {
+    if (spinning && this.center) {
       this.yaw -= (dt * Math.PI * 2) / TURN_PERIOD;
       moving = true;
     } else if (this.yawTarget != null && !still) {
@@ -638,13 +750,20 @@ export class CaseStage {
       this.lid += d * Math.min(1, dt * 6);
       if (Math.abs(d) > 0.002) moving = true;
       else this.lid = this.lidTarget;
-      if (this.arrive < 1) {
-        this.arrive = Math.min(1, this.arrive + dt / 0.45);
-        moving = true;
+      // Cases that left the centre close their lids.
+      for (const c of this.shown) {
+        if (c.slot !== "C" && c.lid > 0) {
+          c.lid = Math.max(0, c.lid - dt * 5);
+          moving = true;
+        }
       }
     } else if (this.yawTarget == null) this.yaw = STILL_YAW;
+    if (this.slide) {
+      if (now - this.slide >= SLIDE_MS) this.finishSlide();
+      else moving = true;
+    }
     // Only the turntable turning: about 60 frames a second is plenty, whatever the display's rate.
-    const easy = spinning && this.arrive >= 1 && this.lid === this.lidTarget;
+    const easy = spinning && !this.slide && this.lid === this.lidTarget;
     if (!easy || now - this.drawn >= 15) {
       this.drawn = now;
       this.pose();
@@ -653,25 +772,52 @@ export class CaseStage {
     if (moving) this.frame = requestAnimationFrame((t) => this.tick(t));
   }
 
-  /** Applies yaw, lid and arrival to both copies. */
+  /** Where a case stands now: { x, z, yaw }. */
+  poseOf(c) {
+    const t = this.slide && c.from && c.to ? ease(Math.min(1, (performance.now() - this.slide) / SLIDE_MS)) : 1;
+    const at = c.to && c.from ? { x: c.from.x + (c.to.x - c.from.x) * t, z: c.from.z + (c.to.z - c.from.z) * t } : { x: c.x, z: c.z };
+    let yaw;
+    if (c.slot === "C") yaw = this.yaw;
+    else if (c.from && c.to) {
+      // Settles from wherever it was facing to its turntable's angle.
+      const from = c.from.yaw ?? c.yaw;
+      const to = this.nearest(c.to.yaw, from);
+      yaw = from + (to - from) * t;
+    } else yaw = c.yaw;
+    return { x: at.x, z: at.z, yaw };
+  }
+
+  /** Applies position, angle, lid and shadow to every case and its mirrored copy. */
   pose() {
-    if (!this.real) return;
-    const p = this.profile;
-    const open = this.lid / LID_OPEN;
-    // The opened case slides right on the turntable, so the case and its lid stay centred.
-    const slide = p.outer.w * 0.42 * open;
-    const e = 1 - (1 - this.arrive) ** 3;
-    const s = 0.94 + 0.06 * e;
-    this.table.rotation.y = this.yaw; // the case, its reflection and the ticks turn together
-    this.mirror.visible = this.reflect();
-    for (const a of [this.real, this.refl]) {
-      a.body.position.x = slide;
-      this.contact.position.x = slide;
-      a.root.scale.setScalar(s);
-      if (a.lid) a.lid.rotation.y = -this.lid;
-      if (a.disc) a.disc.visible = this.lid > 0.17;
+    const reflect = this.reflect();
+    for (const c of this.shown) {
+      const { x, z, yaw } = this.poseOf(c);
+      c.x = x;
+      c.z = z;
+      if (c.slot !== "C") c.yaw = yaw;
+      const p = c.model.case.profile;
+      const lid = c.slot === "C" ? this.lid : c.lid;
+      const open = lid / LID_OPEN;
+      // An opened case slides right on its turntable, so the case and its lid stay centred.
+      const slide = p.outer.w * 0.42 * open;
+      for (const g of [c.group, c.mirror]) {
+        g.position.set(x, 0, z);
+        g.rotation.y = yaw;
+      }
+      c.mirror.visible = reflect;
+      for (const a of [c.real, c.refl]) {
+        if (!a) continue;
+        a.body.position.x = slide;
+        if (a.lid) a.lid.rotation.y = -lid;
+        if (a.disc) a.disc.visible = lid > 0.17;
+      }
+      c.contact.position.x = slide;
+      // The contact shadow only on a turntable: it fades out between them.
+      const near = Math.min(...["L", "C", "R"].map((s) => Math.hypot(x - SLOTS[s].x, z - SLOTS[s].z)));
+      c.contact.material.opacity = 0.55 * (1 - open * 0.4) * Math.max(0, 1 - near / (TABLE_R * 0.6));
     }
-    this.contact.material.opacity = 0.55 * (1 - open * 0.4);
+    // The centre turntable's markings turn with its case.
+    this.tables.C.top.rotation.y = this.yaw;
   }
 
   render() {
@@ -681,8 +827,9 @@ export class CaseStage {
 
   dispose() {
     cancelAnimationFrame(this.frame);
+    clearTimeout(this.fadeTimer);
     this.ro.disconnect();
-    this.clearCase();
+    for (const c of [...this.shown]) this.drop(c);
     for (const m of this.models.values()) this.release(m);
     this.models.clear();
     this.scene.environment?.dispose();

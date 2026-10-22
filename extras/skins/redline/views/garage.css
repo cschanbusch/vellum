@@ -67,6 +67,25 @@
 .rl-gar-lights::before { left: 4%; transform: rotate(14deg); }
 .rl-gar-lights::after { right: 4%; transform: rotate(-14deg); }
 
+/* The backdrop: the focused game's hero art behind the turntables, faded into the floor. It slides
+   with the cases when you step left or right (garage.js). */
+.rl-gar-backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask: linear-gradient(180deg, #000 0%, #000 45%, transparent 78%);
+  mask: linear-gradient(180deg, #000 0%, #000 45%, transparent 78%);
+}
+.rl-gar-hero {
+  position: absolute;
+  inset: 0;
+  background: center / cover no-repeat;
+  opacity: 0.5;
+}
+/* No hero art: the cover, softly blurred. */
+.rl-gar-hero.is-cover { filter: blur(18px) saturate(1.1); inset: -30px; opacity: 0.4; }
+
 /* The turntable and the case: WebGL (../case-builder/renderer.js), over the floor and lights. */
 .rl-gar-gl {
   position: absolute;
