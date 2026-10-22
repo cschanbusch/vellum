@@ -161,7 +161,10 @@ system itself. Concepts on the list:
 
 - **0.2.0** (released): licensing, this README and roadmap, version management, and a single
   release zip with only what works.
-- **Next:** `phase-3` merged into `main`, and a changelog.
+- **0.2.1** (released): the skin catalog (Settings → Get skins).
+- **0.2.2** (released): rescans that find nothing new no longer redraw the views; updating the
+  skin in use from Get skins loads the new version at once. Development continues on `main`.
+- **Next:** a changelog.
 - **Continuous integration:** run the Rust, unit and end-to-end tests and build the release zips on
   each push to `main`.
 - **Later:** code signing, so SmartScreen stops warning; an installer and auto-update remain out of
