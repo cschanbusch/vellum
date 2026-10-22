@@ -42,6 +42,10 @@ pub struct SkinInfo {
     /// Set when the user's chosen skin failed and the default is shown instead.
     pub fallback_from: Option<String>,
     pub dev: bool,
+    /// Which copy of the skin's files this is: its version, folder and when its manifest was
+    /// written. It changes when the skin is updated or downloaded again, so the shell reloads
+    /// the skin's page even though the skin (its id) is the same.
+    pub revision: String,
 }
 
 impl AppState {
@@ -64,6 +68,12 @@ impl AppState {
         let rec = valid(&wanted).or_else(|| valid(DEFAULT_SKIN))?;
         let m = rec.manifest.as_ref()?;
         let values = self.settings.read(|s| s.plugins.skins.get(&rec.id).map(|e| e.values.clone()).unwrap_or_default());
+        let written = std::fs::metadata(rec.dir.join("plugin.json"))
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_millis())
+            .unwrap_or(0);
         Some(SkinInfo {
             id: rec.id.clone(),
             name: rec.name.clone(),
@@ -71,6 +81,7 @@ impl AppState {
             values,
             fallback_from: self.skins.fallback.lock().unwrap().clone(),
             dev: self.dev_mode(),
+            revision: format!("{}|{}|{written}", rec.version.as_deref().unwrap_or(""), rec.dir.display()),
         })
     }
 

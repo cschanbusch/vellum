@@ -326,7 +326,9 @@ export class SkinHostController {
     }
     this.push({ name: "skin", data: this.skinInfo() });
     this.refreshViews(); // a changed manifest may add views
-    if (before?.dev !== this.skin?.dev) this.reloadSkinPage();
+    // The same skin with new files (updated or downloaded again from Get skins): its page still
+    // runs the old code, so it reloads, as does a change of developer mode.
+    if (before?.dev !== this.skin?.dev || before?.revision !== this.skin?.revision) this.reloadSkinPage();
     this.emit("skin");
   }
 

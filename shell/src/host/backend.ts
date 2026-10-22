@@ -21,6 +21,9 @@ export interface SkinRecord {
   section: Record<string, unknown>;
   values: Record<string, unknown>;
   fallbackFrom: string | null;
+  /** Changes when the skin's files are replaced (an update, or a fresh download); the skin
+   *  page reloads then. Absent from the harness's mock backend. */
+  revision?: string;
   dev: boolean;
 }
 

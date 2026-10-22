@@ -4,6 +4,7 @@
 import { LitElement, css, html, nothing } from "lit";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 import { api, type CatalogPlugin, type CatalogView } from "../api";
+import { host } from "../host/instance";
 import { toasts } from "../toasts";
 import { controls, tokens } from "../theme";
 import { pageStyles } from "./page-styles";
@@ -84,7 +85,9 @@ export class CatalogPage extends LitElement {
     this.progress = null;
     try {
       await api.catalogInstall(p.id, version);
-      toasts().show(`${p.name} ${version} is installed.${p.kind === "skin" ? " Activate it in Skins." : ""}`);
+      // The skin in use reloads by itself (the shell sees its files changed).
+      const inUse = p.kind === "skin" && host.skin?.id === p.id;
+      toasts().show(`${p.name} ${version} is installed.${inUse ? " It has reloaded." : p.kind === "skin" ? " Activate it in Skins." : ""}`);
     } catch (e) {
       toasts().show(String(e), true);
     } finally {
