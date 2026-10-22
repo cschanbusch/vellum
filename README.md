@@ -1,7 +1,8 @@
 # Vellum Game Launcher
 
-One library for the games you have installed from Steam, Epic and GOG (and anything else you add
-yourself), in a launcher whose whole look is a plugin you can swap, edit or write from scratch.
+One library for the games you have installed from Steam and the Epic Games Launcher (GOG and
+games you add yourself are next), in a launcher whose whole look is a plugin you can swap, edit or
+write from scratch.
 
 Vellum never replaces a store: every game launches through its own store's client, so DRM,
 anti-cheat, cloud saves and overlays behave exactly as they normally do. It reads the stores' local
@@ -14,9 +15,9 @@ anywhere.
 ## What it does today
 
 - **One library across stores.** Installed games from Steam (every library folder, every account
-  on the PC, collections, demos and soundtracks told apart), the Epic Games Launcher and GOG Galaxy,
-  plus custom entries for anything else. Store metadata (developer, genres, release date) and
-  Steam playtime are read from the stores' local caches.
+  on the PC, collections, demos and soundtracks told apart) and the Epic Games Launcher. Store
+  metadata (developer, genres, release date) and Steam playtime are read from the stores' local
+  caches. GOG Galaxy and custom entries are planned; their providers are placeholders for now.
 - **Launch through the store.** Play (and, where the store supports them, its own actions such as
   properties or uninstall) is handed to the store's client. Vellum records when you last launched each game.
 - **Skins change everything visual.** A skin is a folder of plain HTML, CSS and JavaScript: layout,
@@ -46,27 +47,26 @@ anywhere.
 | Frontier | Smoke, brush strokes and wood type (fan-made, in the style of Red Dead Redemption 2), with a Catalogue view: the library as a mail-order book you page through |
 | Grand Tour | An early-2000s racing showroom: a Garage view where every game gets a 3D case on a turntable, with wear and tear, a pit-service minigame and synthesized engine sounds |
 
-The fan-made skins use no original game assets.
-Basis ships with the launcher; Synthwave, Frutiger Aero and Gridline come in the optional extras
-download. The showcase skins (Calling Card, FICSIT Terminal, Frontier and Grand Tour) aren't part
-of the release downloads; their source is in this repository under their own licence (see
-[LICENSING.md](LICENSING.md)).
+The fan-made skins use no original game assets. Basis, Synthwave, Frutiger Aero and Gridline ship
+with the launcher. The showcase skins (Calling Card, FICSIT Terminal, Frontier and Grand Tour)
+aren't part of the release download; their source is in this repository under their own licence
+(see [LICENSING.md](LICENSING.md)).
 
 ## Install
 
 Vellum needs no installer and no admin rights.
 
 1. Download `Vellum-Game-Launcher-<version>-windows-x64.zip` from the
-   [Releases](../../releases) page. For the other skins and the modules, also download
-   `Vellum-Game-Launcher-<version>-extras.zip`.
-2. **Before extracting,** right-click each zip → **Properties** → tick **Unblock** → **OK**. Vellum
+   [Releases](../../releases) page.
+2. **Before extracting,** right-click the zip → **Properties** → tick **Unblock** → **OK**. Vellum
    isn't code-signed yet, and this stops Windows SmartScreen from warning about it. (If you skip
    it and see "Windows protected your PC", choose **More info → Run anyway**.)
 3. Extract the zip to a folder you own, such as `Documents\Vellum` or `D:\Games\Vellum`.
    **Not `Program Files`:** Vellum installs updates into its own folder, which Program Files
-   doesn't allow without admin rights. Extract the extras zip into the same place; it merges in.
-4. Run `Vellum Game Launcher.exe`. Steam, Epic and GOG are found automatically; if a store is
-   installed somewhere unusual, Vellum asks you to point at it.
+   doesn't allow without admin rights.
+4. Run **`Vellum Game Launcher.exe`** in the top of the extracted `Vellum` folder (the app itself
+   lives in `versions\<version>\`; always start it from the top). Steam and Epic are found
+   automatically; if a store is installed somewhere unusual, Vellum asks you to point at it.
 
 **Requirements:** Windows 10 or 11 (64-bit) and Microsoft's WebView2 runtime, which Windows 11
 includes and nearly every Windows 10 PC already has through Edge. If it's missing, Vellum says so
@@ -93,7 +93,7 @@ by WebView2, compiled into one exe. Everything else is a plugin folder beside it
 | --- | --- | --- |
 | **Providers** | Find a store's installed games and launch them. Plain JavaScript run in an embedded QuickJS sandbox, with a small host API scoped to the store's own folders. | No network, no file access outside declared locations |
 | **Skins** | The entire visual layer: HTML, CSS and JS, using the Vellum SDK and its kit of components. | A sandboxed iframe on its own origin with a strict CSP; talks to the shell only through the SDK |
-| **Modules** | Small quality-of-life features (Quick Launch, Random Pick). | Sandboxed like skins, with declared permissions |
+| **Modules** | Small quality-of-life features (Quick Launch, Random Pick; hosting them arrives in Phase 6). | Sandboxed like skins, with declared permissions |
 
 Providers know nothing about skins, and skins know nothing about stores: a skin sees one merged
 library with art URLs on its own origin. The full specification is
@@ -107,7 +107,10 @@ library with art URLs on its own origin. The full specification is
 | --- | --- |
 | Plugin discovery, manifests, settings, portable mode, logging | Done |
 | Provider host (QuickJS), location detection and prompts, `--diagnose` | Done |
-| Steam, Epic, GOG and custom-games providers | Done (installed games; local metadata; Steam playtime) |
+| Steam and Epic providers | Done (installed games; local metadata; Steam playtime) |
+| GOG and custom-games providers | Planned (Phase 5; placeholders for now) |
+| Modules (Quick Launch, Random Pick) | Planned (Phase 6; placeholders for now) |
+| Version management from GitHub releases | Done |
 | Library model, search, filters, sorting, groups, favorites, tags | Done |
 | Skin system: protocol, CSP, SDK, kit components, tokens, options, dev mode, hot reload | Done |
 | Views: List, Covers (shelves), Spotlight, and skin-defined views with placement and hotkeys | Done |
@@ -139,7 +142,7 @@ library with art URLs on its own origin. The full specification is
 | Type-check the SDK and shell | `npm run typecheck` |
 | Build the SDK and shell only | `npm run build:web` |
 | Rebuild Grand Tour's bundled three.js | `node scripts/vendor-three.mjs` |
-| Build the portable folder | `./scripts/package-portable.ps1` (add `-Portable` for `portable.flag`, `-NoExtras` to leave out the extras, `-Zip` for the core and extras release zips) |
+| Build the portable folder | `./scripts/package-portable.ps1` (add `-Portable` for `portable.flag`, `-NoExtras` to leave out the extras, `-Zip` for the release zip) |
 | Developer mode for one run | `"Vellum Game Launcher.exe" --dev` |
 | List plugins without a window | `"Vellum Game Launcher.exe" --print-plugins --out plugins.json` |
 | Diagnostics report (structure only) | `"Vellum Game Launcher.exe" --diagnose --out report.json` |
@@ -148,15 +151,14 @@ The end-to-end tests run in two Playwright projects: Grand Tour's (which draw it
 on the GPU, everything else on Chromium's software renderer, which the performance budgets were
 measured on.
 
-### Core and extras
+### Plugins and the release download
 
-A release has two downloads. `Vellum-Game-Launcher-<version>-windows-x64.zip` is the launcher with
-the core plugins: the Steam, Epic, GOG and custom-games providers and the default Basis skin.
-`Vellum-Game-Launcher-<version>-extras.zip` is optional and holds the other default skins, the
-Quick Launch and Random Pick modules, and the mock provider for skin development. The showcase
-skins stay out of release downloads (`package-portable.ps1 -Zip -ZipWithout
-frontier,ficsit,redline,calling-card`). In the repository, debug builds load both `plugins/` and
-`extras/`.
+`plugins/` holds the core plugins and `extras/` the optional ones; debug builds load both, and
+`dist\Vellum` gets them all. The release download, `Vellum-Game-Launcher-<version>-windows-x64.zip`,
+holds only what's ready to ship: the Steam and Epic providers and the Basis, Synthwave, Frutiger
+Aero and Gridline skins. `package-portable.ps1 -Zip` leaves out the placeholder plugins (GOG,
+Custom, both modules), the mock provider and the showcase skins; `-ZipWithout <names>` changes the
+list.
 
 ### Layout
 

@@ -11,15 +11,14 @@
         Vellum Game Launcher.exe   the app
         plugins/providers|skins|modules/...   core plugins from plugins/, plus extras/ unless -NoExtras
 
-  Core plugins are what the launcher needs on its own (the store providers and the default skin).
-  Extras are optional: the other skins, the QoL modules and the mock provider. The release zips
-  use the same layout, so the extras zip extracts over the core one, and Vellum's Versions page
-  installs a release straight from them.
+  dist\Vellum gets every plugin from plugins/ and extras/. The release zip (-Zip) uses the same
+  layout, so Vellum's Versions page installs a release straight from it, but holds only what is
+  ready to ship: everything except the plugins named in -ZipWithout.
 
 .EXAMPLE
   ./scripts/package-portable.ps1
   ./scripts/package-portable.ps1 -Portable -SkipBuild
-  ./scripts/package-portable.ps1 -SkipBuild -Zip     # also writes the two release zips
+  ./scripts/package-portable.ps1 -SkipBuild -Zip     # also writes the release zip
 #>
 param(
   # Also create portable.flag so the packaged copy keeps its data in ./data.
@@ -28,12 +27,14 @@ param(
   [switch]$SkipBuild,
   # Leave the extras out of dist\Vellum.
   [switch]$NoExtras,
-  # Also write dist\Vellum-Game-Launcher-<version>-windows-x64.zip (exe and core plugins) and
-  # dist\Vellum-Game-Launcher-<version>-extras.zip (extras only, laid out to extract over it).
+  # Also write dist\Vellum-Game-Launcher-<version>-windows-x64.zip: the starter, the app and the
+  # plugins ready to ship.
   [switch]$Zip,
-  # Plugin folder names to leave out of the release zips (dist\Vellum keeps them), e.g.
-  # -ZipWithout frontier,ficsit,redline,calling-card for the showcase skins.
-  [string[]]$ZipWithout = @()
+  # Plugin folder names to leave out of the release zip (dist\Vellum keeps them). The default
+  # leaves out what doesn't work yet (the GOG and Custom provider stubs, the module placeholders,
+  # which wait for module hosting in Phase 6), the mock provider (a development tool) and the
+  # showcase skins, which aren't distributed in releases.
+  [string[]]$ZipWithout = @('gog', 'custom', 'mock', 'quick-launch', 'random-pick', 'frontier', 'ficsit', 'redline', 'calling-card')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -128,12 +129,12 @@ try {
     Copy-Legal $to
     if ($Portable) { New-Item -ItemType File -Force (Join-Path $to 'portable.flag') | Out-Null }
   }
-  function Write-Version([string]$to, [bool]$withExtras) {
+  function Write-Version([string]$to, [bool]$withExtras, [string[]]$without = @()) {
     New-Item -ItemType Directory -Force $to | Out-Null
     Copy-Item $exe (Join-Path $to 'Vellum Game Launcher.exe')
     Copy-Legal $to
-    Copy-Plugins (Join-Path $repo 'plugins') $to
-    if ($withExtras) { Copy-Plugins (Join-Path $repo 'extras') $to }
+    Copy-Plugins (Join-Path $repo 'plugins') $to $without
+    if ($withExtras) { Copy-Plugins (Join-Path $repo 'extras') $to $without }
   }
   function Write-Active([string]$root, [string]$previous) {
     $a = [ordered]@{ active = $version; previous = $(if ($previous -and $previous -ne $version) { $previous } else { $null }); trial = $false; failedStarts = 0; rolledBackFrom = $null }
@@ -159,23 +160,18 @@ try {
   if ($Zip) {
     $stage = Join-Path $repo 'dist\.stage'
     if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
-    # Core: the starter and this version with the core plugins. Extract it anywhere and run it.
-    Write-Root (Join-Path $stage 'core\Vellum')
-    Write-Version (Join-Path $stage "core\Vellum\versions\$version") $false
-    Write-Active (Join-Path $stage 'core\Vellum') $null
-    # Extras: the same layout, so extracting it over the core zip merges them; the updater reads
-    # Vellum/versions/<version>/ from both.
-    Copy-Plugins (Join-Path $repo 'extras') (Join-Path $stage "extras\Vellum\versions\$version") $ZipWithout
-    $zips = [ordered]@{ core = "Vellum-Game-Launcher-$version-windows-x64.zip"; extras = "Vellum-Game-Launcher-$version-extras.zip" }
-    foreach ($part in $zips.Keys) {
-      $zipPath = Join-Path $repo "dist\$($zips[$part])"
-      if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
-      # Windows' tar writes standard zips (forward slashes); Compress-Archive in PowerShell 5.1
-      # writes backslashes into entry names.
-      tar.exe -a -c -f $zipPath -C (Join-Path $stage $part) Vellum
-      if ($LASTEXITCODE) { throw "zip of $part failed ($LASTEXITCODE)" }
-      Write-Host "Wrote $zipPath"
-    }
+    # One zip: the starter and this version with the plugins ready to ship. Extract it anywhere
+    # and run the starter; the updater takes Vellum/versions/<version>/ out of it.
+    Write-Root (Join-Path $stage 'Vellum')
+    Write-Version (Join-Path $stage "Vellum\versions\$version") $true $ZipWithout
+    Write-Active (Join-Path $stage 'Vellum') $null
+    $zipPath = Join-Path $repo "dist\Vellum-Game-Launcher-$version-windows-x64.zip"
+    if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+    # Windows' tar writes standard zips (forward slashes); Compress-Archive in PowerShell 5.1
+    # writes backslashes into entry names.
+    tar.exe -a -c -f $zipPath -C $stage Vellum
+    if ($LASTEXITCODE) { throw "zip failed ($LASTEXITCODE)" }
+    Write-Host "Wrote $zipPath (without: $($ZipWithout -join ', '))"
     Remove-Item $stage -Recurse -Force
   }
 

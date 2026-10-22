@@ -15,7 +15,7 @@ real store installs.
 | 2 | Provider host, Steam, library, diagnostics | Done |
 | 3 | Skin system, SDK, views, input model, local art | Done |
 | 4 | Remote art and metadata | Next |
-| 5 | Merging games across stores; provider authoring guide | Planned (the Epic, GOG and Custom providers are already done) |
+| 5 | GOG and Custom providers, merging games across stores, provider authoring guide | Planned (Epic, pulled forward, is done) |
 | 6 | Controllers, couch mode, modules, plugin install | Partly done |
 | 7 | Further stores | Planned |
 | — | Release engineering | Ongoing |
@@ -27,8 +27,9 @@ real store installs.
 - Plugin discovery and manifest validation, enabled state, settings, portable mode, logging.
 - The QuickJS provider host with a scoped `ctx` API, location detection and the locate prompt,
   and `--diagnose`, a structure-only report for checking store formats on real installs.
-- Providers for Steam, Epic, GOG and custom games (pulled forward from Phase 5), with local store
-  metadata (Steam `appinfo.vdf`, Epic's catalogue cache) and Steam playtime.
+- Providers for Steam and Epic (Epic pulled forward from Phase 5), with local store metadata
+  (Steam `appinfo.vdf`, Epic's catalogue cache) and Steam playtime. GOG and Custom are still
+  placeholders.
 - The library model (entries with `sources[]` from day one, so merging needs no refactor),
   search, filters, sorting, groups, favorites and tags.
 - The skin system: the `skin` protocol and CSP, the SDK, kit components, tokens, options, the
@@ -38,7 +39,9 @@ real store installs.
   watercolor) drawn by the backend.
 - Eight skins, including two with views of their own: Frontier's Catalogue (a paged book) and
   Grand Tour's Garage (3D cases built per game at runtime).
-- Window placement restored between runs; a core-and-extras release split.
+- Window placement restored between runs.
+- Version management: Settings → Versions installs GitHub releases side by side, switches between
+  them and rolls back a version that won't start (released in 0.2.0).
 
 ## Phase 4: remote art and metadata (next)
 
@@ -69,11 +72,17 @@ and what is cached keeps working offline.
 **Done when:** every entry shows all five kinds, custom Steam grid art takes precedence, and the
 library still looks complete with the network unplugged.
 
-## Phase 5: merging and the provider guide
+## Phase 5: GOG, custom games, merging and the provider guide
 
-**Goal:** a game installed from two stores shows once and launches through the store you prefer.
+**Goal:** GOG and hand-added games join the library, and a game installed from two stores shows
+once and launches through the store you prefer.
 
 **Design:**
+
+- **GOG provider:** installed games from GOG Galaxy's local data (and standalone GOG installers'
+  registry entries), launched through Galaxy. Its provider is a placeholder today.
+- **Custom games:** add any exe or shortcut by hand, with its own art and arguments. Also a
+  placeholder today.
 
 - **Automatic merging** joins two records of the same kind from different providers when their
   normalized titles match exactly (case-folded; ™, ®, © and punctuation removed; whitespace
@@ -98,8 +107,9 @@ store, and disabling then re-enabling a provider loses nothing.
 **Goal:** every function, including settings, is reachable with a controller alone; plugins can be
 installed and shared as files.
 
-**Already done:** the `nav` event model and spatial focus, couch presentation (F11, couch-only
-views, `--v-couch-scale`), and the Quick Launch and Random Pick modules.
+**Already done:** the `nav` event model and spatial focus, and couch presentation (F11,
+couch-only views, `--v-couch-scale`). The Quick Launch and Random Pick modules exist only as
+manifests: Vellum doesn't host module overlays yet.
 
 **Design for the rest:**
 
@@ -149,8 +159,9 @@ system itself. Concepts on the list:
 
 ## Release engineering
 
-- **0.2.0** (next release): a licence, the version bump and a changelog, this README and roadmap,
-  `phase-3` merged into `main`, and core and extras zips on GitHub Releases.
+- **0.2.0** (released): licensing, this README and roadmap, version management, and a single
+  release zip with only what works.
+- **Next:** `phase-3` merged into `main`, and a changelog.
 - **Continuous integration:** run the Rust, unit and end-to-end tests and build the release zips on
   each push to `main`.
 - **Later:** code signing, so SmartScreen stops warning; an installer and auto-update remain out of
