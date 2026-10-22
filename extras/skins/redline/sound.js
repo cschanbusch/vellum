@@ -281,9 +281,12 @@ export function ui(kind, dir = null) {
   const a = audio(menuOn());
   if (!a) return;
   const now = a.currentTime + 0.005;
-  const prev = lastAt.get(kind) ?? -1;
-  if (now - prev < 0.045) return;
-  lastAt.set(kind, now);
+  // Measured on the page's clock: the audio clock stands still while the context is starting up,
+  // which would make a second real press look like a doubled event.
+  const at = performance.now();
+  const prev = lastAt.get(kind) ?? -Infinity;
+  if (at - prev < 45) return;
+  lastAt.set(kind, at);
   switch (kind) {
     case "move": {
       const up = dir === "right" || dir === "down" || dir === "pageDown";

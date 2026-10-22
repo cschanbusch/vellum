@@ -328,6 +328,23 @@ function paginate() {
 }
 
 /** Rebuilds the book. `reason` "query" returns to the Contents; otherwise the page stays put. */
+let librarySig = "";
+
+/** What the pages print about each game. A library update that changes none of it (a rescan that
+ *  found the same games) leaves the book alone, so its art doesn't reload and flash. */
+function pagesSignature() {
+  return JSON.stringify(
+    api.library.query().map((e) => [e.id, e.title, e.art, e.artStatus, e.metadata, e.sizeBytes, e.favorite, e.labels, e.lastLaunched, e.playtimeMinutes]),
+  );
+}
+
+function onLibrary() {
+  const sig = pagesSignature();
+  if (sig === librarySig) return;
+  librarySig = sig;
+  rebuild();
+}
+
 function rebuild(reason) {
   if (!root) return;
   if (busy) {
@@ -1179,7 +1196,8 @@ export default {
       }
     });
     resize.observe(book);
-    unsubs = [vellum.library.on("change", () => rebuild()), vellum.skin.on("options", () => rebuild()), vellum.input.on("nav", onNav)];
+    librarySig = pagesSignature();
+    unsubs = [vellum.library.on("change", onLibrary), vellum.skin.on("options", () => rebuild()), vellum.input.on("nav", onNav)];
   },
 
   onState(s) {

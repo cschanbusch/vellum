@@ -565,6 +565,26 @@ test.describe("Grand Tour", () => {
     }
   });
 
+  test("Grand Tour's Garage: a library update that changes nothing redraws no art", async ({ page }) => {
+    const frame = await open(page, 5226);
+    await show(page, "garage");
+    await expect(frame.locator(".rl-gar-thumb").first()).toBeVisible();
+    await expect(frame.locator(".rl-gar-hero")).toHaveCount(1);
+    const skin = page.frames().find((f) => f.url().includes("127.0.0.1"))!;
+    await skin.evaluate(() => {
+      const w = window as unknown as { __kept: Element[] };
+      w.__kept = [...document.querySelectorAll(".rl-gar-thumb, .rl-gar-thumb img, .rl-gar-hero")];
+    });
+    // The same library again, as after a rescan that found nothing new.
+    await page.evaluate(() => (document.querySelector("vellum-harness") as unknown as { backend: { listeners: { library: (() => void)[] } } }).backend.listeners.library.forEach((cb) => cb()));
+    await page.waitForTimeout(800);
+    const replaced = await skin.evaluate(() => {
+      const w = window as unknown as { __kept: Element[] };
+      return [...document.querySelectorAll(".rl-gar-thumb, .rl-gar-thumb img, .rl-gar-hero")].filter((n) => !w.__kept.includes(n)).length;
+    });
+    expect(replaced, "thumbnails, their images and the backdrop are the same elements").toBe(0);
+  });
+
   test("Grand Tour's case gallery: every profile composes every awkward mock game", async ({ page }) => {
     page.on("pageerror", (e) => errors.push(e.message));
     page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
@@ -633,6 +653,9 @@ test.describe("Grand Tour", () => {
     // A step right ticks high, a step left ticks lower.
     await page.keyboard.press("ArrowRight");
     await expect.poll(heard).toContain(1880);
+    // The same sound within 45 ms counts as a doubled event (held keys stay clean), so the next step
+    // waits a moment, as any real second press would.
+    await page.waitForTimeout(120);
     await page.keyboard.press("ArrowLeft");
     await expect.poll(heard).toContain(1720);
     // Page Up on the first model goes nowhere: a knock, not a tick.

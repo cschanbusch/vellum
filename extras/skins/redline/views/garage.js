@@ -26,6 +26,7 @@ let cases3d = null; // the WebGL case stage
 let stageFailed = false;
 
 let makers = []; // { label, entries }
+const thumbs = new Map(); // game id -> its thumbnail in the model strip, reused across redraws
 let maker = 0;
 let sel = 0;
 let key = "";
@@ -99,6 +100,8 @@ function rebuild() {
   if (!root) return;
   const entries = api.library.query();
   makers = buildMakers(entries);
+  const ids = new Set(entries.map((e) => e.id));
+  for (const id of thumbs.keys()) if (!ids.has(id)) thumbs.delete(id);
   if (!locate(api.state.get().selectedId)) {
     maker = Math.min(maker, Math.max(0, makers.length - 1));
     sel = 0;
@@ -138,6 +141,8 @@ function renderMakers() {
   makersEl.querySelector('[aria-current="true"]')?.scrollIntoView({ block: "nearest", inline: "center" });
 }
 
+/** The model strip. Thumbnails are kept by game across redraws (a library update, a new body
+ *  type and back), so their art doesn't reload and flash. */
 function renderStrip() {
   const m = makers[maker];
   if (!m) {
@@ -146,22 +151,28 @@ function renderStrip() {
   }
   strip.replaceChildren(
     ...m.entries.map((e, i) => {
-      const t = el("div", "rl-gar-thumb");
+      let t = thumbs.get(e.id);
+      if (!t) {
+        t = el("div", "rl-gar-thumb");
+        t.setAttribute("role", "option");
+        const img = el("img");
+        img.alt = "";
+        img.loading = "lazy";
+        img.decoding = "async";
+        img.draggable = false;
+        t.append(img, el("span", "rl-grime"), el("span", "rl-gar-thumb-no"));
+        t.addEventListener("click", () => select(Number(t.dataset.i)));
+        t.addEventListener("dblclick", () => api.actions.launch(e.id).catch(() => {}));
+        thumbs.set(e.id, t);
+      }
+      const src = art(e, "cover", 160);
+      const img = t.querySelector("img");
+      if (img.getAttribute("src") !== src) img.src = src; // only when the art itself changed
       t.dataset.i = String(i);
-      t.setAttribute("role", "option");
       t.setAttribute("aria-label", e.title);
-      if (i === sel) t.classList.add("is-selected");
-      const img = el("img");
-      img.alt = "";
-      img.loading = "lazy";
-      img.decoding = "async";
-      img.draggable = false;
-      img.src = art(e, "cover", 160);
-      const grime = el("span", "rl-grime");
-      grime.style.setProperty("--wear", String(1 - condition(e.id)));
-      t.append(img, grime, el("span", "rl-gar-thumb-no", pad(i + 1)));
-      t.addEventListener("click", () => select(i));
-      t.addEventListener("dblclick", () => api.actions.launch(e.id).catch(() => {}));
+      t.classList.toggle("is-selected", i === sel);
+      t.querySelector(".rl-grime").style.setProperty("--wear", String(1 - condition(e.id)));
+      t.querySelector(".rl-gar-thumb-no").textContent = pad(i + 1);
       return t;
     }),
   );
@@ -248,13 +259,17 @@ function announceReady() {
 
 const SLIDE = { duration: 450, easing: "cubic-bezier(0.33, 1, 0.68, 1)" };
 
-/** Shows `e`'s hero behind the turntables, sliding in from the side the cases come from. */
+/** Shows `e`'s hero behind the turntables, sliding in from the side the cases come from. The same
+ *  art already showing is left alone. */
 function showBackdrop(e, dir) {
   const host = stage?.querySelector(".rl-gar-backdrop");
   if (!host) return;
   const hero = e.artStatus?.hero !== "placeholder";
+  const url = art(e, hero ? "hero" : "cover", hero ? 1920 : 640);
+  if (host.lastElementChild?.dataset.url === url) return;
   const layer = el("div", `rl-gar-hero${hero ? "" : " is-cover"}`);
-  layer.style.backgroundImage = `url("${art(e, hero ? "hero" : "cover", hero ? 1920 : 640)}")`;
+  layer.dataset.url = url;
+  layer.style.backgroundImage = `url("${url}")`;
   const old = [...host.children];
   host.append(layer);
   const still = document.documentElement.hasAttribute("data-rl-still");

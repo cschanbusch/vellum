@@ -2,7 +2,7 @@
 
 Work in progress, so the next session can pick it up.
 
-## Frontier Catalogue: an arrow key sometimes doesn't turn the page (open, 2026-10-22)
+## Frontier Catalogue: an arrow key sometimes doesn't turn the page (closed, 2026-10-22)
 
 The e2e test "Frontier's Catalogue…" fails intermittently (2 of 5 runs on 2026-10-22) at the
 same step: after an arrow key, `expect.poll(folios).not.toBe(spread)` (tests/e2e/skins.e2e.ts,
@@ -10,6 +10,12 @@ around line 301) times out, so the spread never turned. Not yet investigated. Li
 key arriving while the previous leaf turn is still animating is dropped instead of queued
 (views/catalogue.js, leaf.js). Frontier ships through the vellum-skins catalog, not in Vellum's
 release zip.
+
+**Cause:** every library update rebuilt the book, even when nothing on its pages had changed, and
+a rebuild arriving during a leaf turn reset it. Vellum also announced a library change after every
+rescan, including the frequent ones triggered by Steam rewriting its config. Fixed both ways: the
+backend only announces a change when a scan's results differ, and the Catalogue (Frontier 1.3.1)
+skips updates that don't change what its pages print. The test then passed 16 times in a row.
 
 ## Covers grid drew only some rows in the real app: not a bug (closed 2026-10-20)
 

@@ -282,6 +282,12 @@ pub fn scan_one(app: &AppHandle, id: &str) {
             state.userdata.update(|ud| {
                 library::note_first_seen(ud, id, &scan.games, &now);
             });
+            // Watched store files change often (Steam rewrites its config while games run); a
+            // rescan that finds the same games isn't a library change, so views aren't redrawn.
+            let changed = state.library.read(|snap| match snap.providers.get(id) {
+                Some(prev) => prev.games != scan.games || prev.provider_name != spec.name || prev.capabilities != spec.capabilities,
+                None => true,
+            });
             state.library.update(|snap| {
                 snap.providers.insert(
                     id.to_string(),
@@ -305,8 +311,10 @@ pub fn scan_one(app: &AppHandle, id: &str) {
                 r.locations = resolved;
                 r.derived = derived;
             });
-            tracing::info!(provider = id, games = count, ms = elapsed, "scan finished");
-            emit_library(app);
+            tracing::info!(provider = id, games = count, ms = elapsed, changed, "scan finished");
+            if changed {
+                emit_library(app);
+            }
             emit_providers(app);
             refresh_art(app, &spec, &games, generation);
             if spec.can("watch") {
