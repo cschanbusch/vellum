@@ -47,7 +47,10 @@ anywhere.
 | Grand Tour | An early-2000s racing showroom: a Garage view where every game gets a 3D case on a turntable, with wear and tear, a pit-service minigame and synthesized engine sounds |
 
 The fan-made skins use no original game assets.
-Basis ships with the launcher; the others come in the optional extras download.
+Basis ships with the launcher; Synthwave, Frutiger Aero and Gridline come in the optional extras
+download. The showcase skins (Calling Card, FICSIT Terminal, Frontier and Grand Tour) aren't part
+of the release downloads; their source is in this repository under their own licence (see
+[LICENSING.md](LICENSING.md)).
 
 ## Install
 
@@ -149,10 +152,11 @@ measured on.
 
 A release has two downloads. `Vellum-Game-Launcher-<version>-windows-x64.zip` is the launcher with
 the core plugins: the Steam, Epic, GOG and custom-games providers and the default Basis skin.
-`Vellum-Game-Launcher-<version>-extras.zip` is optional and holds everything else: the other
-skins, the Quick Launch and Random Pick modules, and the mock provider for skin development. To
-drop a single extra later, delete its folder from `plugins/`. In the repository, debug builds load
-both `plugins/` and `extras/`.
+`Vellum-Game-Launcher-<version>-extras.zip` is optional and holds the other default skins, the
+Quick Launch and Random Pick modules, and the mock provider for skin development. The showcase
+skins stay out of release downloads (`package-portable.ps1 -Zip -ZipWithout
+frontier,ficsit,redline,calling-card`). In the repository, debug builds load both `plugins/` and
+`extras/`.
 
 ### Layout
 

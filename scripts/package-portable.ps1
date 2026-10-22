@@ -30,10 +30,15 @@ param(
   [switch]$NoExtras,
   # Also write dist\Vellum-Game-Launcher-<version>-windows-x64.zip (exe and core plugins) and
   # dist\Vellum-Game-Launcher-<version>-extras.zip (extras only, laid out to extract over it).
-  [switch]$Zip
+  [switch]$Zip,
+  # Plugin folder names to leave out of the release zips (dist\Vellum keeps them), e.g.
+  # -ZipWithout frontier,ficsit,redline,calling-card for the showcase skins.
+  [string[]]$ZipWithout = @()
 )
 
 $ErrorActionPreference = 'Stop'
+# Through `powershell -File`, "a,b,c" arrives as one string; accept either form.
+$ZipWithout = @($ZipWithout | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 $repo = Split-Path -Parent $PSScriptRoot
 $out = Join-Path $repo 'dist\Vellum'
 # Packaging builds into a target folder of its own. `cargo test --release` and
@@ -49,14 +54,14 @@ $cargoBin = Join-Path $env:USERPROFILE '.cargo\bin'
 if ((Test-Path $cargoBin) -and -not ($env:Path -split ';' -contains $cargoBin)) { $env:Path = "$cargoBin;$env:Path" }
 
 # Ship exactly the plugin types from the spec; anything else in plugins/ or extras/ stays behind.
-function Copy-Plugins([string]$from, [string]$to) {
+function Copy-Plugins([string]$from, [string]$to, [string[]]$without = @()) {
   foreach ($kind in 'providers', 'skins', 'modules') {
     $src = Join-Path $from $kind
     $dest = Join-Path $to "plugins\$kind"
     New-Item -ItemType Directory -Force $dest | Out-Null
     if (-not (Test-Path $src)) { continue }
     Get-ChildItem $src -Directory |
-      Where-Object { -not $_.Name.StartsWith('.') } |
+      Where-Object { -not $_.Name.StartsWith('.') -and $without -notcontains $_.Name } |
       ForEach-Object { Copy-Item $_.FullName (Join-Path $dest $_.Name) -Recurse }
   }
 }
@@ -160,7 +165,7 @@ try {
     Write-Active (Join-Path $stage 'core\Vellum') $null
     # Extras: the same layout, so extracting it over the core zip merges them; the updater reads
     # Vellum/versions/<version>/ from both.
-    Copy-Plugins (Join-Path $repo 'extras') (Join-Path $stage "extras\Vellum\versions\$version")
+    Copy-Plugins (Join-Path $repo 'extras') (Join-Path $stage "extras\Vellum\versions\$version") $ZipWithout
     $zips = [ordered]@{ core = "Vellum-Game-Launcher-$version-windows-x64.zip"; extras = "Vellum-Game-Launcher-$version-extras.zip" }
     foreach ($part in $zips.Keys) {
       $zipPath = Join-Path $repo "dist\$($zips[$part])"
