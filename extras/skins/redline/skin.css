@@ -523,7 +523,7 @@ vellum-play-button::part(via) {
   position: fixed;
   inset: 0;
   z-index: 100;
-  pointer-events: none;
+  cursor: pointer;
   display: grid;
   place-content: center;
   justify-items: center;
@@ -533,7 +533,7 @@ vellum-play-button::part(via) {
     linear-gradient(180deg, #f8fafc, #dfe6ee 70%, #eef2f6);
   transition: opacity 380ms ease;
 }
-.rl-boot.out { opacity: 0; }
+.rl-boot.out { opacity: 0; pointer-events: none; }
 .rl-boot-mark {
   font: 400 clamp(3rem, 8vw, 6.5rem) var(--rl-wide);
   letter-spacing: 0.18em;

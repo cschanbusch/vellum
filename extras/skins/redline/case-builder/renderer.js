@@ -240,8 +240,6 @@ export class CaseStage {
     this.lidTarget = 0;
     this.facing = null;
     this.arrive = 1;
-    this.held = false;
-    this.resumeAt = 0;
     this.last = 0;
     this.drawn = 0;
     this.frame = 0;
@@ -317,7 +315,6 @@ export class CaseStage {
       this.facing = null;
       this.lid = this.lidTarget = 0;
       this.yawTarget = null;
-      this.held = false;
       if (this.still()) this.crossfade(() => this.build());
       else {
         this.arrive = 0;
@@ -527,15 +524,16 @@ export class CaseStage {
   }
 
   /**
-   * Right click: holds the case square to its front, then its back, then its front again. Opening
-   * the case or turning it by hand lets it go.
+   * Right click: holds the case square to its front, then its back, then lets it turn again.
+   * Opening the case lets it go too.
    */
   toggleFace() {
     if (!this.current) return;
-    this.facing = this.facing === "front" ? "back" : "front";
+    this.facing = this.facing === null ? "front" : this.facing === "front" ? "back" : null;
     this.lidTarget = 0;
     const apply = () => {
-      this.yawTarget = this.nearest(this.facing === "back" ? Math.PI : 0);
+      if (this.facing === null) this.yawTarget = this.still() ? this.nearest(STILL_YAW) : null;
+      else this.yawTarget = this.nearest(this.facing === "back" ? Math.PI : 0);
       if (this.still()) {
         this.yaw = this.yawTarget;
         this.lid = 0;
@@ -544,11 +542,6 @@ export class CaseStage {
     if (this.still()) this.crossfade(apply);
     else apply();
     this.kick();
-  }
-
-  /** Lets go of a held face: back to turning (or resting, with reduced motion). */
-  release() {
-    this.facing = null;
   }
 
   /** Opens the case to show the disc, or closes it. */
@@ -586,44 +579,26 @@ export class CaseStage {
     }, 140);
   }
 
+  /** Click opens or closes the case; right click holds its front, then its back, then lets go.
+   *  The case isn't turned by hand: the turntable turns it. */
   bindPointer() {
     let down = null;
     this.canvas.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0) return;
-      down = { x: e.clientX, yaw: this.yaw, moved: false };
-      this.canvas.setPointerCapture(e.pointerId);
+      if (e.button === 0) down = { x: e.clientX, y: e.clientY };
     });
-    this.canvas.addEventListener("pointermove", (e) => {
-      if (!down) return;
-      const dx = e.clientX - down.x;
-      if (Math.abs(dx) > 4) down.moved = true;
-      if (!down.moved || this.still()) return;
-      this.held = true;
-      this.facing = null;
-      this.yawTarget = null;
-      this.yaw = down.yaw + dx * 0.012;
-      this.render();
-    });
-    const up = () => {
-      if (!down) return;
-      const click = !down.moved;
+    this.canvas.addEventListener("pointerup", (e) => {
+      if (!down || e.button !== 0) return;
+      const click = Math.hypot(e.clientX - down.x, e.clientY - down.y) < 6;
       down = null;
-      if (click) {
-        if (this.canOpen) this.toggleOpen();
-        return;
-      }
-      // Let go: the turntable carries on after a moment.
-      this.resumeAt = performance.now() + 1200;
-      this.kick();
-    };
-    this.canvas.addEventListener("pointerup", up);
-    // Right click holds the front, then the back (and keeps the shell's context menu away).
+      if (click && this.canOpen) this.toggleOpen();
+    });
+    this.canvas.addEventListener("pointercancel", () => (down = null));
+    // Right click (and keeps the shell's context menu away).
     this.canvas.addEventListener("contextmenu", (e) => {
       e.preventDefault();
       e.stopPropagation();
       this.toggleFace();
     });
-    this.canvas.addEventListener("pointercancel", up);
   }
 
   /** Stops drawing while something covers the stage (a dialog), and picks up again after. */
@@ -648,11 +623,7 @@ export class CaseStage {
     this.last = now;
     const still = this.still();
     let moving = false;
-    if (this.held && now >= this.resumeAt && this.resumeAt) {
-      this.held = false;
-      this.resumeAt = 0;
-    }
-    const spinning = !still && !this.held && this.yawTarget == null && this.lidTarget === 0 && !this.facing;
+    const spinning = !still && this.yawTarget == null && this.lidTarget === 0 && !this.facing;
     if (spinning && this.current) {
       this.yaw -= (dt * Math.PI * 2) / TURN_PERIOD;
       moving = true;
@@ -672,7 +643,6 @@ export class CaseStage {
         moving = true;
       }
     } else if (this.yawTarget == null) this.yaw = STILL_YAW;
-    if (this.held && this.resumeAt) moving = true; // keep ticking until the turntable resumes
     // Only the turntable turning: about 60 frames a second is plenty, whatever the display's rate.
     const easy = spinning && this.arrive >= 1 && this.lid === this.lidTarget;
     if (!easy || now - this.drawn >= 15) {

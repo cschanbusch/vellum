@@ -83,8 +83,8 @@ wipe.addEventListener("animationend", () => wipe.classList.remove("go"));
 
 // ---- title screen ------------------------------------------------------------------------------
 
-/** Once per session: a wipe, the chrome wordmark with a glint, and a blinking prompt. Any key or
- *  click skips it, and it never blocks the pointer. */
+/** Once per session: a wipe, the chrome wordmark with a glint, and a blinking prompt. It waits
+ *  for any key, click or controller button, and that press only dismisses it. */
 function boot() {
   const el = document.querySelector(".rl-boot");
   let seen = false;
@@ -96,18 +96,35 @@ function boot() {
   }
   if (seen || vellum.skin.options.boot === false || !moving()) return;
   el.hidden = false;
-  const done = (e) => {
+  let unNav = () => {};
+  const done = () => {
     if (el.classList.contains("out")) return;
-    // Pressed through (a key or a click lets audio play): the title chord.
-    if (e) ui("start");
+    ui("start"); // a key, click or button lets audio play: the title chord
     el.classList.add("out");
     setTimeout(() => (el.hidden = true), 400);
-    removeEventListener("keydown", done, true);
-    removeEventListener("pointerdown", done, true);
+    removeEventListener("keydown", onKey, true);
+    removeEventListener("pointerdown", onPointer, true);
+    unNav();
   };
-  addEventListener("keydown", done, true);
-  addEventListener("pointerdown", done, true);
-  setTimeout(() => done(), 2600);
+  const onKey = (e) => {
+    // Modifier keys alone don't count; the press goes no further.
+    if (["Control", "Alt", "Meta", "OS"].includes(e.key)) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    done();
+  };
+  const onPointer = (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    done();
+  };
+  addEventListener("keydown", onKey, true);
+  addEventListener("pointerdown", onPointer, true);
+  // Controller buttons arrive from the shell as nav events.
+  unNav = vellum.input.on("nav", (e) => {
+    e.preventDefault();
+    done();
+  });
 }
 
 function applyOptions() {

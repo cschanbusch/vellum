@@ -18,7 +18,7 @@ const DISPLAY_FONT = "Michroma";
 const BODY_FONT = "Saira Semi Condensed";
 
 /** Bump when the composer's drawing changes, so cached wraps are composed again. */
-const BUILDER = 2;
+const BUILDER = 4;
 
 /** Front panel width in pixels for each tier. */
 export const TIERS = { small: 320, medium: 640, full: 1200 };

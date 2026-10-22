@@ -535,7 +535,7 @@ async function composeWrap(job) {
   out.wrap = await canvas.convertToBlob({ type: "image/webp", quality: 0.9 });
 
   // ---- disc label ----
-  if (job.disc) out.disc = await discLabel(job, logo, accent);
+  if (job.disc) out.disc = await discLabel(job, logo, spineBg);
 
   // ---- big-box emboss: the logo we printed, raised ----
   if (job.emboss && embossLogo) {
@@ -552,22 +552,56 @@ async function composeWrap(job) {
   return out;
 }
 
-async function discLabel(job, logo, accent) {
+/** A logo's average color, weighted by how opaque each pixel is. */
+function logoTone(logo) {
+  const w = 96;
+  const h = Math.max(1, Math.round((w * logo.sh) / logo.sw));
+  const c = new OffscreenCanvas(w, h);
+  const g = c.getContext("2d", { willReadFrequently: true });
+  g.drawImage(logo.img, logo.sx, logo.sy, logo.sw, logo.sh, 0, 0, w, h);
+  const px = g.getImageData(0, 0, w, h).data;
+  let r = 0, gr = 0, b = 0, a = 0;
+  for (let i = 0; i < px.length; i += 4) {
+    const k = px[i + 3] / 255;
+    r += px[i] * k;
+    gr += px[i + 1] * k;
+    b += px[i + 2] * k;
+    a += k;
+  }
+  return a ? [r / a, gr / a, b / a] : WHITE;
+}
+
+/**
+ * The disc's color: the game's own color, darkened behind a light logo or lightened behind a
+ * dark one until the logo stands out: 7:1 against its average color, since the turntable's
+ * lights brighten the printed disc on screen.
+ */
+function discColor(base, tone) {
+  let bg = [...base];
+  const darken = lum(tone) > 0.3;
+  for (let i = 0; i < 40 && contrast(bg, tone) < 7; i++) {
+    bg = darken ? bg.map((v) => v * 0.88) : bg.map((v) => v + (255 - v) * 0.14);
+  }
+  return bg;
+}
+
+async function discLabel(job, logo, base) {
   const S = 1024;
   const c = new OffscreenCanvas(S, S);
   const g = c.getContext("2d");
   const R = S / 2;
   const hub = R * (23 / 60); // printing starts outside the clear hub
+  const bg = logo ? discColor(base, logoTone(logo)) : base;
   const grad = g.createRadialGradient(R, R, hub, R, R, R);
-  grad.addColorStop(0, css(accent.map((v) => Math.min(255, v * 1.08))));
-  grad.addColorStop(1, css(accent.map((v) => v * 0.82)));
+  grad.addColorStop(0, css(bg.map((v) => Math.min(255, v * 1.06 + 4))));
+  grad.addColorStop(1, css(bg.map((v) => v * 0.9)));
   g.fillStyle = grad;
   g.beginPath();
   g.arc(R, R, R, 0, Math.PI * 2);
   g.arc(R, R, hub, 0, Math.PI * 2, true);
   g.fill("evenodd");
   // Fine print rings near the edge.
-  const ink = textOn(accent);
+  const ink = textOn(bg);
   g.strokeStyle = css(ink, 0.18);
   g.lineWidth = 2;
   for (const r of [R * 0.96, R * 0.93]) {
@@ -579,13 +613,8 @@ async function discLabel(job, logo, accent) {
   const boxH = R * 0.36;
   const top = R - hub - boxH - R * 0.06;
   if (logo) {
-    const cl = new OffscreenCanvas(Math.ceil(boxW), Math.ceil(boxH));
-    const lg = cl.getContext("2d");
-    logoIn(lg, logo, 0, 0, boxW, boxH);
-    lg.globalCompositeOperation = "source-in";
-    lg.fillStyle = css(ink);
-    lg.fillRect(0, 0, cl.width, cl.height);
-    g.drawImage(cl, R - boxW / 2, top);
+    // The logo as published, in its own colors.
+    logoIn(g, logo, R - boxW / 2, top, boxW, boxH);
   } else {
     g.fillStyle = css(ink);
     g.textAlign = "center";

@@ -24,8 +24,10 @@ type HarnessEl = HTMLElement & {
 
 const errors: string[] = [];
 
-async function open(page: Page, port: number) {
+async function open(page: Page, port: number, { titleScreen = false } = {}) {
   errors.length = 0;
+  // Grand Tour's title screen waits for a button; tests skip it unless they're about it.
+  if (!titleScreen) await page.addInitScript(() => sessionStorage.setItem("rl-boot", "1"));
   page.on("console", (m) => {
     if (m.type() === "error") errors.push(m.text());
   });
@@ -518,6 +520,18 @@ test.describe("Grand Tour", () => {
     const widths = await page.locator("figure img").evaluateAll((imgs) => imgs.map((i) => (i as HTMLImageElement).naturalWidth));
     expect(widths.every((w) => w > 1300)).toBe(true);
     await page.screenshot({ path: "test-artifacts/views/redline-case-gallery.png", fullPage: true });
+  });
+
+  test("Grand Tour's title screen waits for any button, and that press goes no further", async ({ page }) => {
+    const frame = await open(page, 5226, { titleScreen: true });
+    const title = frame.locator(".rl-boot");
+    await expect(title).toBeVisible();
+    await expect(title).toContainText("PRESS ANY BUTTON");
+    await page.waitForTimeout(3500); // it used to leave by itself after 2.6 s
+    await expect(title).toBeVisible();
+    await frame.locator("body").press("a");
+    await expect(title).toBeHidden();
+    expect((await state(page)).query, "the key that dismissed it didn't start a search").toBe("");
   });
 
   test("Grand Tour's menu sounds: steps tick, a dead end knocks, Back and a mode change have their own sounds", async ({ page }) => {

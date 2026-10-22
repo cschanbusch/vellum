@@ -4,8 +4,8 @@
 // current grouping).
 //
 // The strip is a focus container: Left/Right choose the model, Up/Down change body type, Enter
-// starts the game and S services it. On the case: drag turns it, click opens it, right click holds
-// its front, then its back. The card's buttons sit outside it, so the focus manager reaches them
+// starts the game and S services it. On the case: click opens it; right click holds its front,
+// then its back, then lets it turn again. The card's buttons sit outside it, so the focus manager reaches them
 // normally.
 import { caseFor, dropQueued, loadCases, requestWrap, surfaceMaps } from "../case-builder/compose.js";
 import { CaseStage, quickWrap } from "../case-builder/renderer.js";
@@ -483,7 +483,7 @@ export default {
     const banner = el("div", "rl-gar-banner");
     banner.append(el("span", "rl-gar-banner-label", "Showroom"), el("span", "rl-gar-banner-maker"), el("span", "rl-gar-banner-count"));
     const lights = el("div", "rl-gar-lights");
-    const tips = el("p", "rl-gar-tips", "Drag to turn · Click to open · Right-click front / back");
+    const tips = el("p", "rl-gar-tips", "Click to open · Right-click: front, back, turn");
     floor.append(lights, tips);
     card = el("aside", "rl-gar-card");
     stage.append(banner, floor, card);
