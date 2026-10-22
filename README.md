@@ -48,9 +48,10 @@ anywhere.
 | Grand Tour | An early-2000s racing showroom: a Garage view where every game gets a 3D case on a turntable, with wear and tear, a pit-service minigame and synthesized engine sounds |
 
 The fan-made skins use no original game assets. Basis, Synthwave, Frutiger Aero and Gridline ship
-with the launcher. The showcase skins (Calling Card, FICSIT Terminal, Frontier and Grand Tour)
-aren't part of the release download; their source is in this repository under their own licence
-(see [LICENSING.md](LICENSING.md)).
+with the launcher. The showcase skins (Calling Card, FICSIT Terminal, Frontier and Grand Tour) are
+published separately in [vellum-skins](https://github.com/cschanbusch/vellum-skins): from Vellum
+0.2.1, download them in Settings → **Get skins** (or by hand from that repository's releases).
+Their source is in this repository under their own licence (see [LICENSING.md](LICENSING.md)).
 
 ## Install
 
@@ -111,6 +112,7 @@ library with art URLs on its own origin. The full specification is
 | GOG and custom-games providers | Planned (Phase 5; placeholders for now) |
 | Modules (Quick Launch, Random Pick) | Planned (Phase 6; placeholders for now) |
 | Version management from GitHub releases | Done |
+| Skin catalog (Settings → Get skins, from `vellum-skins`) | Done (0.2.1, unreleased) |
 | Library model, search, filters, sorting, groups, favorites, tags | Done |
 | Skin system: protocol, CSP, SDK, kit components, tokens, options, dev mode, hot reload | Done |
 | Views: List, Covers (shelves), Spotlight, and skin-defined views with placement and hotkeys | Done |
@@ -142,6 +144,7 @@ library with art URLs on its own origin. The full specification is
 | Type-check the SDK and shell | `npm run typecheck` |
 | Build the SDK and shell only | `npm run build:web` |
 | Rebuild Grand Tour's bundled three.js | `node scripts/vendor-three.mjs` |
+| Publish the showcase skins to the catalog | `node scripts/publish-skins.mjs` (bump a skin's version to publish a change; `--dry-run` builds the zips only) |
 | Build the portable folder | `./scripts/package-portable.ps1` (add `-Portable` for `portable.flag`, `-NoExtras` to leave out the extras, `-Zip` for the release zip) |
 | Developer mode for one run | `"Vellum Game Launcher.exe" --dev` |
 | List plugins without a window | `"Vellum Game Launcher.exe" --print-plugins --out plugins.json` |

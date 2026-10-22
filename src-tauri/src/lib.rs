@@ -1,4 +1,5 @@
 ﻿pub mod art;
+pub mod catalog;
 pub mod cli;
 mod commands;
 pub mod diagnose;
@@ -178,6 +179,10 @@ pub fn run() {
             commands::version_activate,
             commands::open_versions_folder,
             commands::open_release_page,
+            commands::catalog_info,
+            commands::catalog_install,
+            commands::catalog_remove,
+            commands::catalog_preview,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

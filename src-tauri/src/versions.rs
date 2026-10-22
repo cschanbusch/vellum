@@ -231,7 +231,7 @@ fn api_base() -> String {
     std::env::var("VELLUM_RELEASES_API").unwrap_or_else(|_| format!("https://api.github.com/repos/{REPO}"))
 }
 
-fn request(url: &str, accept: &str) -> ureq::RequestBuilder<ureq::typestate::WithoutBody> {
+pub(crate) fn request(url: &str, accept: &str) -> ureq::RequestBuilder<ureq::typestate::WithoutBody> {
     let mut req = ureq::get(url)
         .header("User-Agent", concat!("Vellum-Game-Launcher/", env!("CARGO_PKG_VERSION")))
         .header("Accept", accept)
@@ -321,8 +321,15 @@ pub struct Progress {
 }
 
 /// Downloads `asset` to `dest`, checking GitHub's SHA-256 digest when there is one.
-fn download(asset: &Asset, dest: &Path, mut progress: impl FnMut(u64, u64)) -> Result<(), String> {
-    let mut resp = request(&asset.api_url, "application/octet-stream").call().map_err(|e| format!("Download of {} failed: {e}", asset.name))?;
+fn download(asset: &Asset, dest: &Path, progress: impl FnMut(u64, u64)) -> Result<(), String> {
+    let want = asset.digest.as_deref().and_then(|d| d.strip_prefix("sha256:"));
+    download_to(&asset.api_url, "application/octet-stream", &asset.name, asset.size, want, dest, progress)
+}
+
+/// Downloads `url` to `dest`, checking the size (when known) and the SHA-256 (when given).
+pub(crate) fn download_to(url: &str, accept: &str, name: &str, size: u64, sha256: Option<&str>, dest: &Path, mut progress: impl FnMut(u64, u64)) -> Result<(), String> {
+    let asset = Asset { name: name.into(), size, api_url: url.into(), digest: sha256.map(|d| format!("sha256:{d}")) };
+    let mut resp = request(url, accept).call().map_err(|e| format!("Download of {name} failed: {e}"))?;
     let mut reader = resp.body_mut().with_config().limit(u64::MAX).reader();
     let mut file = File::create(dest).map_err(|e| e.to_string())?;
     let mut hash = Sha256::new();

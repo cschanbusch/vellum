@@ -1,5 +1,13 @@
 # Decisions
 
+## 2026-10-22 — A skin catalog in its own repository
+
+- **Showcase skins ship through a catalog, not Vellum's releases.** They are versioned on their own (Grand Tour 1.4.0, Frontier 1.3.0…), so they live in `cschanbusch/vellum-skins`: a `catalog.json` listing each skin's versions, and a release per version (`<id>-v<version>`) with the zip and a preview. Vellum's own release page stays one product, and the catalog file is read raw (no GitHub API rate limit). Source stays in this repository; `scripts/publish-skins.mjs` builds and publishes, skipping versions already published.
+- **Downloads go to the user's plugins folder,** shared by every installed version (`<root>/plugins`, or `<data>/plugins` outside a managed install so a dev build never writes into the repo). That folder is now searched first, so a downloaded skin replaces a copy bundled with Vellum.
+- **Each version is checked** against the catalog's size and SHA-256, and its `plugin.json` must have the id the catalog names. A `.catalog.json` marker records the installed version; only marked plugins can be removed from Settings → Get skins, and never the active skin.
+- **Compatibility:** each catalog version states its plugin `apiVersion` and optionally a minimum Vellum; incompatible versions are listed but can't be installed.
+- **The catalog, like updates, isn't signed:** the GitHub account is the trust anchor, as for releases.
+
 ## 2026-10-22 — Version management from GitHub releases
 
 - **Versions side by side, behind a starter.** The spec ruled out auto-update; the user asked for a Versions page that downloads, switches between and removes releases. A running exe can't replace itself on Windows, and Tauri's updater replaces the single install, so a managed install is a small starter exe (`starter/`) at the root plus `versions/<version>/` folders. `active.json` names the version the starter launches. Release zips use the same layout, so one zip works for a first install by hand and for the in-app updater (which takes only `Vellum/versions/<version>/` out of it).

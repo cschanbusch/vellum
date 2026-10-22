@@ -127,6 +127,38 @@ export interface VersionProgress {
   total: number;
 }
 
+export interface CatalogVersion {
+  version: string;
+  apiVersion: number;
+  minApp: string | null;
+  url: string;
+  size: number;
+  sha256: string;
+  published: string | null;
+  notes: string | null;
+  unavailable: string | null;
+}
+
+export interface CatalogPlugin {
+  id: string;
+  kind: PluginKind;
+  name: string;
+  description: string;
+  author: string | null;
+  license: string | null;
+  preview: string | null;
+  homepage: string | null;
+  versions: CatalogVersion[];
+  installed: string | null;
+  present: string | null;
+}
+
+export interface CatalogView {
+  plugins: CatalogPlugin[];
+  error: string | null;
+  url: string;
+}
+
 export const api = {
   appInfo: () => invoke<AppInfo>("app_info"),
   listPlugins: () => invoke<PluginView[]>("list_plugins"),
@@ -173,6 +205,12 @@ export const api = {
   versionActivate: (version: string) => invoke<void>("version_activate", { version }),
   openVersionsFolder: () => invoke<void>("open_versions_folder"),
   openReleasePage: (url: string) => invoke<void>("open_release_page", { url }),
+  catalogInfo: (fetch: boolean) => invoke<CatalogView>("catalog_info", { fetch }),
+  catalogInstall: (id: string, version: string) => invoke<void>("catalog_install", { id, version }),
+  catalogRemove: (kind: PluginKind, id: string) => invoke<void>("catalog_remove", { kind, id }),
+  catalogPreview: (url: string) => invoke<string>("catalog_preview", { url }),
+  onCatalogProgress: (cb: (p: { id: string; done: number; total: number }) => void): Promise<UnlistenFn> =>
+    listen<{ id: string; done: number; total: number }>("vellum://catalog-progress", (e) => cb(e.payload)),
   onVersionProgress: (cb: (p: VersionProgress) => void): Promise<UnlistenFn> =>
     listen<VersionProgress>("vellum://version-progress", (e) => cb(e.payload)),
   onProvidersChanged: (cb: () => void): Promise<UnlistenFn> => listen("vellum://providers-changed", cb),

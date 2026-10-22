@@ -17,6 +17,7 @@ import "./pages/skins-page";
 import "./pages/views-page";
 import "./pages/developer-page";
 import "./pages/versions-page";
+import "./pages/catalog-page";
 import "./toasts";
 
 interface PageDef {
@@ -32,6 +33,7 @@ const PAGES: PageDef[] = [
   { id: "library", label: "Library", phase: 5 },
   { id: "plugins", label: "Plugins" },
   { id: "skins", label: "Skins" },
+  { id: "catalog", label: "Get skins" },
   { id: "views", label: "Views" },
   { id: "controls", label: "Controls", phase: 6 },
   { id: "art", label: "Art and metadata", phase: 4 },
@@ -227,6 +229,8 @@ export class VellumShell extends LitElement {
         return html`<vellum-skins-page></vellum-skins-page>`;
       case "views":
         return html`<vellum-views-page></vellum-views-page>`;
+      case "catalog":
+        return html`<vellum-catalog-page></vellum-catalog-page>`;
       case "versions":
         return html`<vellum-versions-page></vellum-versions-page>`;
       case "developer":

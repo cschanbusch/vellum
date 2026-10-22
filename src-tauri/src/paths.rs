@@ -72,9 +72,18 @@ impl AppPaths {
         self.shared_plugins_dir.as_deref().unwrap_or(&self.plugins_dir)
     }
 
+    /// Where plugins downloaded from the catalog go (catalog.rs): the shared plugins folder of a
+    /// managed install, else `<data>/plugins`, so a development build never writes into the repo.
+    pub fn downloaded_plugins_dir(&self) -> PathBuf {
+        self.shared_plugins_dir.clone().unwrap_or_else(|| self.data_dir.join("plugins"))
+    }
+
+    /// Plugin folders, searched in order; the first plugin with an id wins. The user's own and
+    /// downloaded plugins come first, so a newer download replaces a copy bundled with Vellum.
     pub fn plugin_roots(&self) -> Vec<PathBuf> {
-        std::iter::once(self.plugins_dir.clone())
-            .chain(self.shared_plugins_dir.clone().filter(|d| d.is_dir()))
+        std::iter::once(self.downloaded_plugins_dir())
+            .filter(|d| d.is_dir())
+            .chain(std::iter::once(self.plugins_dir.clone()))
             .chain(self.extras_dir.clone())
             .chain(self.dev_plugins_dir.clone())
             .collect()

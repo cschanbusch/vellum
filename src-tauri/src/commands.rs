@@ -11,7 +11,7 @@ use crate::scanner::{self, Action, ActionResult, Notice, ProviderStatus};
 use crate::userdata::games::GameUserData;
 use crate::userdata::settings::{Settings, UiSettings};
 use crate::skins::{self, SkinInfo};
-use crate::{platform, versions, AppState, APP_NAME, APP_VERSION, EVENT_PLUGINS_CHANGED};
+use crate::{catalog, platform, versions, AppState, APP_NAME, APP_VERSION, EVENT_PLUGINS_CHANGED};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -461,4 +461,58 @@ pub fn open_release_page(url: String) -> Result<(), String> {
         return Err("Only GitHub links open from here.".into());
     }
     platform::open_uri(&url).map_err(|e| e.to_string())
+}
+
+// ---- the plugin catalog (Settings → Get skins; see catalog.rs) ----------------------------
+
+/// Event with download progress for a catalog install: { id, done, total }.
+pub const EVENT_CATALOG_PROGRESS: &str = "vellum://catalog-progress";
+
+#[tauri::command(async)]
+pub fn catalog_info(state: State<AppState>, fetch: bool) -> catalog::CatalogView {
+    let plugins = state.plugins.read().unwrap();
+    let present = |kind: PluginKind, id: &str| {
+        plugins.iter().find(|p| p.kind == kind && p.id == id && p.is_valid()).map(|p| p.version.clone().unwrap_or_default())
+    };
+    catalog::view(&state.paths.downloaded_plugins_dir(), &versions::running_version(&state.paths.exe_dir), fetch, present)
+}
+
+#[tauri::command(async)]
+pub fn catalog_install(app: AppHandle, state: State<AppState>, id: String, version: String) -> Result<(), String> {
+    let root = state.paths.downloaded_plugins_dir();
+    let mut last = std::time::Instant::now() - std::time::Duration::from_secs(1);
+    catalog::install(&root, &versions::running_version(&state.paths.exe_dir), &id, &version, |done, total| {
+        if last.elapsed().as_millis() >= 100 || done == total {
+            last = std::time::Instant::now();
+            let _ = app.emit(EVENT_CATALOG_PROGRESS, serde_json::json!({ "id": id, "done": done, "total": total }));
+        }
+    })?;
+    tracing::info!(%id, %version, "plugin installed from the catalog");
+    after_catalog_change(&app, &state, &id);
+    Ok(())
+}
+
+#[tauri::command(async)]
+pub fn catalog_remove(app: AppHandle, state: State<AppState>, kind: PluginKind, id: String) -> Result<(), String> {
+    if kind == PluginKind::Skin && state.settings.read(|s| s.active_skin == id) {
+        return Err("That's the skin you're using. Activate another skin first.".into());
+    }
+    catalog::remove(&state.paths.downloaded_plugins_dir(), kind, &id)?;
+    tracing::info!(%id, "plugin removed (catalog)");
+    after_catalog_change(&app, &state, &id);
+    Ok(())
+}
+
+#[tauri::command(async)]
+pub fn catalog_preview(url: String) -> Result<String, String> {
+    catalog::preview(&url)
+}
+
+/// Picks up an installed, updated or removed plugin without a restart.
+fn after_catalog_change(app: &AppHandle, state: &AppState, id: &str) {
+    state.rescan_plugins();
+    let _ = app.emit(EVENT_PLUGINS_CHANGED, ());
+    if state.settings.read(|s| s.active_skin == id) {
+        skins::skin_changed(app);
+    }
 }
