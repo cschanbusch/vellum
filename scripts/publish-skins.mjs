@@ -38,11 +38,19 @@ function readManifest(id) {
   return { dir, manifest: JSON.parse(readFileSync(join(dir, "plugin.json"), "utf8").replace(/^\uFEFF/, "")) };
 }
 
+/** Files git ignores in `dir` (a player's own music, say): they never go into a published zip. */
+function ignoredFiles(dir) {
+  const out = execFileSync("git", ["ls-files", "--others", "--ignored", "--exclude-standard", "-z", "--", dir], { cwd: ROOT, encoding: "utf8" });
+  return new Set(out.split("\0").filter(Boolean).map((f) => resolve(ROOT, f)));
+}
+
 /** The zip: one `<id>/` folder (Windows' tar writes standard zips). */
 function buildZip(id, dir, version) {
   const stage = join(out, ".stage");
   rmSync(stage, { recursive: true, force: true });
-  cpSync(dir, join(stage, id), { recursive: true, filter: (src) => !DEV_ONLY.some((d) => src === join(dir, d)) });
+  const ignored = ignoredFiles(dir);
+  const keep = (src) => !DEV_ONLY.some((d) => src === join(dir, d)) && !ignored.has(resolve(src));
+  cpSync(dir, join(stage, id), { recursive: true, filter: keep });
   const zip = join(out, `${id}-${version}.zip`);
   rmSync(zip, { force: true });
   execFileSync(tar, ["-a", "-c", "-f", zip, "-C", stage, id]);

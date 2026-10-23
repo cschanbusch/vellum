@@ -4,6 +4,8 @@ import { entryMenu } from "./host/entry-menu";
 import { host, hostUi } from "./host/instance";
 import type { LibraryView } from "./library-view";
 import type { ContextMenu, DevErrorOverlay, TagsDialog } from "./overlays";
+import "./recommend";
+import type { RecommendDialog } from "./recommend";
 import { store } from "./store";
 import { applySkinTheme, controls, tokens } from "./theme";
 import { registerToasts, toasts, type ToastHost } from "./toasts";
@@ -87,6 +89,9 @@ export class VellumShell extends LitElement {
   private get devError() {
     return this.renderRoot.querySelector<DevErrorOverlay>("vellum-dev-error")!;
   }
+  private get recommend() {
+    return this.renderRoot.querySelector<RecommendDialog>("vellum-recommend")!;
+  }
 
   async firstUpdated() {
     registerToasts(this.renderRoot.querySelector("vellum-toasts") as ToastHost);
@@ -110,6 +115,7 @@ export class VellumShell extends LitElement {
     });
     await host.start();
     this.library.attachSkin();
+    void this.recommend.check();
   }
 
   private async skinFailed(reason: string) {
@@ -215,6 +221,7 @@ export class VellumShell extends LitElement {
       <vellum-context-menu></vellum-context-menu>
       <vellum-tags-dialog></vellum-tags-dialog>
       <vellum-dev-error></vellum-dev-error>
+      <vellum-recommend></vellum-recommend>
       <vellum-toasts></vellum-toasts>
     `;
   }

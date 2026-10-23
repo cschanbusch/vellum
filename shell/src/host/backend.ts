@@ -13,6 +13,8 @@ export interface UiSettings {
   devMode: boolean;
   /** Music volume for skins' vellum.music, 0-1 (absent before 0.2.3). */
   musicVolume?: number;
+  /** Plugin ids whose start-up recommendation was answered "Don't ask again". */
+  dismissedRecommendations?: string[];
 }
 
 /** The active skin as the backend reports it. */

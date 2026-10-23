@@ -16,22 +16,22 @@ let busy = false;
 // The music steps aside for every ignition, test drives included: the engine has the stage.
 // After a test drive (or giving up) it comes straight back; after a real start it waits for the
 // player to leave Vellum for the game and come back (or 15 s, if the game never takes the window).
-const quiet = () => void vellum.music.pause();
+const quiet = () => void vellum.music?.pause();
 function musicBack(launching) {
-  if (!launching) return void vellum.music.resume();
+  if (!launching) return void vellum.music?.resume();
   let away = false;
   const off = vellum.window.on("change", (w) => {
     if (w.focused === false) away = true;
     else if (away && w.focused) {
       off();
       clearTimeout(timer);
-      void vellum.music.resume();
+      void vellum.music?.resume();
     }
   });
   const timer = setTimeout(() => {
     if (away) return;
     off();
-    void vellum.music.resume();
+    void vellum.music?.resume();
   }, 15000);
 }
 

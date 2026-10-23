@@ -58,6 +58,8 @@ pub struct UiSettings {
     pub dev_mode: bool,
     /// Music volume for skins' `vellum.music`, 0-1.
     pub music_volume: f64,
+    /// Plugin ids whose start-up recommendation the user answered "Don't ask again".
+    pub dismissed_recommendations: Vec<String>,
 }
 
 impl Default for UiSettings {
@@ -70,6 +72,7 @@ impl Default for UiSettings {
             skins_seen: Vec::new(),
             dev_mode: false,
             music_volume: 0.7,
+            dismissed_recommendations: Vec::new(),
         }
     }
 }
