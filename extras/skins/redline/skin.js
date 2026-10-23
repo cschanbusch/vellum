@@ -114,7 +114,7 @@ function onState(s) {
 // ---- title screen ------------------------------------------------------------------------------
 
 /** The music (music/ in this skin, if it has any) waits for the title screen. */
-const startMusic = () => vellum.music?.start(); // absent before Vellum 0.2.3
+const startMusic = () => vellum.music?.start(); // absent before Vellum 0.3.0
 
 /** Once per session: a wipe, the chrome wordmark with a glint, and a blinking prompt. It waits
  *  for any key, click or controller button, and that press only dismisses it. The music starts

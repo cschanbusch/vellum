@@ -11,7 +11,7 @@ export interface UiSettings {
   shelves: { order?: Record<string, string[]>; collapsed?: string[] };
   skinsSeen: string[];
   devMode: boolean;
-  /** Music volume for skins' vellum.music, 0-1 (absent before 0.2.3). */
+  /** Music volume for skins' vellum.music, 0-1 (absent before 0.3.0). */
   musicVolume?: number;
   /** Plugin ids whose start-up recommendation was answered "Don't ask again". */
   dismissedRecommendations?: string[];
