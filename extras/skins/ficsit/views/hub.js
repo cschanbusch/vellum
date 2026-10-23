@@ -608,7 +608,7 @@ function reset() {
 function onKey(e) {
   if (e.ctrlKey || e.altKey || e.metaKey) return;
   if (e.key === "s" || e.key === "S") {
-    e.preventDefault(); // not the start of a search
+    e.preventDefault();
     if (e.type === "keydown" && !e.repeat) feedSink();
     return;
   }

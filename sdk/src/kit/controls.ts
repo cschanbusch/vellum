@@ -160,7 +160,10 @@ class Bound extends LitElement {
   }
 }
 
-/** Search box bound to `state.query`. Ctrl+F, the search button or just typing focuses it. */
+/**
+ * Search box bound to `state.query`. Clicking it, Ctrl+F or the controller's search button
+ * focuses it; typing elsewhere doesn't, so skins' own letter keys never land in it.
+ */
 export class VellumSearch extends Bound {
   private timer = 0;
   private local: string | null = null;
@@ -178,14 +181,8 @@ export class VellumSearch extends Bound {
     return this.renderRoot.querySelector("input")!;
   }
 
-  private onFocusRequest = (e: Event) => {
-    const char = (e as CustomEvent<{ char?: string }>).detail?.char;
-    const input = this.inputEl;
-    input.focus();
-    if (char) {
-      input.value += char;
-      this.onInput();
-    }
+  private onFocusRequest = () => {
+    this.inputEl.focus();
   };
 
   private onInput() {

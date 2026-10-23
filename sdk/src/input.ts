@@ -115,9 +115,6 @@ export const input = {
   setHotkeyHandler(fn: (h: Hotkey) => void) {
     hotkeyHandler = fn;
   },
-
-  /** Typing a character outside a text field starts a search with it. */
-  onType: (_char: string) => {},
 };
 
 window.addEventListener("keydown", (e) => {
@@ -136,9 +133,5 @@ window.addEventListener("keydown", (e) => {
     e.preventDefault();
     input.dispatch(name, "keyboard", e.repeat);
     return;
-  }
-  if (!editable && !e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1 && e.key !== " ") {
-    e.preventDefault();
-    input.onType(e.key);
   }
 });

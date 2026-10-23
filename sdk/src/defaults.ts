@@ -103,5 +103,4 @@ export function installDefaults() {
       void vellum._internal.shellCommand(h.command);
     }
   });
-  input.onType = (char) => document.dispatchEvent(new CustomEvent("vellum-search-focus", { detail: { char } }));
 }
