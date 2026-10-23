@@ -5,13 +5,12 @@
   "version": "1.0.0",
   "apiVersion": 1,
   "author": "Vellum tests",
-  "description": "The default layout with adaptive MIDI music: a scene per view, layers, a stinger (music files from scripts/make-music-fixture.py)",
+  "description": "The default layout with adaptive MIDI music from its music folder (SoundFont and songs found there): a scene per view, layers, a stinger (files from scripts/make-music-fixture.py)",
   "entry": "index.html",
   "skin": {
     "defaultView": "covers",
     "music": {
-      "soundbank": "music/test.sf2",
-      "scenes": { "title": "music/title.mid", "garage": "music/garage.mid", "sting": "music/sting.mid" },
+      "folder": "music",
       "layers": { "lead": [0], "pad": [1], "drums": [9] },
       "views": { "spotlight": "garage", "*": "title" },
       "at": "bar"

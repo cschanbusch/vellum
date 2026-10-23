@@ -16,6 +16,7 @@
       "minHeight": 640,
       "background": "#e8edf3"
     },
+    "music": { "folder": "music", "autoplay": false },
     "views": [
       {
         "id": "garage",

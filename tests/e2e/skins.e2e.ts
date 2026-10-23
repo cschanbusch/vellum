@@ -192,22 +192,6 @@ test("music: a scene per view, changed on the bar line; layers, stingers, pause 
   await expect.poll(async () => (await pos()).state, { timeout: 5000 }).toBe("suspended");
 });
 
-test("music folder: a skin without music plays <view>.mid where there is one, and is silent elsewhere", async ({ page }) => {
-  const frame = await open(page, 5232); // basis, with tests/fixtures/user-music as the music folder
-  const skin = page.frames().find((f) => f.url().includes("127.0.0.1"))!;
-  await frame.locator("vellum-grid").click({ position: { x: 5, y: 5 } });
-  const pos = () => skin.evaluate(() => window.vellum.music.position());
-  await expect.poll(async () => (await pos()).scene, { timeout: 15_000 }).toBe("covers");
-  await expect.poll(async () => (await pos()).voices, { timeout: 5000 }).toBeGreaterThan(0);
-  // List has no file: the music stops at the bar line.
-  await show(page, "list");
-  await expect.poll(async () => (await pos()).scene, { timeout: 6000 }).toBeNull();
-  // Spotlight.mid (any case) plays in Spotlight.
-  await show(page, "spotlight");
-  await expect.poll(async () => (await pos()).scene, { timeout: 6000 }).toBe("spotlight");
-  await expect.poll(async () => (await pos()).voices, { timeout: 5000 }).toBeGreaterThan(0);
-});
-
 test("Covers groups into shelves that collapse", async ({ page }) => {
   const frame = await open(page, BASIS);
   await show(page, "covers");

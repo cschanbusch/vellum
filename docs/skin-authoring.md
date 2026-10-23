@@ -542,10 +542,14 @@ How it plays:
 - **Autoplay.** Browsers start audio after the first click or key press; music configured before
   that starts on it.
 
-**The user's music folder.** A skin that declares no `skin.music` plays the music folder in
-Vellum's data folder (Settings → General → Sound → Open music folder): a SoundFont and a MIDI file
-per view, named after the view id (`covers.mid`, `spotlight.mid`, `garage.mid`…, any case). Views
-without a file are silent. To try it in the harness: `npm run dev:skin -- <skin> --user-music <folder>`.
+**A music folder.** With `"folder": "music"`, Vellum reads that folder of your skin: its SoundFont
+(the first `.sf2`, `.sf3` or `.dls`) and a MIDI file per view, named after the view id
+(`covers.mid`, `spotlight.mid`, `garage.mid`…, any case). Views without a file are silent, and
+anything you set explicitly (`soundbank`, `scenes`, `views`) wins. Players can drop their own tracks
+in, and you can ship a skin with an empty folder and a README.
+
+**Holding the music back.** `"autoplay": false` loads the instruments but waits for
+`vellum.music.start()`, for a skin with a title screen.
 
 To try it, run the harness on the test skin, which has a tiny generated SoundFont and three
 songs: `npm run dev:skin -- tests/fixtures/dev-plugins/skins/music-test` (switch to Spotlight to

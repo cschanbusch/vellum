@@ -17,3 +17,7 @@ extras/providers/mock/art/
 test-results/
 playwright-report/
 test-artifacts/
+
+# Grand Tour music: players drop their own MIDI files and SoundFont in (see its README).
+extras/skins/redline/music/*
+!extras/skins/redline/music/README.txt

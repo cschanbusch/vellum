@@ -26,25 +26,6 @@ pub struct AppPaths {
     pub shared_plugins_dir: Option<PathBuf>,
 }
 
-/// The README written into a new music folder.
-const MUSIC_README: &str = concat!(
-    "Vellum music folder\r\n",
-    "\r\n",
-    "Put MIDI files here, named after the view they play in, and one SoundFont:\r\n",
-    "\r\n",
-    "  covers.mid      plays in Covers\r\n",
-    "  list.mid        plays in List\r\n",
-    "  spotlight.mid   plays in Spotlight\r\n",
-    "  garage.mid, hub.mid, catalogue.mid ...   a skin's own views, by their id\r\n",
-    "  any .sf2 / .sf3 / .dls file              the instruments (a General MIDI SoundFont)\r\n",
-    "\r\n",
-    "A view with no file is silent. Switching views changes the music on the next bar line of\r\n",
-    "the track that is playing, and the new track picks up at the same point: the same beat\r\n",
-    "for tracks of the same length (write them as variations of one piece), else the same\r\n",
-    "share of the way through. Skins that bring their own music ignore this folder.\r\n",
-    "Music volume: Settings > General > Sound.\r\n",
-);
-
 impl AppPaths {
     pub fn resolve(args: &Args) -> Result<Self, String> {
         let exe = std::env::current_exe().map_err(|e| format!("cannot locate executable: {e}"))?;
@@ -54,7 +35,6 @@ impl AppPaths {
         let paths = Self::resolve_from(&exe_dir, &roaming, repo.as_deref(), args);
         std::fs::create_dir_all(&paths.data_dir)
             .map_err(|e| format!("cannot create data folder {}: {e}", paths.data_dir.display()))?;
-        paths.prepare_music_dir();
         Ok(paths)
     }
 
@@ -96,21 +76,6 @@ impl AppPaths {
     /// managed install, else `<data>/plugins`, so a development build never writes into the repo.
     pub fn downloaded_plugins_dir(&self) -> PathBuf {
         self.shared_plugins_dir.clone().unwrap_or_else(|| self.data_dir.join("plugins"))
-    }
-
-    /// The user's music folder: a MIDI file per view and a SoundFont, played by skins that
-    /// bring no music of their own (served at /__vellum/user-music/).
-    pub fn music_dir(&self) -> PathBuf {
-        self.data_dir.join("music")
-    }
-
-    /// Creates the music folder with a README on first run; failure only means no music.
-    fn prepare_music_dir(&self) {
-        let dir = self.music_dir();
-        if dir.is_dir() || std::fs::create_dir_all(&dir).is_err() {
-            return;
-        }
-        let _ = std::fs::write(dir.join("README.txt"), MUSIC_README);
     }
 
     /// Plugin folders, searched in order; the first plugin with an id wins. The user's own and

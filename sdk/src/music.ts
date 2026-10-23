@@ -20,8 +20,15 @@ export interface MusicScene {
 
 /** `skin.music` in plugin.json, or the argument to `configure()`. */
 export interface MusicConfig {
-  /** A SoundFont (.sf2, .sf3) or DLS file in the skin folder. */
-  soundbank: string;
+  /** A SoundFont (.sf2, .sf3) or DLS file in the skin folder (found in `folder` if omitted). */
+  soundbank?: string;
+  /**
+   * plugin.json only: a folder in the skin holding the SoundFont and a MIDI file per view,
+   * named after it (covers.mid, garage.mid...). Views without one are silent.
+   */
+  folder?: string;
+  /** false: wait for `vellum.music.start()` (after a title screen, say). Default true. */
+  autoplay?: boolean;
   /** Named scenes: a MIDI file path, or `{ midi, from }`. */
   scenes?: Record<string, string | MusicScene>;
   /** Named layers: the MIDI channels (0-15) each one fades. */
@@ -63,6 +70,8 @@ export function createMusic(hooks: Hooks) {
   let held = false; // paused by Vellum (launch, background)
   let paused = false; // paused by the skin
   let current: string | null = null;
+  let started = false;
+  let startRequested = false; // start() came before the configuration did
 
   const engine = () => {
     if (!engineP) {
@@ -80,21 +89,21 @@ export function createMusic(hooks: Hooks) {
     return engineP;
   };
 
-  // Browsers start audio only after the user has interacted with the page: at once if they
-  // already have, else on the first click or key.
+  // Browsers start audio only after the user has interacted with the page. Skins often catch
+  // the first click or key themselves (a title screen) and stop it there, so rather than
+  // listening for it, check the page's activation until there has been one.
+  const canPlay = () => !held && !paused && (navigator.userActivation?.hasBeenActive ?? true);
+  const wake = (e: Engine) => {
+    if (e.ctx.state !== "running" && canPlay()) void e.resume();
+  };
   const unlock = (e: Engine) => {
-    if (e.ctx.state === "running") return;
-    if (navigator.userActivation?.hasBeenActive && !held && !paused) {
-      void e.resume();
-      return;
-    }
-    const go = () => {
-      if (!held && !paused) void e.resume();
-      removeEventListener("pointerdown", go, true);
-      removeEventListener("keydown", go, true);
-    };
-    addEventListener("pointerdown", go, true);
-    addEventListener("keydown", go, true);
+    wake(e);
+    const timer = window.setInterval(() => {
+      if (e.ctx.state === "running" || navigator.userActivation?.hasBeenActive) {
+        clearInterval(timer);
+        wake(e);
+      }
+    }, 250);
   };
 
   const level = (e: Engine, seconds = 0.25) => e.setLevel(held || paused ? 0 : hooks.audio().music * skinLevel, seconds);
@@ -121,7 +130,7 @@ export function createMusic(hooks: Hooks) {
   };
 
   const bank = () => {
-    if (!config) return Promise.reject(new Error("music: no soundbank; call vellum.music.configure() first"));
+    if (!config?.soundbank) return Promise.reject(new Error("music: no soundbank; call vellum.music.configure() first"));
     if (!bankP) {
       const path = config.soundbank;
       bankP = (async () => {
@@ -169,7 +178,7 @@ export function createMusic(hooks: Hooks) {
   // Music that follows the view.
   const sceneForView = (view: string) => config?.views?.[view] ?? config?.views?.["*"] ?? null;
   const followView = (view: string, at: At | number) => {
-    if (!config?.views) return;
+    if (!config?.views || !started) return;
     const scene = sceneForView(view);
     if (scene && scene !== current) void api.play(scene, { at });
     else if (!scene && current) void api.stop({ at });
@@ -181,7 +190,17 @@ export function createMusic(hooks: Hooks) {
     configure(c: MusicConfig) {
       if (config?.soundbank !== c.soundbank) bankP = null;
       config = c;
-      const scene = sceneForView(hooks.view()) ?? c.start;
+      started = false;
+      if (c.autoplay !== false || startRequested) api.start();
+      else void bank().catch(() => {}); // load the instruments meanwhile
+    },
+
+    /** Starts the configured music (for `autoplay: false`): the current view's scene, or `start`. */
+    start() {
+      startRequested = true;
+      if (!config || started) return;
+      started = true;
+      const scene = sceneForView(hooks.view()) ?? config.start;
       if (scene) void api.play(scene, { at: "now" });
     },
 
@@ -201,6 +220,7 @@ export function createMusic(hooks: Hooks) {
       const s = resolve(scene);
       const [e, sng] = await Promise.all([engine(), song(s.midi), bank()]);
       if (current !== scene) return null; // superseded while loading
+      wake(e);
       return e.play(sng, scene, at, s.from ?? (config?.entry === "start" ? 0 : null));
     },
 

@@ -151,7 +151,6 @@ pub fn run() {
             commands::reload_plugins,
             commands::open_plugins_folder,
             commands::open_data_folder,
-            commands::open_music_folder,
             commands::library_entries,
             commands::provider_statuses,
             commands::notices,

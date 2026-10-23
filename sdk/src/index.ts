@@ -55,34 +55,46 @@ export const vellum = Object.assign(core, {
 });
 
 /**
- * A skin that declares `skin.music` in plugin.json gets it configured without code. Otherwise
- * the user's music folder applies: a SoundFont and a MIDI file per view, named after the view
- * (covers.mid, spotlight.mid, garage.mid...). Views without a file are silent.
+ * A skin that declares `skin.music` in plugin.json gets it configured without code. With
+ * `folder`, the folder in the skin is read for its SoundFont (the first .sf2, .sf3 or .dls) and a
+ * MIDI file per view, named after the view (covers.mid, garage.mid...); views without one are
+ * silent. Fields given explicitly win over what the folder provides.
  */
 async function configureMusic() {
   await core.ready();
   lastView = core.state.get().view;
+  let declared: MusicConfig | undefined;
   try {
     const r = await fetch(core.skin.assetUrl("plugin.json"));
-    const manifest = r.ok ? ((await r.json()) as { skin?: { music?: MusicConfig } }) : {};
-    if (manifest.skin?.music?.soundbank) return music.configure(manifest.skin.music);
+    if (r.ok) declared = ((await r.json()) as { skin?: { music?: MusicConfig } }).skin?.music;
   } catch {
-    // No manifest to read (a test page): try the user's folder.
+    return; // no manifest to read (a test page): music stays off until configured
   }
-  const user = await userMusic();
-  if (user) music.configure(user);
+  if (!declared) return;
+  const found = declared.folder ? await musicFolder(declared.folder) : {};
+  const c: MusicConfig = {
+    ...declared,
+    soundbank: declared.soundbank ?? found.soundbank ?? "",
+    scenes: { ...found.scenes, ...declared.scenes },
+    views: declared.views || found.views ? { ...found.views, ...declared.views } : undefined,
+  };
+  if (!c.soundbank) {
+    if (Object.keys(c.scenes ?? {}).length) console.info(`Vellum music: no SoundFont (.sf2, .sf3 or .dls) in ${declared.folder ?? "the skin"}, so nothing plays.`);
+    return;
+  }
+  music.configure(c);
 }
 
-/** The user's music folder as a config, or null when it has no SoundFont or no MIDI files. */
-async function userMusic(): Promise<MusicConfig | null> {
-  let names: string[];
+/** What a skin's music folder offers: its SoundFont, and a scene per view-named MIDI file. */
+async function musicFolder(folder: string): Promise<Partial<MusicConfig>> {
+  let names: string[] = [];
   try {
-    const r = await fetch("/__vellum/user-music/index.json");
-    names = r.ok ? ((await r.json()) as string[]) : [];
+    const r = await fetch(`/__vellum/skin-files/${folder.replace(/^\/+|\/+$/g, "")}`);
+    if (r.ok) names = (await r.json()) as string[];
   } catch {
-    return null;
+    return {};
   }
-  const url = (name: string) => `/__vellum/user-music/${encodeURIComponent(name)}`;
+  const path = (name: string) => `${folder.replace(/\/+$/, "")}/${encodeURIComponent(name)}`;
   const bank = names.find((n) => /\.(sf2|sf3|dls)$/i.test(n));
   const scenes: Record<string, string> = {};
   const views: Record<string, string> = {};
@@ -90,15 +102,10 @@ async function userMusic(): Promise<MusicConfig | null> {
     const m = n.match(/^(.+)\.midi?$/i);
     if (!m) continue;
     const view = m[1].toLowerCase();
-    scenes[view] = url(n);
+    scenes[view] = path(n);
     views[view] = view;
   }
-  if (!Object.keys(scenes).length) return null;
-  if (!bank) {
-    console.info("Vellum music: the music folder has MIDI files but no SoundFont (.sf2, .sf3 or .dls), so nothing plays.");
-    return null;
-  }
-  return { soundbank: url(bank), scenes, views, at: "bar" };
+  return { soundbank: bank ? path(bank) : undefined, scenes, views };
 }
 
 declare global {

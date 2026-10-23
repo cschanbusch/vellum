@@ -162,10 +162,9 @@ fn handle_sync(app: &AppHandle, path: &str) -> Resp {
             "music.js" => respond(StatusCode::OK, "text/javascript; charset=utf-8", Cow::Borrowed(MUSIC_JS)),
             "music-processor.js" => respond(StatusCode::OK, "text/javascript; charset=utf-8", Cow::Borrowed(MUSIC_PROCESSOR_JS)),
             "fonts/InterVariable.woff2" => with_cache(respond(StatusCode::OK, "font/woff2", Cow::Borrowed(FONT_INTER)), IMMUTABLE),
-            "user-music/index.json" => user_music_index(app),
             _ => {
-                if let Some(rest) = reserved.strip_prefix("user-music/") {
-                    return serve_file(&app.state::<AppState>().paths.music_dir(), rest);
+                if let Some(rest) = reserved.strip_prefix("skin-files/") {
+                    return skin_files(app, rest);
                 }
                 match reserved.strip_prefix("provider-icon/") {
                     Some(id) => provider_icon(app, id),
@@ -181,10 +180,19 @@ fn handle_sync(app: &AppHandle, path: &str) -> Resp {
     }
 }
 
-/// The files in the user's music folder, as a JSON array of names (empty when there is none).
-fn user_music_index(app: &AppHandle) -> Resp {
-    let dir = app.state::<AppState>().paths.music_dir();
-    let mut names: Vec<String> = std::fs::read_dir(&dir)
+/// The file names in a folder of the active skin, as a JSON array (empty when it doesn't exist),
+/// so a skin can find files it didn't name in advance (`skin.music.folder`).
+fn skin_files(app: &AppHandle, rel: &str) -> Resp {
+    let Some(decoded) = percent_decode(rel) else {
+        return text(StatusCode::BAD_REQUEST, "bad path");
+    };
+    let rel = Path::new(decoded.trim_matches('/'));
+    if rel.components().any(|c| !matches!(c, Component::Normal(_))) {
+        return text(StatusCode::FORBIDDEN, "forbidden");
+    }
+    let state = app.state::<AppState>();
+    let mut names: Vec<String> = active_skin_dir(&state)
+        .and_then(|dir| std::fs::read_dir(dir.join(rel)).ok())
         .map(|rd| rd.flatten().filter(|e| e.path().is_file()).filter_map(|e| e.file_name().into_string().ok()).collect())
         .unwrap_or_default();
     names.sort();

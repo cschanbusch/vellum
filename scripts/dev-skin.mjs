@@ -4,7 +4,6 @@
 // No Rust, Windows or store installs needed.
 //
 //   npm run dev:skin -- <path to skin folder> [--port 5180] [--count 80] [--no-open]
-//                       [--user-music <folder>]   (the app's music folder: <view>.mid + a SoundFont)
 //
 // Two origins, like the app: the harness page (the "shell") on http://localhost:<port>, and the
 // sandboxed skin on http://127.0.0.1:<port + 1> with Vellum's CSP.
@@ -30,8 +29,6 @@ const flag = (name, fallback) => {
 };
 const port = Number(flag("--port", "5180"));
 let count = Number(flag("--count", "80"));
-const userMusicArg = flag("--user-music", null);
-const userMusicDir = userMusicArg ? resolve(userMusicArg) : null;
 const noOpen = args.includes("--no-open") && args.splice(args.indexOf("--no-open"), 1);
 const skinDir = resolve(args[0] ?? join(ROOT, "plugins", "skins", "basis"));
 const mockDir = join(ROOT, "extras", "providers", "mock");
@@ -123,14 +120,12 @@ const skinServer = createServer((req, res) => {
   if (p === "/__vellum/sdk.js") return sendFile(res, sdkJs);
   if (p === "/__vellum/sdk.css") return sendFile(res, join(ROOT, "sdk", "src", "sdk.css"));
   if (p === "/__vellum/music.js") return sendFile(res, join(ROOT, "sdk", "dist", "music.js"));
-  if (p === "/__vellum/user-music/index.json") {
-    const names = userMusicDir && existsSync(userMusicDir) ? readdirSync(userMusicDir).filter((n) => statSync(join(userMusicDir, n)).isFile()).sort() : [];
+  if (p.startsWith("/__vellum/skin-files/")) {
+    const rel = decodeURIComponent(p.slice("/__vellum/skin-files/".length)).replace(/^\/+|\/+$/g, "");
+    const dir = resolve(skinDir, rel);
+    const ok = (dir === skinDir || dir.startsWith(skinDir + sep)) && existsSync(dir) && statSync(dir).isDirectory();
+    const names = ok ? readdirSync(dir).filter((n) => statSync(join(dir, n)).isFile()).sort() : [];
     return send(res, 200, "application/json", JSON.stringify(names));
-  }
-  if (p.startsWith("/__vellum/user-music/")) {
-    const name = decodeURIComponent(p.slice("/__vellum/user-music/".length));
-    const file = userMusicDir && !/[\/]|\.\./.test(name) ? join(userMusicDir, name) : null;
-    return file && existsSync(file) ? sendFile(res, file) : send(res, 404, "text/plain", "not found");
   }
   if (p === "/__vellum/music-processor.js") return sendFile(res, join(ROOT, "sdk", "dist", "music-processor.js"));
   if (p === "/__vellum/fonts/InterVariable.woff2") return sendFile(res, join(ROOT, "sdk", "assets", "fonts", "InterVariable.woff2"));

@@ -111,8 +111,12 @@ function onState(s) {
 
 // ---- title screen ------------------------------------------------------------------------------
 
+/** The music (music/ in this skin, if it has any) waits for the title screen. */
+const startMusic = () => vellum.music.start();
+
 /** Once per session: a wipe, the chrome wordmark with a glint, and a blinking prompt. It waits
- *  for any key, click or controller button, and that press only dismisses it. */
+ *  for any key, click or controller button, and that press only dismisses it. The music starts
+ *  once it has gone (or at once, without a title screen). */
 function boot() {
   const el = document.querySelector(".rl-boot");
   let seen = false;
@@ -122,14 +126,17 @@ function boot() {
   } catch {
     // Storage blocked: show it every time.
   }
-  if (seen || vellum.skin.options.boot === false || !moving()) return;
+  if (seen || vellum.skin.options.boot === false || !moving()) return startMusic();
   el.hidden = false;
   let unNav = () => {};
   const done = () => {
     if (el.classList.contains("out")) return;
     ui("start"); // a key, click or button lets audio play: the title chord
     el.classList.add("out");
-    setTimeout(() => (el.hidden = true), 400);
+    setTimeout(() => {
+      el.hidden = true;
+      startMusic();
+    }, 400);
     removeEventListener("keydown", onKey, true);
     removeEventListener("pointerdown", onPointer, true);
     unNav();

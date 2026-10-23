@@ -168,7 +168,6 @@ export const api = {
   reloadPlugins: () => invoke<void>("reload_plugins"),
   openPluginsFolder: () => invoke<void>("open_plugins_folder"),
   openDataFolder: () => invoke<void>("open_data_folder"),
-  openMusicFolder: () => invoke<void>("open_music_folder"),
   onPluginsChanged: (cb: () => void): Promise<UnlistenFn> => listen("vellum://plugins-changed", cb),
 
   libraryEntries: () => invoke<Entry[]>("library_entries"),

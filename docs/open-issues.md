@@ -2,6 +2,15 @@
 
 Work in progress, so the next session can pick it up.
 
+## Frontier Catalogue arrow-key flake is back (open, 2026-10-23)
+
+The closed issue below recurred: on 2026-10-23 the Catalogue test failed twice in full e2e runs and
+once in four solo runs, then passed the next eight solo runs (roughly 1 in 10). The step that
+failed in the run with detail was the same one: two ArrowRight presses didn't turn the leaf
+(`expect.poll(folios).not.toBe(spread)`). The harness's mock library doesn't rescan, so the fix
+below (no rebuilds for no-op library updates) can't be the whole story: look for another rebuild
+or focus change during the turn, or keys dropped while `busy`. Not investigated yet.
+
 ## Frontier Catalogue: an arrow key sometimes doesn't turn the page (closed, 2026-10-22)
 
 The e2e test "Frontier's Catalogue…" fails intermittently (2 of 5 runs on 2026-10-22) at the
