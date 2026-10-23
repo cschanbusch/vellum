@@ -12,8 +12,7 @@ the track that is playing, and the new track picks up at the same point: the sam
 tracks of the same length (write them as variations of one piece), else the same share of
 the way through.
 
-The instruments come from the SoundFont in this folder (the first .sf2, .sf3 or .dls file).
-FluidR3Mono_GM.sf3 is a General MIDI set (MIT licence, see FluidR3Mono_License.md); replace it
-with any SoundFont you like.
+The instruments come from the SoundFont you put in this folder (the first .sf2, .sf3 or .dls
+file). Without one, nothing plays.
 
 The music waits for the PRESS ANY BUTTON title screen and follows Settings > General > Sound.
