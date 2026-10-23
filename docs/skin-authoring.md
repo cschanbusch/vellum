@@ -495,8 +495,10 @@ layers, and maps views to scenes; the music then follows the view:
 }
 ```
 
-`from` enters a scene at a beat (skipping an intro). `at` is where view changes land: `"bar"`
-(default), `"beat"`, `"end"` (the end of the playing song's loop) or `"now"`.
+`at` is where view changes land: `"bar"` (default), `"beat"`, `"end"` (the end of the playing
+song's loop) or `"now"`. `entry` is where the new scene picks up: `"sync"` (default) continues from
+where the music is, `"start"` plays it from the top. A scene's `from` fixes its entry beat instead
+(to skip an intro, say).
 
 **Or drive it from code:**
 
@@ -523,8 +525,13 @@ vellum.actions.onBeforeLaunch(async () => { await vellum.music.stinger("fanfare"
 How it plays:
 
 - **Scenes change on the music's grid.** The playing song's notes are released at the boundary
-  and the next song starts on that instant, from beat `from`. Write scenes in the same tempo and
-  meter to make changes seamless.
+  and the next song starts on that instant.
+- **Scenes pick up where the music is** (`entry: "sync"`). Songs whose loops are the same length
+  switch on the same beat: write scenes as variations of one piece (same length, tempo, key and
+  meter, different arrangement) and the change sounds like the band changing parts. A song of
+  another length enters the same share of the way through, on a bar line. Either way it is
+  brought up to date first: its instruments and controllers so far, and notes that would already
+  be sounding (a held chord) start on the change. From silence, a song starts at the top.
 - **Songs loop.** A file's loop points (CC 111, or `loopStart`/`loopEnd` markers) are used;
   otherwise the whole song loops, rounded up to the bar line.
 - **Layers carry across scenes.** Keep each instrument on the same channel in every scene and a

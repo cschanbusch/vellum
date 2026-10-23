@@ -12,7 +12,7 @@ import type { AudioPrefs } from "./protocol";
 
 type Listener = (data: { scene?: string; beat?: number; bar?: number; time: number }) => void;
 
-/** A scene: a MIDI file, and optionally where to enter it (in beats). */
+/** A scene: a MIDI file, and optionally a fixed beat to enter it at (instead of `entry`). */
 export interface MusicScene {
   midi: string;
   from?: number;
@@ -33,6 +33,12 @@ export interface MusicConfig {
   at?: At;
   /** The scene to start with when no view mapping applies. */
   start?: string;
+  /**
+   * Where a new scene enters: "sync" (default) picks up where the playing music is (the same
+   * beat for songs of the same length, else the same share of the way through, on a bar line);
+   * "start" plays it from the beginning.
+   */
+  entry?: "sync" | "start";
 }
 
 interface Hooks {
@@ -195,7 +201,7 @@ export function createMusic(hooks: Hooks) {
       const s = resolve(scene);
       const [e, sng] = await Promise.all([engine(), song(s.midi), bank()]);
       if (current !== scene) return null; // superseded while loading
-      return e.play(sng, scene, at, s.from ?? 0);
+      return e.play(sng, scene, at, s.from ?? (config?.entry === "start" ? 0 : null));
     },
 
     /** Stops at the next `at` boundary (default "bar"); notes release naturally. */

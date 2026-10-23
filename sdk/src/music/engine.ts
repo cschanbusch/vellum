@@ -7,6 +7,10 @@
 // - A scene change happens on a musical boundary of the playing song (the next beat, the next
 //   bar, or the end of its loop): the old song's notes are released there and the new song
 //   starts on the same instant. No crossfade, no gap.
+// - By default the new song picks up where the old one was: the same beat when their loops are
+//   the same length (variations of one piece switch seamlessly), else the same share of the way
+//   through, on a bar line. It is brought up to date first: its programs and controllers so far,
+//   and the notes that would already be sounding (a held pad) start on the change.
 // - Songs loop seamlessly (a file's loop points, or the whole song rounded up to the bar).
 // - Layers are channels faded with the synth's per-channel gain; they carry across scenes, so
 //   scenes that keep each instrument on the same channel share them.
@@ -134,7 +138,8 @@ export class Engine {
   private synth!: WorkletSynthesizer;
   private out: GainNode;
   private main: Playing | null = null;
-  private pending: { song: Song; time: number; from: number; scene: string } | null = null;
+  /** The next scene; `from` null means "where the playing song is" (see entryFor). */
+  private pending: { song: Song; time: number; from: number | null; scene: string } | null = null;
   private stopAt: number | null = null;
   private stingers: Playing[] = [];
   private scheduledUntil = 0;
@@ -198,8 +203,11 @@ export class Engine {
 
   // ---- control ------------------------------------------------------------------------------
 
-  /** Starts `song` as the scene at the next `at` boundary (or now, if nothing plays). */
-  play(song: Song, scene: string, at: At | number = "bar", from = 0): number {
+  /**
+   * Starts `song` as the scene at the next `at` boundary (or now, if nothing plays), from beat
+   * `from`, or where the playing song is when `from` is null.
+   */
+  play(song: Song, scene: string, at: At | number = "bar", from: number | null = null): number {
     const time = this.main ? this.boundary(at) : this.ctx.currentTime + 0.05;
     this.pending = { song, time, from, scene };
     this.stopAt = null;
@@ -342,18 +350,61 @@ export class Engine {
       this.stopAt = null;
     }
     if (this.pending && this.pending.time <= horizon) {
-      const { song, time, from, scene } = this.pending;
+      const { song, time, scene } = this.pending;
       if (this.main) this.advance(this.main, time, false);
+      const from = this.pending.from ?? this.entryFor(song, time);
       this.handOff(this.main, time);
       this.pending = null;
       this.scene = scene;
       this.main = { song, anchorTime: time, anchorBeat: from, idx: song.events.findIndex((e) => e.beat >= from), offset: 0, active: new Set(), once: false, nextBeat: Math.ceil(from) };
       if (this.main.idx < 0) this.main.idx = song.events.length;
-      this.emitAt("scene", time, { scene });
+      this.chase(this.main, from, time);
+      this.emitAt("scene", time, { scene, beat: from });
     }
     if (this.main) this.advance(this.main, this.pending ? Math.min(horizon, this.pending.time) : this.stopAt !== null ? Math.min(horizon, this.stopAt) : horizon, true);
     this.stingers = this.stingers.filter((s) => this.advance(s, horizon, true));
     this.scheduledUntil = Math.max(this.scheduledUntil, horizon);
+  }
+
+  /**
+   * Where `song` should enter when it replaces the playing song at `time`: the same beat if
+   * their loops are the same length, else the same share of the way through the loop, rounded
+   * to a bar line of the new song. From silence, the start.
+   */
+  private entryFor(song: Song, time: number): number {
+    const p = this.main;
+    if (!p) return 0;
+    const old = p.song;
+    let beat = this.beatOf(p, time);
+    if (beat >= old.loopEnd - 1e-6) beat = old.loopStart; // on the loop point
+    if (beat < old.loopStart) return beat < song.loopEnd ? beat : song.loopStart; // in an intro
+    const into = beat - old.loopStart;
+    const oldLen = old.loopEnd - old.loopStart;
+    const len = song.loopEnd - song.loopStart;
+    if (Math.abs(oldLen - len) < 1e-6) return song.loopStart + into;
+    const m = meterAt(song.meters, song.loopStart);
+    const bar = (m.num * 4) / m.den;
+    let at = Math.round(((into / oldLen) * len) / bar) * bar;
+    if (at >= len - 1e-6) at = 0;
+    return song.loopStart + at;
+  }
+
+  /**
+   * Brings a song entered at `from` up to date at `time`: every program, controller and pitch
+   * change before `from`, and the notes that would be sounding there.
+   */
+  private chase(p: Playing, from: number, time: number) {
+    if (from <= 0) return;
+    const held = new Map<string, Event>();
+    for (const e of p.song.events) {
+      if (e.beat >= from) break;
+      const k = e.msg[0] & 0xf0;
+      const key = `${e.offset}:${e.msg[0] & 0x0f}:${e.msg[1]}`;
+      if (k === 0x90 && e.msg[2] > 0) held.set(key, e);
+      else if (k === 0x80 || k === 0x90) held.delete(key);
+      else this.synth.sendMessage(e.msg, e.offset + p.offset, { time });
+    }
+    for (const e of held.values()) this.send(e.msg, e.offset + p.offset, time, p);
   }
 
   /**

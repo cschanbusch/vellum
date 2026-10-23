@@ -50,7 +50,8 @@ export class GeneralPage extends LitElement {
         <p class="muted">
           For skins that play music. It pauses while a game is running or Vellum is in the background. Skins without music of their own play
           the music folder: a MIDI file per view, named after it (<code>covers.mid</code>, <code>spotlight.mid</code>…), and a SoundFont
-          (<code>.sf2</code> or <code>.sf3</code>). A view with no file is silent.
+          (<code>.sf2</code> or <code>.sf3</code>). A view with no file is silent. Switching views changes the music on the next bar line, picking up
+          at the same point in the new track; tracks of the same length switch on the same beat.
         </p>
         <button @click=${() => api.openMusicFolder()}>Open music folder</button>
       </section>

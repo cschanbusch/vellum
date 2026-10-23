@@ -141,7 +141,7 @@ test("typing alone doesn't search; Ctrl+F does; no matches explains itself", asy
   await expect.poll(async () => (await state(page)).query).toBe("");
 });
 
-type MusicWin = Window & { __bars: number[]; __scenes: [string, number][] };
+type MusicWin = Window & { __bars: [number, number][]; __scenes: [string, number, number][] };
 
 test("music: a scene per view, changed on the bar line; layers, stingers, pause and a launch hold it", async ({ page }) => {
   const frame = await open(page, 5230);
@@ -154,23 +154,26 @@ test("music: a scene per view, changed on the bar line; layers, stingers, pause 
   await expect.poll(async () => (await pos()).voices, { timeout: 5000 }).toBeGreaterThan(0);
 
   // Switching view changes scene on the next bar line of the title music (120 bpm, 4/4: 2 s
-  // bars), and the garage music's first bar starts on that same instant.
+  // bars), and the garage music, the same length, picks up on the same beat the title had
+  // reached (not from its start).
   await skin.evaluate(() => {
     const w = window as unknown as MusicWin;
     w.__bars = [];
     w.__scenes = [];
-    w.vellum.music.on("bar", (d) => w.__bars.push(d.time));
-    w.vellum.music.on("scene", (d) => w.__scenes.push([d.scene!, d.time]));
+    w.vellum.music.on("bar", (d) => w.__bars.push([d.time, d.bar!]));
+    w.vellum.music.on("scene", (d) => w.__scenes.push([d.scene!, d.time, d.beat!]));
   });
   await expect.poll(() => skin.evaluate(() => (window as unknown as MusicWin).__bars.length), { timeout: 5000 }).toBeGreaterThan(0);
   await show(page, "spotlight");
   await expect.poll(async () => (await pos()).scene, { timeout: 6000 }).toBe("garage");
   const { bars, scenes } = await skin.evaluate(() => ({ bars: (window as unknown as MusicWin).__bars, scenes: (window as unknown as MusicWin).__scenes }));
-  const at = scenes.find(([s]) => s === "garage")![1];
-  const last = bars.filter((t) => t < at - 0.001).at(-1)!;
+  const [, at, entered] = scenes.find(([s]) => s === "garage")!;
+  const [last, lastBar] = bars.filter(([t]) => t < at - 0.001).at(-1)!;
   const bars2 = (at - last) / 2;
   expect(Math.abs(bars2 - Math.round(bars2)), "the change lands a whole number of bars after the last bar line").toBeLessThan(0.002);
-  expect(bars.some((t) => Math.abs(t - at) < 0.002), "the new music's first bar starts on the change").toBe(true);
+  const titleBeat = ((lastBar + Math.round(bars2)) % 4) * 4; // where the 4-bar title loop was at the change
+  expect(entered, "the garage music enters where the title music was").toBe(titleBeat);
+  expect(bars.some(([t]) => Math.abs(t - at) < 0.002), "a bar of the garage music starts on the change").toBe(true);
 
   // Layers, a stinger, the skin's volume and pause/resume all answer without errors.
   await skin.evaluate(async () => {

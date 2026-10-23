@@ -39,7 +39,9 @@ const MUSIC_README: &str = concat!(
     "  any .sf2 / .sf3 / .dls file              the instruments (a General MIDI SoundFont)\r\n",
     "\r\n",
     "A view with no file is silent. Switching views changes the music on the next bar line of\r\n",
-    "the track that is playing. Skins that bring their own music ignore this folder.\r\n",
+    "the track that is playing, and the new track picks up at the same point: the same beat\r\n",
+    "for tracks of the same length (write them as variations of one piece), else the same\r\n",
+    "share of the way through. Skins that bring their own music ignore this folder.\r\n",
     "Music volume: Settings > General > Sound.\r\n",
 );
 
