@@ -1,0 +1,628 @@
+/* FICSIT's HUB view (views/hub.js): the Space Elevator across the top, then the console: the
+   Tier rail on the left and the Milestone panel on the right, ending in two reserved bays. */
+
+.v-view[data-view="hub"] {
+  background:
+    linear-gradient(180deg, rgb(16 17 19 / 0.9), rgb(16 17 19 / 0.7)),
+    url("../textures/grit.svg") 0 0 / 320px;
+}
+
+.fx-hub {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 12px;
+  padding: 14px 16px 12px;
+}
+.fx-hub[hidden] { display: none; }
+
+/* ---- Space Elevator --------------------------------------------------------------------- */
+
+.fx-hub-elev {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px 18px;
+  padding: 10px 18px 10px 22px;
+  background: linear-gradient(180deg, rgb(40 43 48 / 0.95), rgb(28 30 34 / 0.95));
+  border: 1px solid #0b0c0d;
+  border-left: 4px solid var(--fx-orange);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 10px 26px rgb(0 0 0 / 0.45);
+}
+.fx-hub-elev-title {
+  grid-column: 1 / -1;
+  font: 400 0.74rem var(--fx-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fx-orange);
+}
+.fx-hub-elev-bar {
+  height: 14px;
+  background: #0d0e10;
+  border: 1px solid #0b0c0d;
+  box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.8), 0 0 0 1px rgb(255 255 255 / 0.05);
+  overflow: hidden;
+}
+.fx-hub-elev-bar i {
+  display: block;
+  height: 100%;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 10px, rgb(0 0 0 / 0.28) 10px 12px),
+    linear-gradient(180deg, color-mix(in srgb, var(--fx-orange) 70%, white), var(--fx-orange) 50%, var(--fx-orange-deep));
+  transition: width 400ms ease;
+}
+.fx-hub-elev-count {
+  font: 700 1.05rem var(--fx-cond);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fx-paper);
+  white-space: nowrap;
+}
+.fx-hub-elev-note {
+  grid-column: 1 / -1;
+  font-size: 0.8rem;
+  color: var(--v-text-muted);
+}
+
+/* ---- the console ------------------------------------------------------------------------- */
+
+.fx-hub-console {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(200px, 16rem) 1fr;
+  gap: 12px;
+  outline: none;
+}
+.fx-hub-console:focus-visible .fx-hub-schematic { box-shadow: 0 0 0 1px #0b0c0d, 0 0 0 5px #3a3e44, 0 0 0 7px var(--v-focus-ring); }
+
+/* Tier rail. */
+.fx-hub-rail {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 8px;
+  background: rgb(22 24 27 / 0.92);
+  border: 1px solid #0b0c0d;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
+}
+.fx-hub-rail-title {
+  padding: 2px 8px 8px;
+  font: 400 0.72rem var(--fx-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fx-orange);
+  border-bottom: 1px solid var(--fx-line);
+  margin-bottom: 4px;
+}
+.fx-hub-tier {
+  display: grid;
+  grid-template-columns: 3.6rem 1fr auto;
+  align-items: baseline;
+  gap: 6px;
+  padding: 7px 10px 7px 12px;
+  border: 0;
+  border-left: 4px solid transparent;
+  background: transparent;
+  color: var(--v-text);
+  text-align: left;
+  cursor: pointer;
+}
+.fx-hub-tier:hover:not(:disabled) { background: rgb(255 255 255 / 0.05); }
+.fx-hub-tier:disabled { cursor: default; opacity: 0.35; }
+.fx-hub-tier[aria-current] {
+  border-left-color: var(--fx-orange);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--fx-orange) 22%, transparent), transparent);
+}
+.fx-hub-tier-n { font: 400 0.76rem var(--fx-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--v-text-muted); }
+.fx-hub-tier[aria-current] .fx-hub-tier-n { color: var(--fx-orange); }
+.fx-hub-tier-name { font: 700 1.02rem var(--fx-cond); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fx-hub-tier-count { font: 400 0.8rem var(--fx-mono); color: var(--v-text-muted); }
+
+/* Milestone panel. */
+.fx-hub-panel {
+  min-height: 0;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto minmax(110px, 1fr) auto auto auto;
+  gap: 10px;
+}
+.fx-hub-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 0 2px;
+}
+.fx-hub-head-tier { font: 800 1.35rem var(--fx-cond); letter-spacing: 0.08em; text-transform: uppercase; color: var(--fx-paper); }
+.fx-hub-head-tier::after { content: "  ▸ Milestone"; color: var(--fx-orange); }
+.fx-hub-head-note { font: 400 0.76rem var(--fx-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--v-text-muted); }
+
+/* The schematic: hero art under a blueprint grid, with the logo. */
+.fx-hub-schematic {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  padding: 18px 24px;
+  border-radius: 2px;
+  background: #101215;
+  box-shadow: 0 0 0 1px #0b0c0d, 0 0 0 5px #3a3e44, 0 0 0 6px #0b0c0d, 0 14px 30px rgb(0 0 0 / 0.55);
+}
+.fx-hub-schematic::before {
+  content: "";
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  background: var(--fx-rivets);
+  pointer-events: none;
+}
+.fx-hub-schematic-art {
+  position: absolute;
+  inset: 0;
+  background: center / cover no-repeat;
+  filter: saturate(0.75) contrast(1.05);
+}
+.fx-hub-schematic-art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, rgb(12 13 15 / 0.75), rgb(12 13 15 / 0.15) 60%);
+}
+.fx-hub-schematic-grid {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(rgb(120 190 255 / 0.07) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(90deg, rgb(120 190 255 / 0.07) 1px, transparent 1px) 0 0 / 24px 24px;
+  pointer-events: none;
+}
+.fx-hub-schematic vellum-logo {
+  position: relative;
+  z-index: 2;
+  align-self: end;
+  justify-self: start;
+  --v-logo-max-height: clamp(3rem, 14vh, 7rem);
+  max-width: 60%;
+  filter: drop-shadow(0 3px 6px rgb(0 0 0 / 0.8));
+}
+.fx-hub-schematic vellum-logo::part(title) {
+  font: 800 clamp(1.8rem, 4vw, 3.4rem) var(--fx-cond);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--fx-paper);
+  text-shadow: 0 3px 0 rgb(0 0 0 / 0.6);
+}
+.fx-hub-schematic-label {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  right: 18px;
+  padding: 2px 8px;
+  font: 400 0.68rem var(--fx-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fx-ink);
+  background: var(--fx-orange);
+}
+
+/* Cost and unlocks plates. */
+.fx-hub-plates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.fx-hub-plate {
+  position: relative;
+  min-width: 0;
+  background: linear-gradient(180deg, rgb(40 43 48 / 0.95), rgb(28 30 34 / 0.95));
+  border: 1px solid #0b0c0d;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06);
+}
+.fx-hub-plate-title {
+  margin: 0;
+  padding: 4px 12px;
+  font: 400 0.72rem var(--fx-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fx-ink);
+  background: var(--fx-orange);
+}
+.fx-hub-plate-body { padding: 8px 12px 10px; }
+.fx-hub-plate.is-unlocks .fx-hub-plate-body { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 6px; }
+.fx-hub-cost {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  border-bottom: 1px dashed var(--fx-line);
+  font-size: 0.86rem;
+}
+.fx-hub-cost:last-child { border-bottom: 0; }
+.fx-hub-cost-k { color: var(--v-text-muted); white-space: nowrap; }
+.fx-hub-cost-k::before { content: "◈ "; color: var(--fx-orange); }
+.fx-hub-cost-v { font: 400 0.86rem var(--fx-mono); color: var(--fx-paper); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fx-hub-unlock {
+  padding: 3px 8px;
+  font: 700 0.86rem var(--fx-cond);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgb(0 0 0 / 0.35);
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-left: 3px solid var(--fx-orange);
+}
+.fx-hub-unlock.is-none { border-left-color: var(--v-text-muted); color: var(--v-text-muted); }
+
+/* Pager. */
+.fx-hub-pager {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.fx-hub-page {
+  padding: 4px 12px;
+  font: 700 0.9rem var(--fx-cond);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fx-paper);
+  background: rgb(0 0 0 / 0.35);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 2px;
+  cursor: pointer;
+}
+.fx-hub-page:hover:not(:disabled) { border-color: var(--fx-orange); }
+.fx-hub-page:disabled { opacity: 0.35; cursor: default; }
+.fx-hub-page-at { font: 400 0.86rem var(--fx-mono); color: var(--fx-orange); }
+
+/* Reserved bays: hazard-edged empty frames, for hold-to-submit and the AWESOME Sink. */
+.fx-hub-bays {
+  display: grid;
+  grid-template-columns: 1fr minmax(160px, 14rem);
+  gap: 12px;
+}
+.fx-hub-bay {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 3.4rem;
+  padding: 0 16px;
+  border: 2px dashed color-mix(in srgb, var(--fx-orange) 45%, transparent);
+  background: repeating-linear-gradient(-45deg, rgb(243 154 61 / 0.05) 0 10px, transparent 10px 20px), rgb(12 13 15 / 0.6);
+}
+:root:not([data-opt-hazard]) .fx-hub-bay { background: rgb(12 13 15 / 0.6); }
+.fx-hub-bay.is-sink { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; }
+.fx-hub-bay-title { font: 800 1.05rem var(--fx-cond); letter-spacing: 0.16em; text-transform: uppercase; color: color-mix(in srgb, var(--fx-paper) 55%, transparent); }
+.fx-hub-bay-note { font: 400 0.7rem var(--fx-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--v-text-muted); }
+
+/* ---- submitting --------------------------------------------------------------------------- */
+
+/* The Submit bay is the launch button: an orange plate that fills while held. */
+.fx-hub-bay.is-submit {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  user-select: none;
+  touch-action: none;
+  border-style: solid;
+  border-color: #0b0c0d;
+  background: linear-gradient(180deg, rgb(50 53 58 / 0.95), rgb(32 34 38 / 0.95));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 0 0 1px color-mix(in srgb, var(--fx-orange) 40%, transparent);
+}
+.fx-hub-bay.is-submit:hover { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 0 0 1px var(--fx-orange); }
+.fx-hub-bay.is-submit > span { position: relative; z-index: 1; }
+.fx-hub-bay.is-submit .fx-hub-bay-title { color: var(--fx-paper); }
+.fx-hub-submit-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  background:
+    repeating-linear-gradient(-45deg, rgb(0 0 0 / 0.14) 0 10px, transparent 10px 20px),
+    linear-gradient(180deg, color-mix(in srgb, var(--fx-orange) 75%, white), var(--fx-orange) 45%, var(--fx-orange-deep));
+}
+.fx-hub-bay.is-submit.is-holding .fx-hub-bay-title,
+.fx-hub-bay.is-submit.is-holding .fx-hub-bay-note { color: var(--fx-ink); text-shadow: 0 1px 0 rgb(255 255 255 / 0.25); }
+.fx-hub-bay.is-submit.is-hint { animation: fx-hub-hint 900ms ease-out; }
+.fx-hub-bay.is-submit.is-hint .fx-hub-bay-note::before { content: "Hold to submit // "; color: var(--fx-orange); }
+@keyframes fx-hub-hint {
+  0%, 30%, 60% { box-shadow: 0 0 0 2px var(--fx-orange), 0 0 18px color-mix(in srgb, var(--fx-orange) 60%, transparent); }
+  15%, 45%, 100% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--fx-orange) 40%, transparent); }
+}
+
+/* Cost lines, delivered one by one. */
+.fx-hub-cost { transition: background 120ms; }
+.fx-hub-cost.is-delivered { background: linear-gradient(90deg, color-mix(in srgb, var(--fx-orange) 20%, transparent), transparent 70%); }
+.fx-hub-cost.is-delivered .fx-hub-cost-k::before { content: "✓ "; color: #8fdc6a; }
+
+/* The stamp. */
+.fx-hub-stamp {
+  position: absolute;
+  z-index: 4;
+  right: 8%;
+  top: 22%;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 10px 22px 8px;
+  border: 4px double #e2452f;
+  border-radius: 6px;
+  color: #e2452f;
+  background: rgb(20 8 6 / 0.35);
+  transform: rotate(-9deg);
+  mix-blend-mode: screen;
+  animation: fx-hub-stamp 260ms cubic-bezier(0.3, 1.6, 0.6, 1) both;
+  pointer-events: none;
+}
+.fx-hub-stamp b { font: 800 clamp(1.6rem, 3.4vw, 2.8rem) var(--fx-cond); letter-spacing: 0.12em; text-transform: uppercase; line-height: 1; }
+.fx-hub-stamp span { font: 400 0.72rem var(--fx-mono); letter-spacing: 0.16em; text-transform: uppercase; }
+@keyframes fx-hub-stamp {
+  from { opacity: 0; transform: rotate(-9deg) scale(2.2); }
+  to { opacity: 0.92; transform: rotate(-9deg) scale(1); }
+}
+
+.fx-hub-console { position: relative; }
+.fx-hub-rail { grid-column: 1; grid-row: 1; }
+.fx-hub-panel { grid-column: 2; grid-row: 1; }
+.fx-hub-console.is-shaking .fx-hub-panel { animation: fx-hub-shake 380ms ease-out; }
+@keyframes fx-hub-shake {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-5px, 3px); }
+  40% { transform: translate(4px, -2px); }
+  60% { transform: translate(-2px, 1px); }
+  80% { transform: translate(1px, 0); }
+  100% { transform: translate(0, 0); }
+}
+
+/* Blast doors over the Milestone panel. */
+.fx-hub-doors {
+  grid-column: 2;
+  grid-row: 1;
+  position: relative;
+  z-index: 5;
+  overflow: hidden;
+  pointer-events: auto;
+}
+.fx-hub-doors[hidden] { display: none; }
+.fx-hub-door {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  background:
+    linear-gradient(90deg, rgb(255 255 255 / 0.05), transparent 30%, rgb(0 0 0 / 0.25)),
+    url("../textures/plate.svg") 0 0 / 220px,
+    #2f3237;
+  border: 1px solid #0b0c0d;
+  box-shadow: inset 0 0 0 6px #25282c, inset 0 0 0 7px #0b0c0d;
+  transition: transform 520ms cubic-bezier(0.55, 0, 0.9, 0.6);
+}
+.fx-hub-door::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 46%;
+  height: 22px;
+  background: var(--fx-hazard);
+  opacity: 0.9;
+}
+:root:not([data-opt-hazard]) .fx-hub-door::after { background: var(--fx-orange); opacity: 0.6; }
+.fx-hub-door.is-left { left: 0; transform: translateX(-101%); }
+.fx-hub-door.is-right { right: 0; transform: translateX(101%); }
+.fx-hub-doors.is-closed .fx-hub-door { transform: translateX(0); }
+.fx-hub-doors-sign {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: 30%;
+  translate: -50% 0;
+  padding: 6px 16px;
+  font: 400 0.82rem var(--fx-mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--fx-ink);
+  background: var(--fx-orange);
+  opacity: 0;
+  transition: opacity 200ms;
+}
+.fx-hub-doors.is-closed .fx-hub-doors-sign { opacity: 1; transition-delay: 500ms; }
+
+/* ---- the AWESOME Sink (hub-sink.js) ------------------------------------------------------- */
+
+.fx-hub-bay.is-sink {
+  cursor: pointer;
+  user-select: none;
+  border-style: solid;
+  border-color: #0b0c0d;
+  background: linear-gradient(180deg, rgb(92 52 150 / 0.75), rgb(40 30 58 / 0.95));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1), 0 0 0 1px rgb(192 79 216 / 0.4);
+}
+.fx-hub-bay.is-sink:hover { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1), 0 0 0 1px #c04fd8; }
+.fx-hub-bay.is-sink .fx-hub-bay-note { color: #d9c4ef; }
+.fx-hub-bay.is-sink .fx-hub-bay-title { color: var(--fx-paper); }
+
+/* The slip covers the Milestone panel; the doors still close over it. */
+.fx-sink {
+  grid-column: 2;
+  grid-row: 1;
+  position: relative;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(10 11 13 / 0.72);
+  backdrop-filter: blur(3px);
+  opacity: 0;
+  transition: opacity 180ms;
+}
+.fx-sink[hidden] { display: none; }
+.fx-sink.is-open { opacity: 1; }
+.fx-sink-machine {
+  position: relative;
+  width: min(100%, 560px);
+  max-height: 100%;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "head head"
+    "vortex gauge"
+    "slot slot"
+    "buttons buttons"
+    "hint hint";
+  gap: 12px 18px;
+  padding: 0 18px 14px;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.05), transparent 40%),
+    url("../textures/plate.svg") 0 0 / 220px,
+    #2b2e33;
+  border: 1px solid #0b0c0d;
+  box-shadow: inset 0 0 0 5px #24272b, inset 0 0 0 6px #0b0c0d, 0 20px 50px rgb(0 0 0 / 0.65);
+  transform: translateY(14px);
+  transition: transform 220ms cubic-bezier(0.2, 1.2, 0.4, 1);
+}
+.fx-sink.is-open .fx-sink-machine { transform: none; }
+.fx-sink-machine::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--fx-rivets);
+  pointer-events: none;
+}
+.fx-sink-head {
+  grid-area: head;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 -18px;
+  padding: 6px 12px 6px 18px;
+  background: linear-gradient(90deg, #6f3fc4, #c04fd8 60%, #f39a3d);
+}
+.fx-sink-title { font: 800 1.35rem var(--fx-cond); letter-spacing: 0.14em; text-transform: uppercase; color: #fff; text-shadow: 0 2px 0 rgb(0 0 0 / 0.35); }
+.fx-sink-close { border: 0; background: transparent; color: #fff; font-size: 1rem; cursor: pointer; opacity: 0.8; }
+.fx-sink-close:hover { opacity: 1; }
+
+/* The vortex: two counter-rotating swirls over a dark well. */
+.fx-sink-vortex {
+  grid-area: vortex;
+  position: relative;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #000 0 22%, #1a0f2b 45%, #2f1d4f 70%, #3b3f45 71% 78%, #0b0c0d 79%);
+  box-shadow: inset 0 4px 12px rgb(0 0 0 / 0.8), 0 0 0 3px #0b0c0d;
+  overflow: hidden;
+}
+.fx-sink-vortex i {
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0 15%, rgb(192 79 216 / 0.55) 25%, transparent 35% 65%, rgb(243 154 61 / 0.45) 75%, transparent 85%);
+  -webkit-mask: radial-gradient(circle, transparent 0 18%, #000 30% 70%, transparent 72%);
+  mask: radial-gradient(circle, transparent 0 18%, #000 30% 70%, transparent 72%);
+  animation: fx-sink-spin 4s linear infinite;
+}
+.fx-sink-vortex i + i { inset: 18px; animation-duration: 2.6s; animation-direction: reverse; opacity: 0.7; }
+.fx-sink-vortex b {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 18px rgb(192 79 216 / 0.35);
+}
+.fx-sink.is-processing .fx-sink-vortex i { animation-duration: 0.5s; }
+.fx-sink.is-processing .fx-sink-vortex i + i { animation-duration: 0.35s; }
+.fx-sink.is-processing .fx-sink-vortex b { box-shadow: inset 0 0 26px rgb(243 154 61 / 0.7); }
+:root[data-fx-still] .fx-sink-vortex i { animation: none; }
+@keyframes fx-sink-spin { to { transform: rotate(360deg); } }
+
+/* The points counter: white digits on black wheels. */
+.fx-sink-gauge { grid-area: gauge; align-self: center; display: grid; gap: 4px; min-width: 0; }
+.fx-sink-gauge-k { font: 400 0.7rem var(--fx-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--fx-orange); }
+.fx-sink-counter {
+  justify-self: start;
+  padding: 2px 8px;
+  font: 400 1.7rem var(--fx-mono);
+  letter-spacing: 0.22em;
+  color: #f4f1ea;
+  background: repeating-linear-gradient(90deg, #0e0f11 0 0.95em, #1d1f23 0.95em 1em), #0e0f11;
+  border: 2px solid #0b0c0d;
+  box-shadow: inset 0 6px 8px rgb(0 0 0 / 0.7), inset 0 -6px 8px rgb(0 0 0 / 0.7);
+}
+.fx-sink-status { font: 400 0.76rem var(--fx-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--v-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* The coupon, printed out of a slot. */
+.fx-sink-slot {
+  grid-area: slot;
+  min-height: 9.5rem;
+  padding-top: 6px;
+  border-top: 6px solid #0b0c0d;
+  box-shadow: inset 0 8px 8px -6px rgb(0 0 0 / 0.9);
+  overflow: hidden;
+}
+.fx-sink-coupon {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  margin: 0 10px;
+  padding: 10px 16px 12px;
+  color: #2a2620;
+  background: linear-gradient(180deg, #f3eedf, #e7dfc9);
+  border: 2px dashed #8a7f68;
+  box-shadow: 0 6px 14px rgb(0 0 0 / 0.5);
+  font: 400 0.8rem var(--fx-mono);
+  letter-spacing: 0.04em;
+  animation: fx-sink-print 700ms steps(7, end) both;
+}
+.fx-sink-coupon.is-gone { animation: fx-sink-gone 260ms ease-in both; }
+.fx-sink-coupon.is-empty { color: #6b5f4b; font-style: italic; }
+.fx-sink-coupon-head { font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: #7a3fb0; }
+.fx-sink-coupon-redeem { text-transform: uppercase; color: #6b5f4b; }
+.fx-sink-coupon-title { font: 800 1.55rem var(--fx-cond); letter-spacing: 0.04em; text-transform: uppercase; color: #1a1712; line-height: 1.1; }
+.fx-sink-coupon-tier { text-transform: uppercase; color: #b25a14; }
+.fx-sink-coupon-why { margin-top: 4px; font: italic 500 0.9rem var(--v-font-body); color: #3b352b; }
+.fx-sink-coupon-note { margin-top: 4px; font-size: 0.7rem; text-transform: uppercase; color: #7a3fb0; }
+@keyframes fx-sink-print {
+  from { clip-path: inset(0 0 100% 0); transform: translateY(-40%); }
+  to { clip-path: inset(0 0 0 0); transform: none; }
+}
+@keyframes fx-sink-gone { to { transform: translateY(-110%); opacity: 0; } }
+
+.fx-sink-buttons { grid-area: buttons; display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+.fx-sink-btn {
+  padding: 8px 18px;
+  font: 800 1.05rem var(--fx-cond);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border: 1px solid #0b0c0d;
+  border-radius: 2px;
+  cursor: pointer;
+  color: var(--fx-paper);
+  background: linear-gradient(180deg, #4a4e55, #33363c);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.15);
+}
+.fx-sink-btn.is-accept { color: var(--fx-ink); background: linear-gradient(180deg, color-mix(in srgb, var(--fx-orange) 75%, white), var(--fx-orange) 45%, var(--fx-orange-deep)); }
+.fx-sink-btn.is-at { outline: 2px solid var(--v-focus-ring); outline-offset: 2px; }
+.fx-sink-btn:disabled { opacity: 0.4; cursor: default; }
+.fx-sink-hint { grid-area: hint; font: 400 0.68rem var(--fx-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--v-text-muted); text-align: center; }
+
+@media (max-height: 760px) {
+  .fx-sink-vortex { width: 70px; height: 70px; }
+  .fx-sink-slot { min-height: 8rem; }
+  .fx-sink-coupon-why { display: none; }
+}
+
+/* Short windows: drop the elevator note and tighten the rail. */
+@media (max-height: 760px) {
+  .fx-hub-elev-note { display: none; }
+  .fx-hub-tier { padding-block: 4px; }
+  .fx-hub-cost { padding: 1px 0; }
+}
+@media (max-width: 1100px) {
+  .fx-hub-console { grid-template-columns: 180px 1fr; }
+  .fx-hub-tier { grid-template-columns: 1fr auto; }
+  .fx-hub-tier-n { display: none; }
+}

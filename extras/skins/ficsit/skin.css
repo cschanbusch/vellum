@@ -1,3 +1,4 @@
+@import url("views/hub.css");
 /* FICSIT Terminal: an industrial library terminal in the style of Satisfactory's FICSIT Inc.
    Fan-made; no game assets. Textures are vector (textures/*.svg), so they stay sharp at 4K.
 
@@ -567,6 +568,9 @@ vellum-play-button::part(button):hover { filter: brightness(1.08); }
 }
 @keyframes fx-pulse { 50% { opacity: 0.5; } }
 .fx-online { color: #9fe69f; }
+/* A game launched from the HUB: the strip reports the dispatch until the player is back. */
+.fx-status.is-dispatch .fx-led { background: var(--fx-orange); box-shadow: 0 0 8px var(--fx-orange); animation-duration: 0.8s; }
+.fx-status.is-dispatch .fx-online { color: var(--fx-orange); }
 .fx-key { color: var(--fx-orange); }
 .fx-field b { font-weight: 400; color: var(--fx-paper); }
 .fx-sel { min-width: 0; overflow: hidden; text-overflow: ellipsis; max-width: 32ch; }

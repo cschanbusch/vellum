@@ -45,6 +45,23 @@ function nextNotice() {
   el.classList.add("run");
 }
 
+// ---- HUB dispatches (views/hub.js) ------------------------------------------------------------
+
+function onDispatch(e) {
+  $(".fx-status").classList.add("is-dispatch");
+  $(".fx-online").textContent = `Dispatching pioneer // ${e.detail.title}`;
+  const el = $(".fx-ticker-text");
+  el.textContent = e.detail.line;
+  el.classList.remove("run");
+  void el.offsetWidth;
+  el.classList.add("run");
+}
+
+function onReturn() {
+  $(".fx-status").classList.remove("is-dispatch");
+  $(".fx-online").textContent = "Terminal online";
+}
+
 // ---- boot sequence -------------------------------------------------------------------------
 
 async function boot() {
@@ -100,4 +117,6 @@ $(".fx-ticker-text").addEventListener("animationend", nextNotice);
 vellum.state.on("change", updateStatus);
 vellum.library.on("change", updateStatus);
 vellum.skin.on("options", applyOptions);
+addEventListener("fx:dispatch", onDispatch);
+addEventListener("fx:return", onReturn);
 void boot();

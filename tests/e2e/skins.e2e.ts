@@ -336,6 +336,109 @@ test("Frontier's Catalogue: the contents turn to a game; arrows turn leaves; tab
 
 // Grand Tour's Garage draws its case in WebGL, so these run in the "gpu" project (see
 // playwright.config.ts).
+test("FICSIT's HUB: games sit in Tiers by lifetime hours; arrows change Tier and Milestone; the rail takes clicks", async ({ page }) => {
+  const frame = await open(page, 5218);
+  await show(page, "hub");
+  await expect(frame.locator(".fx-hub-elev-count")).toContainText("assets operational");
+  await expect(frame.locator(".fx-hub-tier")).toHaveCount(9);
+  const current = frame.locator(".fx-hub-tier[aria-current]");
+  const tierNo = async () => Number(await current.getAttribute("data-tier"));
+  // The Milestone shown is the selected game, in the Tier its playtime puts it in.
+  const check = async () => {
+    const id = (await frame.locator(".fx-hub-schematic").getAttribute("data-id"))!;
+    await expect.poll(async () => (await state(page)).selectedId).toBe(id);
+    const e = await frame.locator("body").evaluate((_, i) => window.vellum.library.get(i)!, id);
+    const h = (e.playtimeMinutes ?? 0) / 60;
+    const want = h <= 0 ? (e.lastPlayed || e.lastLaunched ? 1 : 0) : [1, 5, 15, 30, 50, 75, 100].findIndex((b) => h < b) + 1 || 8;
+    expect(await tierNo()).toBe(want);
+  };
+
+  await frame.locator(".fx-hub-console").focus();
+  await page.keyboard.press("ArrowRight");
+  await check();
+  const before = await frame.locator(".fx-hub-schematic").getAttribute("data-id");
+  await page.keyboard.press("ArrowRight");
+  await expect(frame.locator(".fx-hub-schematic")).not.toHaveAttribute("data-id", before!);
+  await check();
+  const t = await tierNo();
+  await page.keyboard.press(t < 8 ? "ArrowDown" : "ArrowUp");
+  expect(await tierNo()).not.toBe(t);
+  await check();
+  // Clicking a Tier with games shows it, at the Milestone last seen there.
+  const n = await frame.locator(".fx-hub-tier:not(:disabled):not([aria-current])").first().getAttribute("data-tier");
+  const other = frame.locator(`.fx-hub-tier[data-tier="${n}"]`);
+  await other.click();
+  await expect(other).toHaveAttribute("aria-current", "true");
+  await check();
+  await expect(frame.locator(".fx-hub-bay")).toHaveCount(2);
+  await page.screenshot({ path: "test-artifacts/views/ficsit-hub.png" });
+
+  // Submitting. A tap only reminds the player to hold; nothing launches.
+  const launched = () => host(page, (h) => h.entries.find((e) => e.id === h.state.selectedId)?.lastLaunched ?? null);
+  const submit = frame.locator(".fx-hub-bay.is-submit");
+  const doors = frame.locator(".fx-hub-doors");
+  await frame.locator(".fx-hub-console").focus();
+  const tapped = await launched();
+  await page.keyboard.press("Enter");
+  await expect(submit).toHaveClass(/is-hint/);
+  await page.waitForTimeout(300);
+  expect(await launched()).toBe(tapped);
+  await expect(frame.locator(".fx-hub-stamp")).toHaveCount(0);
+
+  // Holding Space delivers the Cost lines, stamps the Milestone, shuts the doors and launches.
+  await page.keyboard.down(" ");
+  await expect(frame.locator(".fx-hub-cost.is-delivered").first()).toBeVisible();
+  await expect(frame.locator(".fx-hub-stamp")).toBeVisible({ timeout: 3000 });
+  await page.keyboard.up(" ");
+  await expect(doors).toHaveClass(/is-closed/);
+  await expect(frame.locator(".fx-status")).toHaveClass(/is-dispatch/);
+  await expect.poll(launched).not.toBe(tapped);
+  await page.screenshot({ path: "test-artifacts/views/ficsit-hub-dispatch.png" });
+  // The game never took the window here, so the doors open again on their own.
+  await expect(doors).toBeHidden({ timeout: 10_000 });
+  await expect(frame.locator(".fx-status")).not.toHaveClass(/is-dispatch/);
+  await expect(frame.locator(".fx-hub-stamp")).toHaveCount(0);
+
+  // The AWESOME Sink: S prints a coupon; Re-sink keeps that game out until Accept; Accept shows it.
+  const coupon = frame.locator(".fx-sink-coupon-title");
+  const pick = async () => {
+    await expect(frame.locator(".fx-sink-btn.is-accept")).toBeEnabled({ timeout: 4000 });
+    return (await coupon.textContent())!;
+  };
+  await frame.locator(".fx-hub-console").focus();
+  await page.keyboard.press("s");
+  await expect(frame.locator(".fx-sink")).toBeVisible();
+  expect((await state(page)).query).toBe(""); // S didn't start a search
+  const seen = [await pick()];
+  for (let i = 0; i < 3; i++) {
+    await page.keyboard.press("s");
+    await expect(frame.locator(".fx-sink-btn.is-accept")).toBeDisabled();
+    seen.push(await pick());
+  }
+  expect(new Set(seen).size, "a sunk game isn't offered again this shuffle").toBe(seen.length);
+  expect(Number((await frame.locator(".fx-sink-counter").textContent())!.replace(/\D/g, ""))).toBeGreaterThan(0);
+  await page.screenshot({ path: "test-artifacts/views/ficsit-hub-sink.png" });
+  // Esc closes the Sink without leaving the HUB; S reopens it, still with the same shuffle.
+  await page.keyboard.press("Escape");
+  await expect(frame.locator(".fx-sink")).toBeHidden();
+  await page.keyboard.press("s");
+  const offered = await pick();
+  expect(seen.slice(0, -1)).not.toContain(offered);
+  await page.keyboard.press("Enter");
+  await expect(frame.locator(".fx-sink")).toBeHidden();
+  await expect(frame.locator(".fx-hub-schematic vellum-logo")).toBeVisible();
+  await expect.poll(async () => (await host(page, (h) => h.entries.find((e) => e.id === h.state.selectedId)?.title))).toBe(offered);
+  await expect(frame.locator(".fx-hub-stamp")).toHaveCount(0); // accepting doesn't launch
+
+  // A double-click submits at once, without a hold.
+  await page.keyboard.press("ArrowRight");
+  const before2 = await launched();
+  await frame.locator(".fx-hub-schematic").dblclick();
+  await expect(frame.locator(".fx-hub-stamp")).toBeVisible();
+  await expect(doors).toHaveClass(/is-closed/);
+  await expect.poll(launched).not.toBe(before2);
+});
+
 test.describe("Grand Tour", () => {
   test("Grand Tour's ignition: a worn game can stall; a service restores it; a start wears it", async ({ page }) => {
     const frame = await open(page, 5226);
