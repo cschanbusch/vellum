@@ -145,6 +145,65 @@ function catNo(e) {
   return i ? `${i.dept + 1}-${i.i + 101}` : "—";
 }
 
+const SVG = "http://www.w3.org/2000/svg";
+
+/** A red pencil ring drawn round the art of the page with focus: a slightly lopsided loop
+ *  whose ends overshoot, different for each game but the same every time. */
+function ring(seed) {
+  const svg = document.createElementNS(SVG, "svg");
+  svg.setAttribute("class", "fr-cat-ring");
+  svg.setAttribute("viewBox", "0 0 100 100");
+  svg.setAttribute("preserveAspectRatio", "none");
+  svg.setAttribute("aria-hidden", "true");
+  const r = (k) => ((hash(`${seed}:${k}`) % 1000) / 1000) * 2 - 1; // -1..1
+  const start = -2.2 + r(0) * 0.4; // upper left
+  const sweep = 2 * Math.PI * (1.1 + r(1) * 0.04);
+  const tilt = r(2) * 0.05;
+  const pts = [];
+  for (let k = 0; k <= 64; k++) {
+    const t = k / 64;
+    const a = start - sweep * t; // anticlockwise, as most hands draw
+    // A quick oval, as anyone circles an item in a catalogue: a little egg-shaped, wobbling,
+    // and happy to cut across the corners of the picture.
+    const wob = 1 + 0.035 * Math.sin(2 * a + r(3) * 3) + 0.02 * Math.sin(5 * a + r(4) * 3);
+    const spread = 1 + 0.06 * t; // the second time round lands a little wide
+    const egg = 1 + 0.06 * r(5) * Math.cos(a);
+    const x = 50 + 49 * wob * spread * Math.cos(a);
+    const y = 50 + 50 * wob * spread * egg * Math.sin(a) + tilt * (x - 50);
+    pts.push([x, y]);
+  }
+  const path = document.createElementNS(SVG, "path");
+  path.setAttribute("pathLength", "1");
+  svg.append(path);
+  svg.vellumRing = pts;
+  fitRing(svg, 100, 100);
+  return svg;
+}
+
+/** Draws a ring at its box's real size, so the pencil line keeps one width however the oval
+ *  is stretched (a non-scaling stroke would break the dashes that draw it). */
+function fitRing(svg, w = svg.clientWidth, h = svg.clientHeight) {
+  if (!w || !h || (svg.dataset.size === `${w}x${h}`)) return;
+  svg.dataset.size = `${w}x${h}`;
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  const d = svg.vellumRing.map(([x, y]) => `${((x * w) / 100).toFixed(1)} ${((y * h) / 100).toFixed(1)}`);
+  svg.firstChild.setAttribute("d", `M${d.join(" L")}`);
+}
+
+/** The game a page stands for: its own, or the one a full-page advertisement promotes. */
+function gameOf(p) {
+  if (p?.kind === "game") return p.entry.id;
+  if (p?.kind !== "ad") return null;
+  if (p.target === undefined) {
+    try {
+      p.target = p.ad.render(adCtx)?.target?.id ?? null;
+    } catch {
+      p.target = null;
+    }
+  }
+  return p.target && byId.has(p.target) ? p.target : null;
+}
+
 function cut(e, cls, kind, width, style) {
   const box = el("div", cls);
   const img = el("img");
@@ -529,13 +588,13 @@ const RENDER = {
     const art = e.artStatus.hero === "placeholder" && e.artStatus.cover !== "placeholder" ? "cover" : "hero";
     const fig = cut(e, `fr-cat-engraving is-${art}`, art, 1280, figureStyle());
     if (figureStyle() === "watercolor") fig.classList.add("is-coloured");
-    fig.append(el("span", "fr-cat-fig", `Fig. ${i}.`));
+    fig.append(el("span", "fr-cat-fig", `Fig. ${i}.`), ring(e.id));
     fig.addEventListener("dblclick", () => api.actions.launch(e.id).catch(() => {}));
     s.append(fig);
 
     const title = el("h2", "fr-cat-plate-title", e.title);
     if (e.title.length > 26) title.classList.add("is-long");
-    s.append(el("span", "fr-cat-tick", "✓"), title);
+    s.append(title);
     const byline = [
       e.metadata.developer ? `Manufactured by ${e.metadata.developer}` : null,
       e.metadata.publisher && e.metadata.publisher !== e.metadata.developer ? `sold by ${e.metadata.publisher}` : null,
@@ -656,8 +715,12 @@ function renderAd(ad, size) {
     if (c.kicker) box.append(el("p", "fr-cat-ad-kicker", c.kicker));
     box.append(el("h3", "fr-cat-ad-head", c.headline));
     if (c.sub) box.append(el("p", "fr-cat-ad-sub", c.sub));
-    if (c.art?.entry) box.append(cut(c.art.entry, "fr-cat-ad-art", c.art.kind ?? "cover", size === "full" ? 480 : 240, plateStyle()));
-    else if (c.ornament) {
+    if (c.art?.entry) {
+      const art = cut(c.art.entry, "fr-cat-ad-art", c.art.kind ?? "cover", size === "full" ? 480 : 240, plateStyle());
+      // A full page promoting a game selects it, so it gets the ring too.
+      if (size === "full" && c.target) art.append(ring(c.target.id));
+      box.append(art);
+    } else if (c.ornament) {
       const img = el("img", "fr-cat-ad-orn");
       img.alt = "";
       img.src = ornament(c.ornament);
@@ -701,6 +764,7 @@ function thickness() {
 }
 
 function markAt() {
+  for (const r of spread.querySelectorAll(".fr-cat-page .fr-cat-ring")) fitRing(r);
   slotL.classList.toggle("is-at", at % 2 === 0);
   slotR.classList.toggle("is-at", at % 2 === 1);
   for (const b of spread.querySelectorAll(".fr-cat-toc-line.is-focus")) b.classList.remove("is-focus");
@@ -708,7 +772,15 @@ function markAt() {
   renderTabsCurrent();
 }
 
-/** Puts focus on page `i` (and, on a game page, selects that game). */
+/** Selects the game page `i` stands for, if any (a game page, or an advertisement for one). */
+function select(i) {
+  const id = gameOf(pages[i]);
+  if (!id) return;
+  lastSel = id;
+  if (id !== api.state.get().selectedId) void api.state.set({ selectedId: id });
+}
+
+/** Puts focus on page `i` (and selects the game it stands for). */
 function setAt(i, { toc: line } = {}) {
   at = Math.max(0, Math.min(i, pages.length - 1));
   const p = pages[at];
@@ -717,10 +789,7 @@ function setAt(i, { toc: line } = {}) {
     else if (toc[tocAt]?.page !== at) tocAt = toc.findIndex((t) => t.page === at);
     if (tocAt < 0) tocAt = 0;
   }
-  if (p?.kind === "game") {
-    lastSel = p.entry.id;
-    if (p.entry.id !== api.state.get().selectedId) void api.state.set({ selectedId: p.entry.id });
-  }
+  select(at);
   try {
     api.skin.storage.set("catalogue.at", { page: at, sel: api.state.get().selectedId });
   } catch {
@@ -744,11 +813,9 @@ function goTo(i, opts = {}) {
     markAt();
     return;
   }
-  void turn(from, to, opts.fast).then(() => {
-    if (!root) return;
-    setAt(i, opts);
-    markAt();
-  });
+  // The selection moves as the leaf lifts; the ring waits for it to land on page `i`.
+  select(i);
+  void turn(from, to, opts.fast, () => setAt(i, opts));
 }
 
 function begin() {
@@ -785,8 +852,9 @@ function castAt(leaf) {
   cast.style.setProperty("--a", a);
 }
 
-/** Turns the book from spread `from` to spread `to`. */
-async function turn(from, to, fast = false) {
+/** Turns the book from spread `from` to spread `to`, then calls `land` to put focus on the
+ *  page wanted (before any input queued during the turn runs). */
+async function turn(from, to, fast = false, land) {
   const dir = to > from ? 1 : -1;
   begin();
   if (still()) {
@@ -794,6 +862,7 @@ async function turn(from, to, fast = false) {
     await delay(150);
     if (!root) return;
     at = to * 2 + (dir > 0 ? 0 : 1);
+    land?.();
     showSpread();
     spread.classList.remove("is-fading");
     end();
@@ -831,6 +900,7 @@ async function turn(from, to, fast = false) {
   (dir > 0 ? slotL : slotR).replaceChildren(sheet(far));
   leaves.forEach((lf) => lf.remove());
   at = far;
+  land?.();
   markAt();
   thickness();
   end();

@@ -356,6 +356,9 @@ test("Frontier's Catalogue: the contents turn to a game; arrows turn leaves; tab
   await settled();
   await expect(frame.locator(".fr-cat-page.is-at .fr-cat-plate-title")).toHaveText(title);
   await expect(frame.locator(".fr-cat-page.is-at .fr-cat-folio")).toHaveText(`— ${folio} —`);
+  // The pencil ring is round that page's art, and only there.
+  await expect(frame.locator(".fr-cat-page.is-at .fr-cat-engraving .fr-cat-ring")).toHaveCount(1);
+  await expect(frame.locator(".fr-cat-page.is-at .fr-cat-ring path")).toHaveCSS("stroke-dashoffset", /^0(px)?$/);
   const selected = (await state(page)).selectedId;
   expect((await host(page, (h) => h.entries)).find((e) => e.id === selected)?.title).toBe(title);
 
@@ -398,6 +401,31 @@ test("Frontier's Catalogue: the contents turn to a game; arrows turn leaves; tab
   await host(page, (h) => h.setState({ query: "zzzzqqq" }));
   await expect(page.frameLocator("iframe").locator(".fr-cat-none")).toBeVisible();
   await host(page, (h) => h.setState({ query: "" }));
+
+  // A full-page advertisement for one of the user's games selects that game, ring and all.
+  await page.evaluate(() => (document.querySelector("vellum-harness") as HarnessEl).backend.setOption("frontier", "adverts", "generous"));
+  const spreadEl = page.frameLocator("iframe").locator(".fr-cat-spread");
+  await spreadEl.focus();
+  // From the first department on, each arrow is one page (on the Contents it changes column).
+  await page.keyboard.press("PageDown");
+  await expect(page.frameLocator("iframe").locator(".fr-cat-page.is-at .fr-cat-sheet")).toHaveClass(/is-divider/);
+  const adRing = page.frameLocator("iframe").locator(".fr-cat-page.is-at .fr-cat-ad.is-full .fr-cat-ring");
+  const atFolio = () => page.frameLocator("iframe").locator(".fr-cat-page.is-at .fr-cat-folio").textContent();
+  for (let k = 0; k < 200 && !(await adRing.count()); k++) {
+    const was = await atFolio();
+    await page.keyboard.press("ArrowRight");
+    await expect.poll(atFolio).not.toBe(was);
+    await expect(page.frameLocator("iframe").locator(".fr-cat-book")).not.toHaveAttribute("data-turning", "", { timeout: 10_000 });
+  }
+  await expect(adRing).toHaveCount(1);
+  const adText = (await page.frameLocator("iframe").locator(".fr-cat-page.is-at .fr-cat-ad.is-full").textContent())!;
+  const entries = await host(page, (h) => h.entries);
+  await expect
+    .poll(async () => {
+      const id = (await state(page)).selectedId;
+      return adText.includes(entries.find((e) => e.id === id)?.title ?? " ");
+    })
+    .toBe(true);
 });
 
 // Grand Tour's Garage draws its case in WebGL, so these run in the "gpu" project (see

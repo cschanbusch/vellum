@@ -380,7 +380,6 @@
   outline: 1px solid var(--cat-ink);
   outline-offset: 3px;
   background: #e9dcbf;
-  overflow: hidden;
 }
 .fr-cat-engraving img,
 .fr-cat-ad-art img {
@@ -420,22 +419,34 @@
   color: var(--cat-ink);
   background: rgb(236 223 195 / 0.85);
 }
-/* The page with focus gets a red pencil tick in its outer margin. */
-.fr-cat-tick {
+/* The page with focus gets a red pencil ring round its art, drawn in one stroke once the page
+   lies still. */
+.fr-cat-ring {
   position: absolute;
-  top: 2.6em;
-  left: 0.45em;
+  top: -1em;
+  left: calc(-8% - 0.5em);
   z-index: 4;
-  font: 400 2.2em/1 var(--fr-fell);
-  color: var(--cat-red);
-  transform: rotate(-8deg);
-  opacity: 0;
-  transition: opacity 200ms ease;
+  width: calc(116% + 1em);
+  height: calc(100% + 2em);
+  overflow: visible;
   pointer-events: none;
+  opacity: 0.5;
 }
-.fr-cat-sheet.is-recto .fr-cat-tick { left: auto; right: 0.45em; }
-.fr-cat-page.is-at .fr-cat-tick { opacity: 0.45; }
-.fr-cat-spread:focus .fr-cat-page.is-at .fr-cat-tick { opacity: 0.95; }
+.fr-cat-ring path {
+  fill: none;
+  stroke: var(--cat-red);
+  stroke-width: 2.4px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+.fr-cat-page.is-at .fr-cat-ring path { stroke-dashoffset: 0; transition: stroke-dashoffset 340ms cubic-bezier(0.3, 0.1, 0.4, 1); }
+.fr-cat-spread:focus .fr-cat-page.is-at .fr-cat-ring { opacity: 0.92; }
+.fr-cat-book[data-turning] .fr-cat-ring { visibility: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  .fr-cat-page.is-at .fr-cat-ring path { transition: none; }
+}
 .fr-cat-plate-title {
   margin: 0.55em 0 0;
   text-align: center;
@@ -630,6 +641,7 @@
   background: #e9dcbf;
 }
 .fr-cat-ad.is-full .fr-cat-ad-art { height: 12em; margin: 0.4em 0; }
+.fr-cat-ad-art { position: relative; }
 .fr-cat-ad-body {
   font: 400 0.95em/1.45 var(--cat-old);
   text-align: justify;
