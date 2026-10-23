@@ -47,7 +47,7 @@ export class GeneralPage extends LitElement {
           />
           <output>${Math.round((host.ui.musicVolume ?? 0.7) * 100)}%</output>
         </label>
-        <p class="muted">For skins that play music. It pauses while a game is running or Vellum is in the background.</p>
+        <p class="muted">For skins that play music. It plays only while Vellum's window is in front, and pauses while you're in a game or another window.</p>
       </section>
       <section>
         <h2>About</h2>

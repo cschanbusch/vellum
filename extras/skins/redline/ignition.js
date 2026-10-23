@@ -13,6 +13,28 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let busy = false;
 
+// The music steps aside for every ignition, test drives included: the engine has the stage.
+// After a test drive (or giving up) it comes straight back; after a real start it waits for the
+// player to leave Vellum for the game and come back (or 15 s, if the game never takes the window).
+const quiet = () => void vellum.music.pause();
+function musicBack(launching) {
+  if (!launching) return void vellum.music.resume();
+  let away = false;
+  const off = vellum.window.on("change", (w) => {
+    if (w.focused === false) away = true;
+    else if (away && w.focused) {
+      off();
+      clearTimeout(timer);
+      void vellum.music.resume();
+    }
+  });
+  const timer = setTimeout(() => {
+    if (away) return;
+    off();
+    void vellum.music.resume();
+  }, 15000);
+}
+
 /** Animates the needle: twitching with each compression stroke while cranking. */
 function twitch(tach, strokes, dur, base) {
   const t0 = performance.now();
@@ -164,10 +186,12 @@ function ignite(entry, { test = false, wear: wearing = !test } = {}) {
 export async function testIgnition(entry, { wear = false } = {}) {
   if (busy || !entry) return;
   busy = true;
+  quiet();
   try {
     await ignite(entry, { test: true, wear });
   } finally {
     busy = false;
+    musicBack(false);
   }
 }
 
@@ -178,10 +202,13 @@ export function installIgnition() {
     const entry = vellum.library.get(id);
     if (!entry) return true;
     busy = true;
+    quiet();
+    let started = false;
     try {
-      return await ignite(entry);
+      return (started = await ignite(entry));
     } finally {
       busy = false;
+      musicBack(started);
     }
   });
 }

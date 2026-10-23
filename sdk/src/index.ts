@@ -29,7 +29,6 @@ let lastView = "";
 const music = createMusic({
   audio: core._internal.audio,
   onAudio: core._internal.onAudio,
-  onLaunched: core._internal.onLaunched,
   focused: () => core._internal.windowInfo().focused ?? true,
   onFocus: (cb) =>
     core.window.on("change", (w) => {

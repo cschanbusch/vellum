@@ -41,5 +41,6 @@ export function tauriBackend(skinOrigin: string): Backend {
     onSkinChanged: (cb) => void api.onSkinChanged(cb),
     onSkinFileChanged: (cb) => void api.onSkinFileChanged(cb),
     onWindowChanged: (cb) => void getCurrentWindow().onResized(() => cb()),
+    onFocusChanged: (cb) => void getCurrentWindow().onFocusChanged(({ payload }) => cb(payload)),
   };
 }

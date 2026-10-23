@@ -4,7 +4,7 @@
 //
 // Skins describe scenes and layers, in plugin.json (`skin.music`) or with `configure()`, and
 // move between scenes: the change lands on the next bar (or beat, or loop end) of the playing
-// song, with no crossfade. Music pauses when a game launches or Vellum loses focus, and follows
+// song, with no crossfade. Music plays only while Vellum's window has focus, and follows
 // the user's Music volume (Settings → Sound) times the skin's own `volume()`.
 
 import type { At, Engine, Song } from "./music/engine";
@@ -51,7 +51,6 @@ export interface MusicConfig {
 interface Hooks {
   audio: () => AudioPrefs;
   onAudio: (cb: (a: AudioPrefs) => void) => () => void;
-  onLaunched: (cb: (id: string) => void) => () => void;
   focused: () => boolean;
   onFocus: (cb: (focused: boolean) => void) => () => void;
   view: () => string;
@@ -161,17 +160,9 @@ export function createMusic(hooks: Hooks) {
       level(e, 0.6);
     }
   };
-  // A launch holds the music until Vellum is back in front. If the game never takes the window
-  // (it failed, or is still loading in the background), the music comes back after a while.
-  let launchTimer = 0;
-  unhook.push(
-    hooks.onLaunched(() => {
-      void hold(true);
-      clearTimeout(launchTimer);
-      launchTimer = window.setTimeout(() => hooks.focused() && document.visibilityState === "visible" && void hold(false), 15000);
-    }),
-  );
-  unhook.push(hooks.onFocus((f) => void hold(!f)));
+  // Music plays only while Vellum's window has focus: a game in front (or any other window)
+  // holds it, and it comes back when the player returns to Vellum, game running or not.
+  unhook.push(hooks.onFocus((f) => void hold(!f || document.visibilityState === "hidden")));
   document.addEventListener("visibilitychange", () => void hold(document.visibilityState === "hidden" || !hooks.focused()));
   unhook.push(hooks.onAudio(() => void engineP?.then((e) => level(e))));
 

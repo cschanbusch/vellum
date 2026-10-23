@@ -85,8 +85,6 @@ const optionsChanged = new Emitter<Record<string, unknown>>();
 const shelvesChanged = new Emitter<ShelfPrefs>();
 const windowChanged = new Emitter<WindowInfo>();
 const audioChanged = new Emitter<AudioPrefs>();
-/** A launch this skin started went through (for music to step aside). */
-const launched = new Emitter<string>();
 
 let resolveReady!: () => void;
 const readyPromise = new Promise<void>((r) => (resolveReady = r));
@@ -361,8 +359,7 @@ export const vellum = {
      *  first; if one calls it off, this resolves without launching. */
     launch: async (id: string, provider?: string): Promise<void> => {
       if (!(await allowLaunch(beforeLaunch, id, provider))) return;
-      await call<void>("actions.launch", { id, provider });
-      launched.emit(id);
+      return call<void>("actions.launch", { id, provider });
     },
     /** Runs `hook` before every launch this skin starts; return false to call it off. */
     onBeforeLaunch: (hook: BeforeLaunch): (() => void) => {
@@ -506,7 +503,6 @@ export const vellum = {
     shellCommand: (command: ShellCommand) => call<void>("shell.command", { command }),
     audio: () => audio,
     onAudio: (cb: Listener<AudioPrefs>) => audioChanged.on(cb),
-    onLaunched: (cb: Listener<string>) => launched.on(cb),
     windowInfo: () => windowInfo,
   },
 };

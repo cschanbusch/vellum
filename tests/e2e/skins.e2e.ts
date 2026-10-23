@@ -166,6 +166,8 @@ test("music: a scene per view, changed on the bar line; layers, stingers, pause 
   await expect.poll(() => skin.evaluate(() => (window as unknown as MusicWin).__bars.length), { timeout: 5000 }).toBeGreaterThan(0);
   await show(page, "spotlight");
   await expect.poll(async () => (await pos()).scene, { timeout: 6000 }).toBe("garage");
+  // The scene is set when the change is scheduled; its event fires as the change is heard.
+  await expect.poll(() => skin.evaluate(() => (window as unknown as MusicWin).__scenes.some(([s]) => s === "garage"))).toBe(true);
   const { bars, scenes } = await skin.evaluate(() => ({ bars: (window as unknown as MusicWin).__bars, scenes: (window as unknown as MusicWin).__scenes }));
   const [, at, entered] = scenes.find(([s]) => s === "garage")!;
   const [last, lastBar] = bars.filter(([t]) => t < at - 0.001).at(-1)!;
@@ -187,9 +189,18 @@ test("music: a scene per view, changed on the bar line; layers, stingers, pause 
   await skin.evaluate(() => window.vellum.music.resume());
   await expect.poll(async () => (await pos()).state).toBe("running");
 
-  // A launch holds the music.
-  await skin.evaluate(() => window.vellum.actions.launch(window.vellum.library.query()[0].id));
+  // Music plays only while Vellum has focus: the shell reporting the window unfocused (a game in
+  // front) holds it, and it comes back with focus.
+  const focus = (focused: boolean) =>
+    page.evaluate((focused) => {
+      const h = document.querySelector("vellum-harness");
+      const iframe = (h?.shadowRoot ?? document).querySelector("iframe") as HTMLIFrameElement;
+      iframe.contentWindow!.postMessage({ v: 1, type: "event", name: "window", data: { maximized: false, frameless: false, focused } }, "*");
+    }, focused);
+  await focus(false);
   await expect.poll(async () => (await pos()).state, { timeout: 5000 }).toBe("suspended");
+  await focus(true);
+  await expect.poll(async () => (await pos()).state, { timeout: 5000 }).toBe("running");
 });
 
 test("Covers groups into shelves that collapse", async ({ page }) => {
@@ -612,12 +623,23 @@ test.describe("Grand Tour", () => {
       Math.random = () => 0.99; // it catches
     }, id);
     const before = await cond();
+    // Every ignition pauses the music; a test drive brings it back when it closes.
+    await skin.evaluate(() => {
+      const w = window as unknown as Window & { __music: string[] };
+      w.__music = [];
+      const m = w.vellum.music;
+      const pause = m.pause.bind(m);
+      const resume = m.resume.bind(m);
+      m.pause = () => (w.__music.push("pause"), pause());
+      m.resume = () => (w.__music.push("resume"), resume());
+    });
     await page.keyboard.press("t");
     await expect(frame.locator(".rl-ign-label")).toHaveText("Test ignition");
     await expect(frame.locator(".rl-ign-status")).toHaveText("Started · test only", { timeout: 8000 });
     await expect(frame.locator(".rl-ign")).toBeHidden({ timeout: 5000 });
     expect(await launched()).toBeNull();
     expect(await cond()).toBe(before);
+    expect(await skin.evaluate(() => (window as unknown as Window & { __music: string[] }).__music)).toEqual(["pause", "resume"]);
     expect((await state(page)).query).toBe(""); // T didn't start a search
 
     // Shift+T: the same test, but the start wears the car.

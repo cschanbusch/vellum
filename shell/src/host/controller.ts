@@ -366,17 +366,22 @@ export class SkinHostController {
   }
 
   /**
-   * Tracks whether Vellum's window has focus (a game in front takes it), so skins' music can
-   * step aside. document.hasFocus() is true while focus is anywhere inside, the skin frame too.
+   * Tracks whether Vellum's window has focus (a game in front takes it), so skins' music plays
+   * only while Vellum is in front. In the app this is the OS window's focus: focus coming back
+   * into the skin's frame never reaches this page as a "focus" event. The harness watches the
+   * page instead (document.hasFocus() is true while focus is anywhere inside, the frame too).
    */
   private watchFocus() {
-    const update = () =>
-      window.setTimeout(() => {
-        const f = document.hasFocus();
-        if (f === this.focused) return;
-        this.focused = f;
-        this.push({ name: "window", data: this.windowInfo() });
-      }, 0);
+    const set = (f: boolean) => {
+      if (f === this.focused) return;
+      this.focused = f;
+      this.push({ name: "window", data: this.windowInfo() });
+    };
+    if (this.backend.onFocusChanged) {
+      this.backend.onFocusChanged(set);
+      return;
+    }
+    const update = () => window.setTimeout(() => set(document.hasFocus()), 0);
     window.addEventListener("focus", update);
     window.addEventListener("blur", update);
   }

@@ -536,9 +536,10 @@ How it plays:
   otherwise the whole song loops, rounded up to the bar line.
 - **Layers carry across scenes.** Keep each instrument on the same channel in every scene and a
   layer you faded out stays out after a change.
-- **Vellum steps in for the player.** Music pauses while a game launches and runs (until Vellum
-  has focus again) and while Vellum is minimised or in the background, then picks up where it
-  was. Its level is the user's Music volume (Settings → General → Sound) times yours.
+- **Vellum steps in for the player.** Music plays only while Vellum's window has focus: it pauses
+  when a game (or any other window) comes to the front or Vellum is minimised, and picks up where
+  it was as soon as the player is back in Vellum, even with the game still running. Its level is
+  the user's Music volume (Settings → General → Sound) times yours.
 - **Autoplay.** Browsers start audio after the first click or key press; music configured before
   that starts on it.
 

@@ -60,4 +60,6 @@ export interface Backend {
   /** Developer mode: a file in the active skin changed (path relative to the skin folder). */
   onSkinFileChanged(cb: (path: string) => void): void;
   onWindowChanged(cb: () => void): void;
+  /** The OS window gained or lost focus. Absent in the harness, which watches the page instead. */
+  onFocusChanged?(cb: (focused: boolean) => void): void;
 }
