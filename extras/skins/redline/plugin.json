@@ -37,12 +37,6 @@
         "cssVar": "--rl-signal"
       },
       {
-        "id": "motion",
-        "label": "Motion (light sweeps, turntable, drift)",
-        "type": "toggle",
-        "default": true
-      },
-      {
         "id": "boot",
         "label": "Title screen on start",
         "type": "toggle",

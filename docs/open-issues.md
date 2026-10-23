@@ -2,6 +2,15 @@
 
 Work in progress, so the next session can pick it up.
 
+## Grand Tour: turning off motion removes menus (open, 2026-10-23; still mode disabled)
+
+Reported by the user: with the skin's Motion option off, Spotlight's information panel and the
+Garage's right-hand panel (the spec card) disappear. Probably something whose entrance animation
+never runs under `data-rl-still` (or reduced motion), leaving it at its hidden start state. Not
+investigated yet. For now still mode is switched off: `moving()` in skin.js always returns true
+and the Motion option is gone from plugin.json, so `data-rl-still` is never set (reduced motion in
+Windows included). To restore: bring back the option and the old `moving()`, then fix the panels.
+
 ## Frontier Catalogue arrow-key flake is back (open, 2026-10-23)
 
 The closed issue below recurred: on 2026-10-23 the Catalogue test failed twice in full e2e runs and

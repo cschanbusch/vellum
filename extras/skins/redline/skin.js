@@ -6,8 +6,10 @@ import { installMenuSounds } from "./menu-sounds.js";
 import { notePlaytime } from "./condition.js";
 import { ui } from "./sound.js";
 
-const reduced = matchMedia("(prefers-reduced-motion: reduce)");
-const moving = () => vellum.skin.options.motion !== false && !reduced.matches;
+// Still mode (the Motion option, and Windows' reduced motion) is switched off for now: with it,
+// Spotlight's information and the Garage's spec card disappeared (docs/open-issues.md). The
+// still-mode styles and code stay, keyed to data-rl-still, which is now never set.
+const moving = () => true;
 
 // ---- help bar ------------------------------------------------------------------------------
 
@@ -187,4 +189,3 @@ if ("requestIdleCallback" in window) requestIdleCallback(warm, { timeout: 4000 }
 else setTimeout(warm, 2000);
 vellum.state.on("change", onState);
 vellum.skin.on("options", applyOptions);
-reduced.addEventListener("change", applyOptions);
