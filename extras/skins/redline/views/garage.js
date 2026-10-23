@@ -4,13 +4,15 @@
 // current grouping).
 //
 // The strip is a focus container: Left/Right choose the model, Up/Down change body type, Enter
-// starts the game and S services it. On the case: click opens it; right click holds its front,
+// starts the game, S services it and T test-drives it (the ignition without launching; Shift+T
+// with the start's wear). On the case: click opens it; right click holds its front,
 // then its back, then lets it turn again. The card's buttons sit outside it, so the focus manager reaches them
 // normally.
 import { caseFor, dropQueued, loadCases, requestWrap, surfaceMaps } from "../case-builder/compose.js";
 import { CaseStage, quickWrap } from "../case-builder/renderer.js";
 import { condition, describe, failChance, grade, lastWear, serviced } from "../condition.js";
 import { modalOpen } from "../modal.js";
+import { testIgnition } from "../ignition.js";
 import { openService } from "../service.js";
 
 let api = null;
@@ -589,7 +591,12 @@ export default {
     banner.append(el("span", "rl-gar-banner-label", "Showroom"), el("span", "rl-gar-banner-maker"), el("span", "rl-gar-banner-count"));
     const backdrop = el("div", "rl-gar-backdrop");
     const lights = el("div", "rl-gar-lights");
-    const tips = el("p", "rl-gar-tips", "Click to open · Right-click: front, back, turn");
+    const tips = el("div", "rl-gar-tips");
+    tips.append(
+      el("p", "rl-gar-tip", "Click to open · Right-click: front, back, turn"),
+      el("p", "rl-gar-tip is-test", "T - Test Ignition"),
+      el("p", "rl-gar-tip is-test", "Shift+T - Test with wear"),
+    );
     floor.append(backdrop, lights, tips);
     // Clicking the case (open it, or right-click for its faces) would leave keyboard focus on the
     // page, and the next arrow would only bring it back to the strip instead of stepping.
@@ -615,13 +622,16 @@ export default {
       const e = current();
       if (e) api.actions.launch(e.id).catch(() => {});
     };
-    // S services the selected model. Handled here so the key doesn't start a search.
+    // S services the selected model and T test-drives it (the ignition, without launching).
+    // Handled here, on the strip, so they only act while it has focus.
     strip.addEventListener("keydown", (ev) => {
-      if ((ev.key === "s" || ev.key === "S") && !ev.ctrlKey && !ev.altKey && !ev.metaKey) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        void serviceCurrent();
-      }
+      if (ev.ctrlKey || ev.altKey || ev.metaKey) return;
+      const k = ev.key.toLowerCase();
+      if (k !== "s" && k !== "t") return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (k === "s") void serviceCurrent();
+      else void testIgnition(current(), { wear: ev.shiftKey });
     });
     dock.append(makersEl, strip);
 

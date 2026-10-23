@@ -5,6 +5,7 @@ import vellum from "/__vellum/sdk.js";
 import { condition, describe, failChance, wear } from "./condition.js";
 import { h, modal, tachometer } from "./modal.js";
 import { openService } from "./service.js";
+import { voiceFor } from "./engine-voice.js";
 import { crank, fire, stall } from "./sound.js";
 
 const still = () => document.documentElement.hasAttribute("data-rl-still");
@@ -57,16 +58,17 @@ function sweep(tach, from, points) {
 
 /**
  * Runs the ignition for `entry`. Resolves true when the engine fired (go ahead and launch),
- * false when the player gave up.
+ * false when the player gave up. A `test` run (the Garage's test drive) is the same start
+ * without launching; it costs no condition unless `wear` is set too.
  */
-function ignite(entry) {
+function ignite(entry, { test = false, wear: wearing = !test } = {}) {
   return new Promise((resolve) => {
     const root = h("div", "rl-ign");
     root.setAttribute("role", "dialog");
     root.setAttribute("aria-label", `Starting ${entry.title}`);
     const panel = h("div", "rl-ign-panel");
     const tach = tachometer("rl-ign-tach");
-    const label = h("p", "rl-ign-label", "Ignition");
+    const label = h("p", "rl-ign-label", test ? (wearing ? "Test ignition · with wear" : "Test ignition") : "Ignition");
     const title = h("p", "rl-ign-title", entry.title);
     const status = h("p", "rl-ign-status", "Cranking");
     const cond = h("p", "rl-ign-cond");
@@ -109,11 +111,12 @@ function ignite(entry) {
       // Worn engines crank longer before they catch (or don't).
       const dur = 0.85 + (1 - c) * 1.1 + Math.random() * 0.25;
       const fails = Math.random() < failChance(c);
-      const strokes = crank(dur, c, fails);
+      const voice = voiceFor(entry);
+      const strokes = crank(dur, c, fails, voice);
       await twitch(tach, strokes, dur, 0.25);
       if (settled) return;
       if (fails) {
-        stall();
+        stall(0, voice);
         await sweep(tach, 0.3, [[0.6, 160], [0, 420]]);
         stalled = true;
         running = false;
@@ -123,12 +126,14 @@ function ignite(entry) {
         again.focus({ preventScroll: true });
         return;
       }
-      fire();
+      fire(c, voice);
       root.classList.add("is-fired");
       status.textContent = "Started";
       if (!still()) panel.classList.add("is-shaking");
-      await sweep(tach, 0.3, [[4.6, 320], [1.1, 650]]);
-      wear(entry.id);
+      // The needle follows this engine: up to its flare, then down to its idle.
+      await sweep(tach, 0.3, [[voice.flare / 1000, 320], [(voice.idle * (1 + (1 - c) * 0.1)) / 1000, 650]]);
+      if (test) status.textContent = "Started · test only";
+      if (wearing) wear(entry.id);
       showCondition();
       await wait(250);
       end(true);
@@ -153,6 +158,17 @@ function ignite(entry) {
     quit.addEventListener("click", () => end(false));
     void attempt();
   });
+}
+
+/** A test drive: the full ignition for `entry` without launching; with `wear`, the start costs condition. */
+export async function testIgnition(entry, { wear = false } = {}) {
+  if (busy || !entry) return;
+  busy = true;
+  try {
+    await ignite(entry, { test: true, wear });
+  } finally {
+    busy = false;
+  }
 }
 
 /** Installs the ignition in front of every launch Grand Tour starts. */
