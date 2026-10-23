@@ -144,6 +144,13 @@ try {
   # Refresh dist\Vellum in place. Other installed versions, the user's own plugins and a
   # portable data folder stay; the root files and this version's folder are replaced. (Emptying
   # rather than deleting, since an Explorer window open in it would make removal fail half-way.)
+  # Stop before deleting anything if this version is running: its exe can't be replaced, and
+  # removing the rest would leave the open app without its plugins.
+  $running = Join-Path $out "versions\$version\Vellum Game Launcher.exe"
+  if (Test-Path $running) {
+    try { [IO.File]::Open($running, 'Open', 'ReadWrite', 'None').Close() }
+    catch { throw "dist\Vellum is running ($running). Close it and run this again." }
+  }
   New-Item -ItemType Directory -Force $out | Out-Null
   # A folder from before version management: its plugins/ held the packaged plugins, not the
   # user's own, so it goes too.
