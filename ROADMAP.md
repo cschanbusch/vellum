@@ -164,6 +164,10 @@ system itself. Concepts on the list:
 - **0.2.1** (released): the skin catalog (Settings → Get skins).
 - **0.2.2** (released): rescans that find nothing new no longer redraw the views; updating the
   skin in use from Get skins loads the new version at once. Development continues on `main`.
+- **0.3.0** (released): adaptive MIDI music for skins (`vellum.music`: scenes per view that change
+  on the beat or bar and pick up where the music is, SoundFonts, a Music volume, music only while
+  Vellum has focus), the new app icon, typing no longer jumping into search, and a start-up
+  recommendation for Grand Tour.
 - **Next:** a changelog.
 - **Continuous integration:** run the Rust, unit and end-to-end tests and build the release zips on
   each push to `main`.
