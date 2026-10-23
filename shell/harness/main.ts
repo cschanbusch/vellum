@@ -91,7 +91,7 @@ class MockBackend implements Backend {
   }
 
   async uiSettings(): Promise<UiSettings> {
-    return load("ui", { startView: "last", last: {}, views: {}, shelves: {}, skinsSeen: [], devMode: true });
+    return load("ui", { startView: "last", last: {}, views: {}, shelves: {}, skinsSeen: [], devMode: true, musicVolume: 0.7 });
   }
 
   async updateUi(patch: Partial<UiSettings>) {

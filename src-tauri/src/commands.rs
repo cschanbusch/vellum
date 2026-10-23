@@ -197,6 +197,13 @@ pub fn open_data_folder(state: State<AppState>) -> Result<(), String> {
     platform::open_folder(&state.paths.data_dir).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub fn open_music_folder(state: State<AppState>) -> Result<(), String> {
+    let dir = state.paths.music_dir();
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    platform::open_folder(&dir).map_err(|e| e.to_string())
+}
+
 // ---- per-game user data -------------------------------------------------------------------
 
 /// Applies a change to one game's user data and returns the updated entry. The shell pushes

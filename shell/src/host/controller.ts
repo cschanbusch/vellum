@@ -53,6 +53,7 @@ export class SkinHostController {
   ui: UiSettings = { startView: "last", last: {}, views: {}, shelves: {}, skinsSeen: [], devMode: false };
   views: OrderedView[] = [];
   window: WindowState = { maximized: false, fullscreen: false };
+  focused = typeof document === "undefined" ? true : document.hasFocus();
   private byId = new Map<string, Entry>();
   private bridge: SkinBridge | null = null;
   private frame: HTMLIFrameElement | null = null;
@@ -116,6 +117,7 @@ export class SkinHostController {
     this.backend.onSkinChanged(() => void this.reloadSkin());
     this.backend.onSkinFileChanged((path) => this.skinFileChanged(path));
     this.backend.onWindowChanged(() => void this.backend.window("info").then((w) => this.setWindow(w)));
+    this.watchFocus();
   }
 
   /** The first time a skin is active, its `defaultView` is selected once. */
@@ -183,7 +185,8 @@ export class SkinHostController {
       views: this.viewInfos(),
       skin: this.skinInfo(),
       shelves: this.shelves(),
-      window: { maximized: this.window.maximized, frameless: this.frameless() },
+      window: this.windowInfo(),
+      audio: this.audio(),
     };
   }
 
@@ -346,9 +349,41 @@ export class SkinHostController {
     this.refreshViews();
   }
 
+  private windowInfo() {
+    return { maximized: this.window.maximized, frameless: this.frameless(), focused: this.focused };
+  }
+
+  private audio() {
+    return { music: this.ui.musicVolume ?? 0.7 };
+  }
+
+  /** Music volume, 0-1: sent to the skin now; saved too unless `preview` (a slider mid-drag). */
+  async setMusicVolume(v: number, preview = false) {
+    const musicVolume = Math.max(0, Math.min(1, v));
+    this.ui = { ...this.ui, musicVolume };
+    this.push({ name: "audio", data: this.audio() });
+    if (!preview) this.ui = await this.backend.updateUi({ musicVolume });
+  }
+
+  /**
+   * Tracks whether Vellum's window has focus (a game in front takes it), so skins' music can
+   * step aside. document.hasFocus() is true while focus is anywhere inside, the skin frame too.
+   */
+  private watchFocus() {
+    const update = () =>
+      window.setTimeout(() => {
+        const f = document.hasFocus();
+        if (f === this.focused) return;
+        this.focused = f;
+        this.push({ name: "window", data: this.windowInfo() });
+      }, 0);
+    window.addEventListener("focus", update);
+    window.addEventListener("blur", update);
+  }
+
   private setWindow(w: WindowState) {
     this.window = w;
-    this.push({ name: "window", data: { maximized: w.maximized, frameless: this.frameless() } });
+    this.push({ name: "window", data: this.windowInfo() });
     this.emit("window");
   }
 

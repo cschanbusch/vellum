@@ -4,11 +4,12 @@
 // No Rust, Windows or store installs needed.
 //
 //   npm run dev:skin -- <path to skin folder> [--port 5180] [--count 80] [--no-open]
+//                       [--user-music <folder>]   (the app's music folder: <view>.mid + a SoundFont)
 //
 // Two origins, like the app: the harness page (the "shell") on http://localhost:<port>, and the
 // sandboxed skin on http://127.0.0.1:<port + 1> with Vellum's CSP.
 
-import { createReadStream, existsSync, readFileSync, statSync, watch } from "node:fs";
+import { createReadStream, existsSync, readdirSync, readFileSync, statSync, watch } from "node:fs";
 import { createServer } from "node:http";
 import { dirname, extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,7 +19,7 @@ import { mockLibrary } from "./harness/library.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CSP =
-  "default-src 'self'; img-src 'self' data: blob:; media-src 'self'; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-src 'none'";
+  "default-src 'self'; img-src 'self' data: blob:; media-src 'self'; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; frame-src 'none'";
 
 // ---- arguments --------------------------------------------------------------------------------
 
@@ -29,6 +30,8 @@ const flag = (name, fallback) => {
 };
 const port = Number(flag("--port", "5180"));
 let count = Number(flag("--count", "80"));
+const userMusicArg = flag("--user-music", null);
+const userMusicDir = userMusicArg ? resolve(userMusicArg) : null;
 const noOpen = args.includes("--no-open") && args.splice(args.indexOf("--no-open"), 1);
 const skinDir = resolve(args[0] ?? join(ROOT, "plugins", "skins", "basis"));
 const mockDir = join(ROOT, "extras", "providers", "mock");
@@ -43,10 +46,12 @@ if (!existsSync(join(skinDir, "plugin.json"))) {
 const sdkJs = join(ROOT, "sdk", "dist", "sdk.js");
 function buildSdk() {
   console.log("Building the SDK…");
-  const r = spawnSync("npx", ["vite", "build", "--config", "sdk/vite.config.ts", "--logLevel", "warn"], { cwd: ROOT, stdio: "inherit", shell: true });
-  if (r.status !== 0) process.exit(r.status ?? 1);
+  for (const config of ["sdk/vite.config.ts", "sdk/vite.music.config.ts"]) {
+    const r = spawnSync("npx", ["vite", "build", "--config", config, "--logLevel", "warn"], { cwd: ROOT, stdio: "inherit", shell: true });
+    if (r.status !== 0) process.exit(r.status ?? 1);
+  }
 }
-if (!existsSync(sdkJs)) buildSdk();
+if (!existsSync(sdkJs) || !existsSync(join(ROOT, "sdk", "dist", "music.js"))) buildSdk();
 
 // ---- mock library -------------------------------------------------------------------------------
 
@@ -74,6 +79,19 @@ const TYPES = {
   ".woff": "font/woff",
   ".ttf": "font/ttf",
   ".otf": "font/otf",
+  ".mp3": "audio/mpeg",
+  ".ogg": "audio/ogg",
+  ".oga": "audio/ogg",
+  ".opus": "audio/opus",
+  ".wav": "audio/wav",
+  ".flac": "audio/flac",
+  ".m4a": "audio/mp4",
+  ".mid": "audio/midi",
+  ".midi": "audio/midi",
+  ".sf2": "audio/x-soundfont",
+  ".sf3": "audio/x-soundfont",
+  ".dls": "audio/dls",
+  ".wasm": "application/wasm",
 };
 
 function send(res, status, type, body, extra = {}) {
@@ -104,6 +122,17 @@ const skinServer = createServer((req, res) => {
   const p = url.pathname;
   if (p === "/__vellum/sdk.js") return sendFile(res, sdkJs);
   if (p === "/__vellum/sdk.css") return sendFile(res, join(ROOT, "sdk", "src", "sdk.css"));
+  if (p === "/__vellum/music.js") return sendFile(res, join(ROOT, "sdk", "dist", "music.js"));
+  if (p === "/__vellum/user-music/index.json") {
+    const names = userMusicDir && existsSync(userMusicDir) ? readdirSync(userMusicDir).filter((n) => statSync(join(userMusicDir, n)).isFile()).sort() : [];
+    return send(res, 200, "application/json", JSON.stringify(names));
+  }
+  if (p.startsWith("/__vellum/user-music/")) {
+    const name = decodeURIComponent(p.slice("/__vellum/user-music/".length));
+    const file = userMusicDir && !/[\/]|\.\./.test(name) ? join(userMusicDir, name) : null;
+    return file && existsSync(file) ? sendFile(res, file) : send(res, 404, "text/plain", "not found");
+  }
+  if (p === "/__vellum/music-processor.js") return sendFile(res, join(ROOT, "sdk", "dist", "music-processor.js"));
   if (p === "/__vellum/fonts/InterVariable.woff2") return sendFile(res, join(ROOT, "sdk", "assets", "fonts", "InterVariable.woff2"));
   // Art styles (&fx=sketch|watercolor) are drawn by the Rust backend; the harness serves originals.
   const art = p.match(/^\/__vellum\/art\/(.+)\/(cover|hero|logo|header|icon)$/);

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tauri dev",
     "dev:shell": "npm run build:sdk && vite --config shell/vite.config.ts",
-    "build:sdk": "tsc -p sdk && vite build --config sdk/vite.config.ts",
+    "build:sdk": "tsc -p sdk && vite build --config sdk/vite.config.ts && vite build --config sdk/vite.music.config.ts",
     "build:shell": "tsc -p shell && vite build --config shell/vite.config.ts",
     "build:web": "npm run build:sdk && npm run build:shell",
     "typecheck": "tsc -p sdk && tsc -p shell",
@@ -19,7 +19,8 @@
   "dependencies": {
     "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/plugin-dialog": "^2.8.3",
-    "lit": "^3.3.3"
+    "lit": "^3.3.3",
+    "spessasynth_lib": "4.3.14"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",

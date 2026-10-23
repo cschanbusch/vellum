@@ -29,6 +29,8 @@ export default defineConfig({
     harness("tests/fixtures/dev-plugins/skins/token-test", 5192),
     harness("tests/fixtures/dev-plugins/skins/timeline-test", 5194),
     harness("tests/fixtures/dev-plugins/skins/sidebar-test", 5198),
+    harness("tests/fixtures/dev-plugins/skins/music-test", 5230),
+    harness("plugins/skins/basis --user-music tests/fixtures/user-music", 5232),
     harness("extras/skins/synthwave", 5210),
     harness("extras/skins/aero", 5212),
     harness("extras/skins/gridline", 5214),

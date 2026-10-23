@@ -126,15 +126,83 @@ test("simulated controller input drives the same navigation", async ({ page }) =
   await expect(frame.locator(`vellum-grid .cell[data-id="${ids[1]}"]`)).toHaveAttribute("data-favorite", "");
 });
 
-test("typing searches; no matches explains itself", async ({ page }) => {
+test("typing alone doesn't search; Ctrl+F does; no matches explains itself", async ({ page }) => {
   const frame = await open(page, BASIS);
   await show(page, "covers");
   await frame.locator("vellum-grid").click({ position: { x: 5, y: 5 } });
+  await page.keyboard.type("zzqx");
+  await page.waitForTimeout(300);
+  expect((await state(page)).query).toBe("");
+  await page.keyboard.press("Control+f");
   await page.keyboard.type("zzqx");
   await expect.poll(async () => (await state(page)).query).toBe("zzqx");
   await expect(frame.locator("vellum-empty")).toContainText("No games match");
   await frame.locator("vellum-empty button").click();
   await expect.poll(async () => (await state(page)).query).toBe("");
+});
+
+type MusicWin = Window & { __bars: number[]; __scenes: [string, number][] };
+
+test("music: a scene per view, changed on the bar line; layers, stingers, pause and a launch hold it", async ({ page }) => {
+  const frame = await open(page, 5230);
+  const skin = page.frames().find((f) => f.url().includes("127.0.0.1"))!;
+  await frame.locator("vellum-grid").click({ position: { x: 5, y: 5 } }); // a gesture, so audio may start
+  const pos = () => skin.evaluate(() => window.vellum.music.position());
+  // plugin.json maps Covers (via "*") to the title scene: it plays, and the synth sounds notes.
+  await expect.poll(async () => (await pos()).scene, { timeout: 15_000 }).toBe("title");
+  await expect.poll(async () => (await pos()).state).toBe("running");
+  await expect.poll(async () => (await pos()).voices, { timeout: 5000 }).toBeGreaterThan(0);
+
+  // Switching view changes scene on the next bar line of the title music (120 bpm, 4/4: 2 s
+  // bars), and the garage music's first bar starts on that same instant.
+  await skin.evaluate(() => {
+    const w = window as unknown as MusicWin;
+    w.__bars = [];
+    w.__scenes = [];
+    w.vellum.music.on("bar", (d) => w.__bars.push(d.time));
+    w.vellum.music.on("scene", (d) => w.__scenes.push([d.scene!, d.time]));
+  });
+  await expect.poll(() => skin.evaluate(() => (window as unknown as MusicWin).__bars.length), { timeout: 5000 }).toBeGreaterThan(0);
+  await show(page, "spotlight");
+  await expect.poll(async () => (await pos()).scene, { timeout: 6000 }).toBe("garage");
+  const { bars, scenes } = await skin.evaluate(() => ({ bars: (window as unknown as MusicWin).__bars, scenes: (window as unknown as MusicWin).__scenes }));
+  const at = scenes.find(([s]) => s === "garage")![1];
+  const last = bars.filter((t) => t < at - 0.001).at(-1)!;
+  const bars2 = (at - last) / 2;
+  expect(Math.abs(bars2 - Math.round(bars2)), "the change lands a whole number of bars after the last bar line").toBeLessThan(0.002);
+  expect(bars.some((t) => Math.abs(t - at) < 0.002), "the new music's first bar starts on the change").toBe(true);
+
+  // Layers, a stinger, the skin's volume and pause/resume all answer without errors.
+  await skin.evaluate(async () => {
+    await window.vellum.music.layer("drums", 0, { fade: 0.2 });
+    await window.vellum.music.layer("drums", 1, { at: "bar" });
+    await window.vellum.music.stinger("sting");
+    await window.vellum.music.volume(0.8);
+  });
+  await skin.evaluate(() => window.vellum.music.pause());
+  await expect.poll(async () => (await pos()).state).toBe("suspended");
+  await skin.evaluate(() => window.vellum.music.resume());
+  await expect.poll(async () => (await pos()).state).toBe("running");
+
+  // A launch holds the music.
+  await skin.evaluate(() => window.vellum.actions.launch(window.vellum.library.query()[0].id));
+  await expect.poll(async () => (await pos()).state, { timeout: 5000 }).toBe("suspended");
+});
+
+test("music folder: a skin without music plays <view>.mid where there is one, and is silent elsewhere", async ({ page }) => {
+  const frame = await open(page, 5232); // basis, with tests/fixtures/user-music as the music folder
+  const skin = page.frames().find((f) => f.url().includes("127.0.0.1"))!;
+  await frame.locator("vellum-grid").click({ position: { x: 5, y: 5 } });
+  const pos = () => skin.evaluate(() => window.vellum.music.position());
+  await expect.poll(async () => (await pos()).scene, { timeout: 15_000 }).toBe("covers");
+  await expect.poll(async () => (await pos()).voices, { timeout: 5000 }).toBeGreaterThan(0);
+  // List has no file: the music stops at the bar line.
+  await show(page, "list");
+  await expect.poll(async () => (await pos()).scene, { timeout: 6000 }).toBeNull();
+  // Spotlight.mid (any case) plays in Spotlight.
+  await show(page, "spotlight");
+  await expect.poll(async () => (await pos()).scene, { timeout: 6000 }).toBe("spotlight");
+  await expect.poll(async () => (await pos()).voices, { timeout: 5000 }).toBeGreaterThan(0);
 });
 
 test("Covers groups into shelves that collapse", async ({ page }) => {
@@ -541,6 +609,38 @@ test.describe("Grand Tour", () => {
     expect(await cond()).toBeCloseTo(0.34, 5);
     // The spec card shows the mileage (the reading the card's entry carries, from the mock library).
     await expect(frame.locator(".rl-gar-figure-label", { hasText: "Mileage" })).toBeVisible();
+  });
+
+  test("Grand Tour's test drive: T runs the ignition without launching or wearing the car", async ({ page }) => {
+    const frame = await open(page, 5226);
+    await show(page, "garage");
+    const skin = page.frames().find((f) => f.url().includes("127.0.0.1"))!;
+    await expect(frame.locator(".rl-gar-tip.is-test").first()).toHaveText("T - Test Ignition");
+    await frame.locator(".rl-gar-strip").focus();
+    const id = await skin.evaluate(() => window.vellum.state.get().selectedId!);
+    const launched = () => host(page, (h) => h.entries.find((e) => e.id === h.state.selectedId)?.lastLaunched ?? null);
+    const cond = () => skin.evaluate(async (id) => (await import(new URL("condition.js", location.href).href)).condition(id), id);
+    await skin.evaluate(async (id) => {
+      (await import(new URL("condition.js", location.href).href)).setCondition(id, 0.8);
+      Math.random = () => 0.99; // it catches
+    }, id);
+    const before = await cond();
+    await page.keyboard.press("t");
+    await expect(frame.locator(".rl-ign-label")).toHaveText("Test ignition");
+    await expect(frame.locator(".rl-ign-status")).toHaveText("Started · test only", { timeout: 8000 });
+    await expect(frame.locator(".rl-ign")).toBeHidden({ timeout: 5000 });
+    expect(await launched()).toBeNull();
+    expect(await cond()).toBe(before);
+    expect((await state(page)).query).toBe(""); // T didn't start a search
+
+    // Shift+T: the same test, but the start wears the car.
+    await page.keyboard.press("Shift+T");
+    await expect(frame.locator(".rl-ign-label")).toHaveText("Test ignition · with wear");
+    await expect(frame.locator(".rl-ign-status")).toHaveText("Started · test only", { timeout: 8000 });
+    await expect(frame.locator(".rl-ign")).toBeHidden({ timeout: 5000 });
+    expect(await launched()).toBeNull();
+    expect(await cond()).toBeLessThan(before);
+    await page.screenshot({ path: "test-artifacts/views/redline-garage-tips.png" });
   });
 
   test("Grand Tour's Garage: left/right pick the model, up/down change maker, the card follows", async ({ page }) => {

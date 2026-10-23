@@ -27,6 +27,14 @@ export type NavName = (typeof NAV_EVENTS)[number];
 export interface WindowInfo {
   maximized: boolean;
   frameless: boolean;
+  /** Whether Vellum's window has focus (false while a game or another app is in front). */
+  focused?: boolean;
+}
+
+/** The user's audio settings (Settings → Sound). */
+export interface AudioPrefs {
+  /** Music volume, 0-1, applied to `vellum.music`. */
+  music: number;
 }
 
 export interface InitData {
@@ -37,6 +45,7 @@ export interface InitData {
   skin: SkinInfo;
   shelves: ShelfPrefs;
   window: WindowInfo;
+  audio?: AudioPrefs;
 }
 
 /** Skin → shell */
@@ -54,6 +63,7 @@ export type ShellEvent =
   | { name: "skin"; data: SkinInfo }
   | { name: "shelves"; data: ShelfPrefs }
   | { name: "window"; data: WindowInfo }
+  | { name: "audio"; data: AudioPrefs }
   /** Input the shell forwards (controller, harness panel). */
   | { name: "nav"; data: { name: NavName } }
   /** Developer mode: a stylesheet in the skin changed. */

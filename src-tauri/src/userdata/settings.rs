@@ -56,6 +56,8 @@ pub struct UiSettings {
     /// Skins whose `defaultView` has already been applied once.
     pub skins_seen: Vec<String>,
     pub dev_mode: bool,
+    /// Music volume for skins' `vellum.music`, 0-1.
+    pub music_volume: f64,
 }
 
 impl Default for UiSettings {
@@ -67,6 +69,7 @@ impl Default for UiSettings {
             shelves: Value::Object(Map::new()),
             skins_seen: Vec::new(),
             dev_mode: false,
+            music_volume: 0.7,
         }
     }
 }

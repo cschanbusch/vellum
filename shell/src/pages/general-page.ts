@@ -1,5 +1,6 @@
 import { LitElement, css, html } from "lit";
 import { api, type AppInfo } from "../api";
+import { host } from "../host/instance";
 import { controls, tokens } from "../theme";
 
 export class GeneralPage extends LitElement {
@@ -9,6 +10,11 @@ export class GeneralPage extends LitElement {
   constructor() {
     super();
     this.info = null;
+  }
+
+  private volume(e: Event, preview: boolean) {
+    void host.setMusicVolume(Number((e.target as HTMLInputElement).value) / 100, preview);
+    this.requestUpdate();
   }
 
   render() {
@@ -25,6 +31,28 @@ export class GeneralPage extends LitElement {
             : "Data is stored in your Windows profile. Create an empty portable.flag file beside Vellum Game Launcher.exe to keep data next to the program instead."}
         </p>
         <button @click=${() => api.openDataFolder()}>Open data folder</button>
+      </section>
+      <section>
+        <h2>Sound</h2>
+        <label class="row">
+          <span>Music volume</span>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            .value=${String(Math.round((host.ui.musicVolume ?? 0.7) * 100))}
+            @input=${(e: Event) => this.volume(e, true)}
+            @change=${(e: Event) => this.volume(e, false)}
+          />
+          <output>${Math.round((host.ui.musicVolume ?? 0.7) * 100)}%</output>
+        </label>
+        <p class="muted">
+          For skins that play music. It pauses while a game is running or Vellum is in the background. Skins without music of their own play
+          the music folder: a MIDI file per view, named after it (<code>covers.mid</code>, <code>spotlight.mid</code>…), and a SoundFont
+          (<code>.sf2</code> or <code>.sf3</code>). A view with no file is silent.
+        </p>
+        <button @click=${() => api.openMusicFolder()}>Open music folder</button>
       </section>
       <section>
         <h2>About</h2>
@@ -60,6 +88,20 @@ export class GeneralPage extends LitElement {
       }
       .muted {
         color: var(--v-text-muted);
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 6px;
+      }
+      .row input {
+        flex: 1;
+        max-width: 280px;
+      }
+      output {
+        min-width: 3em;
+        font-variant-numeric: tabular-nums;
       }
     `,
   ];

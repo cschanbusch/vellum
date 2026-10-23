@@ -14,9 +14,15 @@ use crate::{art, AppState};
 
 pub const SKIN_SCHEME: &str = "skin";
 
-pub const SKIN_CSP: &str = "default-src 'self'; img-src 'self' data: blob:; media-src 'self'; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-src 'none'";
+// 'wasm-unsafe-eval' lets skins (and the music engine's SF3 decoder) run WebAssembly, which is
+// sandboxed like script; eval and inline scripts stay blocked.
+
+pub const SKIN_CSP: &str = "default-src 'self'; img-src 'self' data: blob:; media-src 'self'; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; frame-src 'none'";
 
 const SDK_JS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/sdk.js"));
+/// The music engine and its synth worklet (sdk/src/music), loaded by `vellum.music` on first use.
+const MUSIC_JS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/music.js"));
+const MUSIC_PROCESSOR_JS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/music-processor.js"));
 const SDK_CSS: &[u8] = include_bytes!("../../sdk/src/sdk.css");
 const FONT_INTER: &[u8] = include_bytes!("../../sdk/assets/fonts/InterVariable.woff2");
 
@@ -52,6 +58,17 @@ pub fn content_type(p: &Path) -> &'static str {
         Some("woff") => "font/woff",
         Some("ttf") => "font/ttf",
         Some("otf") => "font/otf",
+        Some("mp3") => "audio/mpeg",
+        Some("ogg" | "oga") => "audio/ogg",
+        Some("opus") => "audio/opus",
+        Some("wav") => "audio/wav",
+        Some("flac") => "audio/flac",
+        Some("m4a") => "audio/mp4",
+        Some("mid" | "midi") => "audio/midi",
+        Some("sf2") => "audio/x-soundfont",
+        Some("sf3") => "audio/x-soundfont",
+        Some("dls") => "audio/dls",
+        Some("wasm") => "application/wasm",
         _ => "application/octet-stream",
     }
 }
@@ -142,11 +159,19 @@ fn handle_sync(app: &AppHandle, path: &str) -> Resp {
         return match reserved {
             "sdk.js" => respond(StatusCode::OK, "text/javascript; charset=utf-8", Cow::Borrowed(SDK_JS)),
             "sdk.css" => respond(StatusCode::OK, "text/css; charset=utf-8", Cow::Borrowed(SDK_CSS)),
+            "music.js" => respond(StatusCode::OK, "text/javascript; charset=utf-8", Cow::Borrowed(MUSIC_JS)),
+            "music-processor.js" => respond(StatusCode::OK, "text/javascript; charset=utf-8", Cow::Borrowed(MUSIC_PROCESSOR_JS)),
             "fonts/InterVariable.woff2" => with_cache(respond(StatusCode::OK, "font/woff2", Cow::Borrowed(FONT_INTER)), IMMUTABLE),
-            _ => match reserved.strip_prefix("provider-icon/") {
-                Some(id) => provider_icon(app, id),
-                None => text(StatusCode::NOT_FOUND, "not found"),
-            },
+            "user-music/index.json" => user_music_index(app),
+            _ => {
+                if let Some(rest) = reserved.strip_prefix("user-music/") {
+                    return serve_file(&app.state::<AppState>().paths.music_dir(), rest);
+                }
+                match reserved.strip_prefix("provider-icon/") {
+                    Some(id) => provider_icon(app, id),
+                    None => text(StatusCode::NOT_FOUND, "not found"),
+                }
+            }
         };
     }
     let state = app.state::<AppState>();
@@ -154,6 +179,17 @@ fn handle_sync(app: &AppHandle, path: &str) -> Resp {
         Some(dir) => serve_file(&dir, path),
         None => text(StatusCode::NOT_FOUND, "no skin installed"),
     }
+}
+
+/// The files in the user's music folder, as a JSON array of names (empty when there is none).
+fn user_music_index(app: &AppHandle) -> Resp {
+    let dir = app.state::<AppState>().paths.music_dir();
+    let mut names: Vec<String> = std::fs::read_dir(&dir)
+        .map(|rd| rd.flatten().filter(|e| e.path().is_file()).filter_map(|e| e.file_name().into_string().ok()).collect())
+        .unwrap_or_default();
+    names.sort();
+    let body = serde_json::to_vec(&names).unwrap_or_else(|_| b"[]".to_vec());
+    respond(StatusCode::OK, "application/json", Cow::Owned(body))
 }
 
 /// A provider's manifest icon, for source badges and filters.

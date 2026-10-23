@@ -18,6 +18,7 @@ import {
   type ShellCommand,
   type ShellMessage,
   type WindowInfo,
+  type AudioPrefs,
 } from "./protocol";
 import { facets, groupEntries, query as runQuery, type Group } from "./query";
 import {
@@ -71,6 +72,7 @@ let views: ViewInfo[] = [];
 let skin: SkinInfo = { id: "", name: "", options: [], values: {}, dev: false };
 let shelves: ShelfPrefs = { order: {}, collapsed: [] };
 let windowInfo: WindowInfo = { maximized: false, frameless: false };
+let audio: AudioPrefs = { music: 0.7 };
 let previousView: string | null = null;
 /** state.set calls the shell hasn't answered yet, in order. */
 const unconfirmed = new Map<object, Partial<UiState>>();
@@ -82,6 +84,9 @@ const viewsChanged = new Emitter<ViewInfo[]>();
 const optionsChanged = new Emitter<Record<string, unknown>>();
 const shelvesChanged = new Emitter<ShelfPrefs>();
 const windowChanged = new Emitter<WindowInfo>();
+const audioChanged = new Emitter<AudioPrefs>();
+/** A launch this skin started went through (for music to step aside). */
+const launched = new Emitter<string>();
 
 let resolveReady!: () => void;
 const readyPromise = new Promise<void>((r) => (resolveReady = r));
@@ -200,6 +205,7 @@ function receiveInit(d: InitData) {
   skin = d.skin;
   shelves = d.shelves;
   windowInfo = d.window;
+  if (d.audio) audio = d.audio;
   applyOptions();
   setState(d.state);
   applyCouch();
@@ -258,6 +264,10 @@ window.addEventListener("message", (event: MessageEvent) => {
     case "window":
       windowInfo = msg.data;
       windowChanged.emit(windowInfo);
+      break;
+    case "audio":
+      audio = msg.data;
+      audioChanged.emit(audio);
       break;
     case "nav":
       input.dispatch(msg.data.name, "shell");
@@ -351,7 +361,8 @@ export const vellum = {
      *  first; if one calls it off, this resolves without launching. */
     launch: async (id: string, provider?: string): Promise<void> => {
       if (!(await allowLaunch(beforeLaunch, id, provider))) return;
-      return call<void>("actions.launch", { id, provider });
+      await call<void>("actions.launch", { id, provider });
+      launched.emit(id);
     },
     /** Runs `hook` before every launch this skin starts; return false to call it off. */
     onBeforeLaunch: (hook: BeforeLaunch): (() => void) => {
@@ -490,7 +501,14 @@ export const vellum = {
   },
 
   /** Internal plumbing for the kit; not part of the documented API. */
-  _internal: { cycleView, shellCommand: (command: ShellCommand) => call<void>("shell.command", { command }) },
+  _internal: {
+    cycleView,
+    shellCommand: (command: ShellCommand) => call<void>("shell.command", { command }),
+    audio: () => audio,
+    onAudio: (cb: Listener<AudioPrefs>) => audioChanged.on(cb),
+    onLaunched: (cb: Listener<string>) => launched.on(cb),
+    windowInfo: () => windowInfo,
+  },
 };
 
 export type Vellum = typeof vellum;

@@ -142,7 +142,8 @@ A skin runs in a sandboxed frame on its own origin, with this Content Security P
 
 ```
 default-src 'self'; img-src 'self' data: blob:; media-src 'self'; font-src 'self';
-style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-src 'none'
+style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self';
+frame-src 'none'
 ```
 
 So:
@@ -153,6 +154,9 @@ So:
   Art always comes from Vellum (see [Art](#11-art)).
 - **No files, no IPC, no launching programs.** Everything goes through the SDK, and the shell
   checks every call: actions only work on real entries, and only for capabilities the store declares.
+- **WebAssembly** from your folder is allowed (`'wasm-unsafe-eval'`): it is sandboxed like script.
+- **Audio** from your folder plays: MP3, OGG/Opus, WAV, FLAC, M4A, and MIDI with a SoundFont
+  through [`vellum.music`](#music).
 - Inline `style` attributes and `<style>` blocks are allowed.
 - All skins share one origin, so use [`vellum.skin.storage`](#skin) instead of `localStorage`.
 
@@ -465,6 +469,81 @@ card.addEventListener("contextmenu", (e) => {
 `on("change", cb)` reports status changes. Use it for source badges, store filters, and
 "still scanning" messages.
 
+### `vellum.music` {#music}
+
+Adaptive music from MIDI files and a SoundFont in your folder. Because the music is notes rather
+than recorded audio, it can change with the skin: a new scene starts on the next bar line of the
+one playing (no crossfade, no gap), instruments fade in and out as layers, and short stingers
+land on the beat. The engine loads only when a skin uses music.
+
+**Files.** A SoundFont (`.sf2`, `.sf3`) or DLS bank, and Standard MIDI Files (format 0 or 1).
+SF3 (Ogg-compressed samples) is usually 5–10× smaller than SF2; prefer it for shared skins. Use
+a General MIDI layout (drums on channel 10, which is channel `9` counting from zero) or your own
+bank's presets. Mind the licences: SoundFonts and arrangements are often not free to
+redistribute.
+
+**Declare it, write no code.** In `plugin.json`, `skin.music` picks the bank, names the scenes and
+layers, and maps views to scenes; the music then follows the view:
+
+```json
+"music": {
+  "soundbank": "music/bank.sf3",
+  "scenes": { "title": "music/title.mid", "garage": { "midi": "music/garage.mid", "from": 8 } },
+  "layers": { "drums": [9], "strings": [4, 5] },
+  "views": { "garage": "garage", "*": "title" },
+  "at": "bar"
+}
+```
+
+`from` enters a scene at a beat (skipping an intro). `at` is where view changes land: `"bar"`
+(default), `"beat"`, `"end"` (the end of the playing song's loop) or `"now"`.
+
+**Or drive it from code:**
+
+| Member | Description |
+| --- | --- |
+| `configure(config)` | The same object as `skin.music`; starts the scene for the current view, or `start` |
+| `play(scene, { at })` | Change to a scene (or a MIDI path) at the next `at` boundary: `"bar"`, `"beat"`, `"end"`, `"now"`, or a number of beats |
+| `stop({ at })` | Stop at a boundary; notes release naturally |
+| `layer(name, level, { at, fade })` | Fade a layer (or a channel list) to `level` (0–1) over `fade` seconds, from the next `at` (default `"now"`) |
+| `stinger(scene, { at })` | Play a short MIDI over the music on the next beat, on its own 16 channels |
+| `tempo(rate)` | Playback speed, 0.25–4 |
+| `volume(v)` | Your music level, 0–1; multiplied by the user's Music volume |
+| `pause()`, `resume()` | |
+| `preload(...scenes)` | Load the bank and songs ahead, so the first change is instant |
+| `on("scene" \| "bar" \| "beat" \| "loop", cb)` | Called as the music is heard, with `{ scene, bar, beat, time }`: sync visuals to it |
+| `position()` | `{ scene, beat, bar, voices, state }` |
+
+```js
+vellum.music.on("bar", ({ bar }) => document.body.classList.toggle("pulse", bar % 2 === 0));
+grid.addEventListener("focusin", () => vellum.music.layer("strings", 1, { at: "beat" }));
+vellum.actions.onBeforeLaunch(async () => { await vellum.music.stinger("fanfare", { at: "beat" }); return true; });
+```
+
+How it plays:
+
+- **Scenes change on the music's grid.** The playing song's notes are released at the boundary
+  and the next song starts on that instant, from beat `from`. Write scenes in the same tempo and
+  meter to make changes seamless.
+- **Songs loop.** A file's loop points (CC 111, or `loopStart`/`loopEnd` markers) are used;
+  otherwise the whole song loops, rounded up to the bar line.
+- **Layers carry across scenes.** Keep each instrument on the same channel in every scene and a
+  layer you faded out stays out after a change.
+- **Vellum steps in for the player.** Music pauses while a game launches and runs (until Vellum
+  has focus again) and while Vellum is minimised or in the background, then picks up where it
+  was. Its level is the user's Music volume (Settings → General → Sound) times yours.
+- **Autoplay.** Browsers start audio after the first click or key press; music configured before
+  that starts on it.
+
+**The user's music folder.** A skin that declares no `skin.music` plays the music folder in
+Vellum's data folder (Settings → General → Sound → Open music folder): a SoundFont and a MIDI file
+per view, named after the view id (`covers.mid`, `spotlight.mid`, `garage.mid`…, any case). Views
+without a file are silent. To try it in the harness: `npm run dev:skin -- <skin> --user-music <folder>`.
+
+To try it, run the harness on the test skin, which has a tiny generated SoundFont and three
+songs: `npm run dev:skin -- tests/fixtures/dev-plugins/skins/music-test` (switch to Spotlight to
+hear the scene change). `scripts/make-music-fixture.py` shows how its files were made.
+
 ## 7. Kit components
 
 Kit components are web components defined by the SDK. They use only tokens, and each exposes
@@ -502,8 +581,8 @@ an error message is shown instead of a blank page.
 
 #### `<vellum-search>`
 
-A search box bound to `state.query`. Ctrl+F, the controller's Y button, or simply typing a
-letter anywhere focuses it. Escape clears it, then leaves it. Enter or ↓ moves on to the results.
+A search box bound to `state.query`. Clicking it, Ctrl+F or the controller's Y button focuses
+it; typing elsewhere doesn't, so letter keys are free for skins. Escape clears it, then leaves it. Enter or ↓ moves on to the results.
 Parts: `box`, `input`.
 
 #### `<vellum-view-switcher>`
@@ -743,7 +822,7 @@ Keyboard, mouse and controller all produce one stream of **nav events**:
 | `menu` | Menu key, Shift+F10 | Menu | Context menu for the selected game |
 | `details` | Ctrl+I | | Spotlight on the selected game |
 | `favorite` | Ctrl+D | X | Toggle favorite |
-| `search` | Ctrl+F, or start typing | Y | Focus the search box |
+| `search` | Ctrl+F | Y | Focus the search box (typing elsewhere doesn't) |
 | `prevView` `nextView` | Ctrl+Shift+Tab, Ctrl+Tab | LB, RB | Cycle views |
 | `pageUp` `pageDown` | Page Up/Down | LT, RT | Jump a page |
 | `settings` | Ctrl+, | View | Open settings |
