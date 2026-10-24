@@ -13,12 +13,12 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "extras", "skins", "redline", "lib", "three.js");
 
 const EXPORTS = [
-  "AlwaysStencilFunc", "BufferGeometry", "CanvasTexture", "CircleGeometry", "Color", "CylinderGeometry",
-  "DirectionalLight", "EqualStencilFunc", "ExtrudeGeometry", "Float32BufferAttribute", "Group", "KeepStencilOp",
-  "MathUtils", "Matrix4", "Mesh", "MeshBasicMaterial", "MeshPhysicalMaterial", "MeshStandardMaterial",
-  "NeutralToneMapping", "NoColorSpace", "PMREMGenerator", "PerspectiveCamera", "PlaneGeometry", "RepeatWrapping",
-  "ReplaceStencilOp", "RingGeometry", "SRGBColorSpace", "Scene", "Shape", "Texture", "Vector2", "Vector3",
-  "WebGLRenderer",
+  "AlwaysStencilFunc", "Box2", "BufferGeometry", "CanvasTexture", "CircleGeometry", "Color", "CylinderGeometry",
+  "DataTexture", "DirectionalLight", "EqualStencilFunc", "ExtrudeGeometry", "Float32BufferAttribute", "Group",
+  "KeepStencilOp", "LinearFilter", "LinearMipmapLinearFilter", "MathUtils", "Matrix4", "Mesh", "MeshBasicMaterial",
+  "MeshPhysicalMaterial", "MeshStandardMaterial", "NeutralToneMapping", "NoColorSpace", "PMREMGenerator",
+  "PerspectiveCamera", "PlaneGeometry", "RGBAFormat", "RepeatWrapping", "ReplaceStencilOp", "RingGeometry",
+  "SRGBColorSpace", "Scene", "Shape", "Texture", "UnsignedByteType", "Vector2", "Vector3", "WebGLRenderer",
 ];
 
 const version = JSON.parse(readFileSync(join(ROOT, "node_modules", "three", "package.json"), "utf8")).version;

@@ -96,8 +96,9 @@ function makeJob(entry, tier, { cases, options = {}, providers = [] }) {
     fonts: FONTS,
     displayFont: DISPLAY_FONT,
     bodyFont: BODY_FONT,
-    disc: tier === "full" && !!p.disc,
-    emboss: tier === "full" && !!p.emboss,
+    // The Garage shows medium or full (by screen size); both get the disc and the emboss.
+    disc: tier !== "small" && !!p.disc,
+    emboss: tier !== "small" && !!p.emboss,
   };
   const fontKey = FONTS.map((f) => `${f.family}${f.weight}`).join(",");
   const key = [entry.id, c.profileName, tier, `${cases.version}.${BUILDER}`, fnv(JSON.stringify(job) + fontKey)].join("|");

@@ -5,6 +5,7 @@ import { installIgnition } from "./ignition.js";
 import { installMenuSounds } from "./menu-sounds.js";
 import { notePlaytime } from "./condition.js";
 import { ui } from "./sound.js";
+import { setupSoundtrack } from "./soundtrack.js";
 
 // Still mode (the Motion option, and Windows' reduced motion) is switched off for now: with it,
 // Spotlight's information and the Garage's spec card disappeared (docs/open-issues.md). The
@@ -113,7 +114,7 @@ function onState(s) {
 
 // ---- title screen ------------------------------------------------------------------------------
 
-/** The music (music/ in this skin, if it has any) waits for the title screen. */
+/** The music (this launch's song from music/, see soundtrack.js) waits for the title screen. */
 const startMusic = () => vellum.music?.start(); // absent before Vellum 0.3.0
 
 /** Once per session: a wipe, the chrome wordmark with a glint, and a blinking prompt. It waits
@@ -170,6 +171,7 @@ function applyOptions() {
 
 await vellum.ready();
 applyOptions();
+void setupSoundtrack(); // this launch's song; it plays once the title screen has gone
 installIgnition();
 installMenuSounds();
 // Hours on the clock wear a game too: read the odometers now and whenever the library changes

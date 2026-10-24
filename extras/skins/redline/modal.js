@@ -75,13 +75,19 @@ export function h(tag, cls, text) {
   return e;
 }
 
-/** A tachometer dial: ticks 0-8 (x1000 rpm), a red zone from 6.5, and a needle. */
+/**
+ * A tachometer dial: ticks 0-8 (x1000 rpm), a red zone from 6.5, and a needle. The needle is a
+ * second SVG over the dial, turned with a CSS transform on a layer of its own: moving it inside
+ * the dial repainted every tick, number and glow on every frame. `svg` is the element to place.
+ */
 export function tachometer(cls = "") {
   const ns = "http://www.w3.org/2000/svg";
+  const box = document.createElement("div");
+  box.className = `rl-tach ${cls}`;
+  box.setAttribute("aria-hidden", "true");
   const svg = document.createElementNS(ns, "svg");
   svg.setAttribute("viewBox", "-110 -110 220 192");
-  svg.setAttribute("class", `rl-tach ${cls}`);
-  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("class", "rl-tach-dial");
   const arc = (from, to, r) => {
     // Angles: 0 rpm at -225deg (bottom left) to 8000 at 45deg.
     const a0 = ((-225 + (from / 8) * 270) * Math.PI) / 180;
@@ -125,14 +131,16 @@ export function tachometer(cls = "") {
   label.setAttribute("class", "rl-tach-unit");
   label.textContent = "x1000 r/min";
   svg.append(label);
-  const needle = document.createElementNS(ns, "g");
+  const needle = document.createElementNS(ns, "svg");
+  needle.setAttribute("viewBox", "-110 -110 220 192");
   needle.setAttribute("class", "rl-tach-needle");
-  needle.innerHTML = `<path d="M -4 0 L 0 -88 L 4 0 Z"/><circle r="9"/>`;
-  svg.append(needle);
+  // The shadow is a second, offset shape: a drop-shadow filter would be redrawn as it turns.
+  needle.innerHTML = `<path class="rl-tach-shadow" d="M -4 2 L 0 -86 L 4 2 Z"/><path d="M -4 0 L 0 -88 L 4 0 Z"/><circle r="9"/>`;
+  box.append(svg, needle);
   /** Points the needle at `rpm` (thousands). */
-  const set = (rpm) => needle.setAttribute("transform", `rotate(${-135 + (Math.max(0, Math.min(8.4, rpm)) / 8) * 270})`);
+  const set = (rpm) => (needle.style.transform = `rotate(${(-135 + (Math.max(0, Math.min(8.4, rpm)) / 8) * 270).toFixed(2)}deg)`);
   set(0);
   /** Marks a target band on the dial (thousands of rpm). */
   const band = (from, to) => zone.setAttribute("d", arc(from, to, 86));
-  return { svg, set, band, zone };
+  return { svg: box, set, band, zone };
 }

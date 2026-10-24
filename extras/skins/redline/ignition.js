@@ -134,7 +134,9 @@ function ignite(entry, { test = false, wear: wearing = !test } = {}) {
       const dur = 0.85 + (1 - c) * 1.1 + Math.random() * 0.25;
       const fails = Math.random() < failChance(c);
       const voice = voiceFor(entry);
-      const strokes = crank(dur, c, fails, voice);
+      // The sound renders in a worker; the needle waits for it so the two start together.
+      const strokes = await crank(dur, c, fails, voice);
+      if (settled) return;
       await twitch(tach, strokes, dur, 0.25);
       if (settled) return;
       if (fails) {

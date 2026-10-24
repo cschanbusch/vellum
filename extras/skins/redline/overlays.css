@@ -8,8 +8,9 @@
   display: grid;
   place-items: center;
   padding: 2rem;
-  background: radial-gradient(70% 60% at 50% 45%, rgb(248 250 252 / 0.72), rgb(205 214 225 / 0.86));
-  backdrop-filter: blur(6px);
+  /* A tint, not a backdrop blur: the stage underneath moves every frame, and re-blurring the whole
+     window each frame halved the frame rate on integrated graphics. */
+  background: radial-gradient(70% 60% at 50% 45%, rgb(248 250 252 / 0.8), rgb(205 214 225 / 0.92));
   opacity: 0;
   transition: opacity 200ms ease;
 }
@@ -21,7 +22,18 @@
 
 /* ---- tachometer (modal.js) --------------------------------------------------------------- */
 
-.rl-tach { display: block; width: 100%; overflow: visible; }
+.rl-tach { position: relative; display: block; width: 100%; }
+.rl-tach-dial { display: block; width: 100%; overflow: visible; }
+/* Same box as the dial; it turns about the dial's centre (0, 0 in the viewBox). */
+.rl-tach-needle {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transform-origin: 50% 57.2917%; /* 110 / 220, 110 / 192 */
+  will-change: transform;
+}
 .rl-tach-rim { fill: none; stroke: #2a3445; stroke-width: 7; stroke-linecap: round; }
 .rl-tach-red { fill: none; stroke: var(--rl-signal); stroke-width: 9; }
 .rl-tach-zone { fill: none; stroke: #2fbf62; stroke-width: 12; stroke-linecap: butt; filter: drop-shadow(0 0 4px rgb(47 191 98 / 0.7)); }
@@ -29,7 +41,8 @@
 .rl-tach-minor { stroke: var(--rl-steel); stroke-width: 1.5; }
 .rl-tach-num { font: 400 14px var(--rl-wide); fill: var(--rl-ink); text-anchor: middle; }
 .rl-tach-unit { font: 700 8px var(--rl-saira); letter-spacing: 0.2em; fill: var(--rl-steel); text-anchor: middle; text-transform: uppercase; }
-.rl-tach-needle path { fill: var(--rl-signal); filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.35)); }
+.rl-tach-needle path { fill: var(--rl-signal); }
+.rl-tach-needle .rl-tach-shadow { fill: rgb(0 0 0 / 0.22); }
 .rl-tach-needle circle { fill: #1a2230; stroke: #c9d1db; stroke-width: 2; }
 
 /* ---- ignition ------------------------------------------------------------------------------ */

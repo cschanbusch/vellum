@@ -24,6 +24,11 @@ const BACK = 70; // the side turntables stand this much further back
 const SLIDE_MS = 450;
 const ease = (t) => 1 - (1 - t) ** 3;
 
+/** Pixels of case texture uploaded per frame (about 1 MB). A whole full-size wrap in one call
+ *  held up a frame for ~65 ms on integrated graphics. */
+const UPLOAD_PX = 262144;
+const nextFrame = () => new Promise((r) => requestAnimationFrame(() => r()));
+
 /** Turntable positions: the slots, and just off-screen either side. */
 const SLOTS = {
   L: { x: -SPACING, z: -BACK, yaw: SIDE_YAW },
@@ -35,6 +40,50 @@ const SLOTS = {
 
 const grimeImg = new Image();
 grimeImg.src = new URL("../textures/grime.svg", import.meta.url).href;
+
+/** A texture filled from `img` a band of rows per frame (see UPLOAD_PX), so no frame waits on a
+ *  whole upload. Resolves with the texture, or with null (and nothing kept) once `alive()` is
+ *  false. Same settings as tex(). */
+async function streamTex(renderer, img, { srgb = true, aniso = 1 } = {}, alive = () => true) {
+  const w = img.width;
+  const h = img.height;
+  if (w * h <= UPLOAD_PX) {
+    const t = tex(img, { srgb, aniso });
+    renderer.initTexture(t);
+    return t;
+  }
+  const t = new THREE.DataTexture(null, w, h, THREE.RGBAFormat, THREE.UnsignedByteType);
+  t.source.dataReady = false; // allocate only: the bands fill it
+  t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+  t.flipY = false;
+  t.unpackAlignment = 4;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.magFilter = THREE.LinearFilter;
+  t.generateMipmaps = true;
+  t.anisotropy = aniso;
+  t.needsUpdate = true;
+  renderer.initTexture(t);
+  const src = new THREE.Texture(img); // never uploaded itself: its rows are copied into t
+  src.flipY = false;
+  const rows = Math.max(8, Math.floor(UPLOAD_PX / w));
+  const region = new THREE.Box2();
+  const at = new THREE.Vector2();
+  for (let y = 0; y < h; y += rows) {
+    await nextFrame();
+    if (!alive()) {
+      t.dispose();
+      return null;
+    }
+    const n = Math.min(rows, h - y);
+    region.min.set(0, y);
+    region.max.set(w, y + n);
+    at.set(0, y);
+    t.generateMipmaps = y + n >= h; // mipmaps once, with the last band
+    renderer.copyTextureToTexture(src, t, region, at);
+  }
+  t.generateMipmaps = true;
+  return t;
+}
 
 /** A texture from an ImageBitmap or canvas, top row first (matching the wraps' v). */
 function tex(src, { srgb = true, aniso = 1 } = {}) {
@@ -214,6 +263,9 @@ export class CaseStage {
     this.reflect = reflect;
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, stencil: true, powerPreference: "high-performance" });
     this.renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+    // Checking each shader's log after compiling waits on the GPU (~200 ms seen); the shaders are
+    // fixed, so errors would show in development anyway.
+    this.renderer.debug.checkShaderErrors = false;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.NeutralToneMapping;
     this.renderer.setClearColor(0x000000, 0);
@@ -247,6 +299,8 @@ export class CaseStage {
     this.surface = null; // shared surface maps (THREE textures by name)
     this.models = new Map(); // id -> textures, for the shown cases (and those about to be)
     this.keepIds = new Set();
+    this.loading = new Map(); // id -> token of the full wrap being uploaded
+    this.uploads = Promise.resolve(); // uploads run one at a time, a band per frame
     this.shown = []; // cases in the scene: { id, model, slot, …, see place() }
     this.yaw = STILL_YAW; // the centre case's angle
     this.yawTarget = null;
@@ -271,6 +325,58 @@ export class CaseStage {
    *  allows), so the first frame on screen doesn't stall. */
   async warm() {
     await this.renderer.compileAsync(this.scene, this.camera);
+  }
+
+  /**
+   * Compiles, in the background, the shaders of every kind of case in `profiles` (cases.json):
+   * each form with a quick wrap and finished (disc and emboss), real and mirrored. Otherwise the
+   * first case of a kind held up the page while the GPU driver built its shaders, up to ~90 ms
+   * each on integrated graphics. Run it once the surface maps are in, as they change the shaders.
+   * The sample cases are kept (never drawn) until the stage goes: three.js deletes a program once
+   * no material uses it, and dropping every case at once (a jump) made them all compile again.
+   */
+  async warmCases(profiles) {
+    if (this.warming || this.disposed) return;
+    this.warming = true;
+    const px = document.createElement("canvas");
+    px.width = px.height = 2;
+    const scene = new THREE.Scene();
+    const made = [];
+    try {
+      for (const [profileName, profile] of Object.entries(profiles)) {
+        for (const full of [false, true]) {
+          const model = {
+            case: { profileName, profile, style: { shell: "#8a94a3" } },
+            wrapTex: tex(px),
+            discTex: full && profile.disc ? tex(px) : null,
+            embossTex: full && profile.emboss ? tex(px, { srgb: false }) : null,
+            wear: 0,
+          };
+          const contact = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, opacity: 0.55 }));
+          const c = { id: "", model, own: [], group: new THREE.Group(), mirror: new THREE.Group(), contact, slot: "warm" };
+          c.mirror.scale.y = -1;
+          c.group.add(contact);
+          this.dress(c);
+          for (const copy of [c.real, c.refl]) if (copy.disc) copy.disc.visible = true; // compiled only if visible
+          scene.add(c.group, c.mirror);
+          made.push(c);
+        }
+      }
+      await this.renderer.compileAsync(scene, this.camera, this.scene);
+    } finally {
+      this.samples = made;
+    }
+  }
+
+  dropSamples() {
+    for (const c of this.samples ?? []) {
+      this.undress(c);
+      c.contact.material.map?.dispose();
+      c.contact.material.dispose();
+      c.contact.geometry.dispose();
+      for (const t of [c.model.wrapTex, c.model.discTex, c.model.embossTex]) t?.dispose();
+    }
+    this.samples = null;
   }
 
   /** The case on the centre turntable (or arriving there). */
@@ -301,16 +407,58 @@ export class CaseStage {
 
   /**
    * Holds the textures for a case: `model` = { id, case, wrap (ImageBitmap or canvas), disc?,
-   * emboss?, wear }. Uploads them now, so showing it later is instant.
+   * emboss?, wear, quick? }. Uploads them ahead of showing it. A quick wrap (small, shown at
+   * once) goes up now; a full wrap streams in a band per frame and replaces the quick one when
+   * it is complete.
    */
   preload(model) {
     const old = this.models.get(model.id);
     if (old && old.wrapSrc === model.wrap) return;
-    const m = { ...model, wrapSrc: model.wrap };
-    m.wrapTex = tex(model.wrap, { aniso: this.aniso });
-    m.discTex = model.disc ? tex(model.disc, { aniso: this.aniso }) : null;
-    m.embossTex = model.emboss ? tex(model.emboss, { srgb: false }) : null;
-    for (const t of [m.wrapTex, m.discTex, m.embossTex]) if (t) this.renderer.initTexture(t);
+    if (model.quick) {
+      this.loading.delete(model.id);
+      const t = (img, o) => {
+        const x = tex(img, o);
+        this.renderer.initTexture(x);
+        return x;
+      };
+      this.adopt(model, t(model.wrap, { aniso: this.aniso }), model.disc ? t(model.disc, { aniso: this.aniso }) : null, model.emboss ? t(model.emboss, { srgb: false }) : null);
+      return;
+    }
+    if (model.key && this.loading.get(model.id)?.key === model.key) return; // already on its way
+    const token = { key: model.key };
+    this.loading.set(model.id, token);
+    const close = () => {
+      for (const b of [model.wrap, model.disc, model.emboss]) if (b instanceof ImageBitmap) b.close?.();
+    };
+    const alive = () => !this.disposed && this.loading.get(model.id) === token;
+    const job = async () => {
+      if (!alive()) return close();
+      const out = [];
+      for (const [img, o] of [[model.wrap, { aniso: this.aniso }], [model.disc, { aniso: this.aniso }], [model.emboss, { srgb: false }]]) {
+        out.push(img ? await streamTex(this.renderer, img, o, alive) : null);
+        if (!alive()) break;
+      }
+      if (!alive() || (model.wrap && !out[0])) {
+        for (const t of out) t?.dispose();
+        close();
+        return;
+      }
+      this.loading.delete(model.id);
+      // The Garage may have moved on while it uploaded.
+      if (!this.keepIds.has(model.id) && !this.shown.some((c) => c.id === model.id)) {
+        for (const t of out) t?.dispose();
+        close();
+        return;
+      }
+      this.adopt(model, ...out);
+    };
+    this.uploads = this.uploads.then(job, job);
+  }
+
+  /** Puts a case's uploaded textures in use, replacing (and freeing) what it had. */
+  adopt(model, wrapTex, discTex, embossTex) {
+    const old = this.models.get(model.id);
+    const m = { ...model, wrapSrc: model.wrap, wrapTex, discTex, embossTex };
     this.models.set(model.id, m);
     // A shown case takes its new textures where it stands.
     for (const c of this.shown) {
@@ -874,6 +1022,8 @@ export class CaseStage {
   }
 
   dispose() {
+    this.disposed = true;
+    this.dropSamples();
     cancelAnimationFrame(this.frame);
     clearTimeout(this.fadeTimer);
     this.pending = null;

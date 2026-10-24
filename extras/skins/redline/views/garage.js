@@ -8,7 +8,7 @@
 // with the start's wear). On the case: click opens it; right click holds its front,
 // then its back, then lets it turn again. The card's buttons sit outside it, so the focus manager reaches them
 // normally.
-import { caseFor, dropQueued, loadCases, requestWrap, surfaceMaps } from "../case-builder/compose.js";
+import { TIERS, caseFor, dropQueued, loadCases, requestWrap, surfaceMaps } from "../case-builder/compose.js";
 import { CaseStage, quickWrap } from "../case-builder/renderer.js";
 import { condition, describe, failChance, grade, lastWear, serviced } from "../condition.js";
 import { modalOpen } from "../modal.js";
@@ -284,12 +284,21 @@ function showBackdrop(e, dir) {
   }
 }
 
+/** The wrap tier for the Garage: medium, or full when the focused case's front panel would
+ *  otherwise get fewer than about 1.3 texels per screen pixel. It fills about half the stage's
+ *  height and a panel is about 0.75 as wide as tall; full size (1200 px) only pays on large, dense
+ *  screens, and costs four times the upload. (Small is for thumbnails: no disc or emboss.) */
+function wrapTier() {
+  const h = (cases3d?.canvas.clientHeight || innerHeight) * devicePixelRatio;
+  return 0.5 * h * 0.75 * 1.3 > TIERS.medium ? "full" : "medium";
+}
+
 /** Composes (or fetches from the cache) a case's full wrap and hands it to the stage, if the
  *  Garage still wants it (`anyway`: always, for prewarm()). */
 async function load(e, priority, anyway = false) {
   let rec;
   try {
-    rec = await requestWrap(e, "full", caseCtx(), priority);
+    rec = await requestWrap(e, wrapTier(), caseCtx(), priority);
   } catch {
     return; // dropped (the focus moved on) or failed: the quick wrap stays
   }
@@ -369,6 +378,8 @@ function createStage(floor) {
     }),
     surfaceMaps().then((maps) => cases3d === mine && mine.setSurfaceMaps(maps)),
   ]).catch((err) => console.warn("Grand Tour: case setup", err));
+  // Then every kind of case's shaders, in the background (see CaseStage.warmCases).
+  void ready.then(() => cases3d === mine && cases && mine.warmCases(cases.profiles)).catch((err) => console.warn("Grand Tour: shader warm-up", err));
   return ready;
 }
 

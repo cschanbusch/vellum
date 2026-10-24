@@ -715,7 +715,7 @@ test.describe("Grand Tour", () => {
     const probe = <T>(fn: string) => skin.evaluate(`(() => { const s = window.__rlCaseStage; return ${fn}; })()`) as Promise<T>;
     // The focused case gets its composed wrap (a DVD keep case for the mock store), and its neighbour
     // is preloaded for an instant step.
-    await expect.poll(() => probe<string | null>("s.current?.key ?? null"), { timeout: 30_000 }).toContain("|keepcase-dvd|full|");
+    await expect.poll(() => probe<string | null>("s.current?.key ?? null"), { timeout: 30_000 }).toMatch(/\|keepcase-dvd\|(medium|full)\|/); // the tier follows the screen size
     await expect.poll(() => probe<number>("s.models.size"), { timeout: 30_000 }).toBeGreaterThanOrEqual(2);
     await expect(frame.locator(".rl-gar-gl")).toBeVisible();
 
@@ -752,7 +752,7 @@ test.describe("Grand Tour", () => {
     const setOption = (k: string, v: unknown) =>
       page.evaluate(([k, v]) => (document.querySelector("vellum-harness") as HarnessEl).backend.setOption("redline", k as string, v), [k, v] as const);
     await setOption("caseOther", "bigbox");
-    await expect.poll(() => probe<string | null>("s.current?.key ?? null"), { timeout: 30_000 }).toContain("|bigbox|full|");
+    await expect.poll(() => probe<string | null>("s.current?.key ?? null"), { timeout: 30_000 }).toMatch(/\|bigbox\|(medium|full)\|/); // the tier follows the screen size
     await gl.click();
     expect(await probe<number>("s.lidTarget")).toBe(0);
     // The floor reflection option hides the mirrored copy.
@@ -862,6 +862,28 @@ test.describe("Grand Tour", () => {
     await frame.locator("body").press("a");
     await expect(title).toBeHidden();
     expect((await state(page)).query, "the key that dismissed it didn't start a search").toBe("");
+  });
+
+  test("Grand Tour picks one song per launch from music/, names it once as it starts, and keeps it through a skin reload", async ({ page }) => {
+    const frame = await open(page, 5226);
+    const html = frame.locator("html");
+    await expect(html).toHaveAttribute("data-rl-song", /^(expressway|lounge|nightdrive|pace|strike)$/);
+    const song = (await html.getAttribute("data-rl-song"))!;
+    expect(await html.evaluate(() => sessionStorage.getItem("rl-song"))).toBe(song);
+    // When the music starts, a plate on the footer's left end names the song, then goes.
+    const plate = frame.locator(".rl-song.is-in");
+    await expect(plate).toBeVisible({ timeout: 30_000 });
+    await expect(plate.locator(".rl-song-name")).toHaveText(song.charAt(0).toUpperCase() + song.slice(1));
+    await page.waitForTimeout(600); // the slide in
+    await page.screenshot({ path: "test-artifacts/views/grand-tour-now-playing.png", clip: { x: 0, y: 820, width: 760, height: 130 } });
+    await expect(frame.locator(".rl-song")).toHaveCount(0, { timeout: 8_000 });
+    // The song's files and the SoundFont load: the paths it configured are real.
+    await html.evaluate(() => (window as unknown as { vellum: { music: { preload(): Promise<void> } } }).vellum.music.preload());
+    await host(page, (h) => h.reloadSkinPage());
+    await expect(page.frameLocator("iframe").locator("html")).toHaveAttribute("data-rl-song", song);
+    // Once per launch: not again after a reload.
+    await page.waitForTimeout(3000);
+    await expect(page.frameLocator("iframe").locator(".rl-song")).toHaveCount(0);
   });
 
   test("Grand Tour's menu sounds: steps tick, a dead end knocks, Back and a mode change have their own sounds", async ({ page }) => {

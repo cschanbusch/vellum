@@ -116,6 +116,10 @@ body { background: transparent; }
 :root[data-rl-still] *::before,
 :root[data-rl-still] *::after { animation-play-state: paused !important; }
 :root[data-rl-still] .rl-streaks { display: none; }
+/* In the Garage the streaks run behind the WebGL stage, and an animated layer underneath makes
+   everything above it that overlaps their path a compositor layer of its own: on integrated
+   graphics that alone cost 60 fps on about 2% of frames. They hardly show there anyway. */
+:root:has(.v-view[data-view="garage"]) .rl-streaks { display: none; }
 
 /* ---- shared: glass, gloss, the light sweep -------------------------------------------------- */
 
@@ -286,6 +290,7 @@ vellum-shelf::part(art-selected)::after {
   border-radius: inherit;
   background: linear-gradient(105deg, transparent 40%, rgb(255 255 255 / 0.7) 50%, transparent 60%) 160% 0 / 250% 100% no-repeat;
   animation: rl-sweep 2.6s ease-in-out infinite;
+  will-change: transform; /* its own small layer: the sweep repaints every frame */
 }
 vellum-grid::part(caption),
 vellum-shelf::part(caption) {
@@ -387,6 +392,7 @@ vellum-list::part(row-selected)::after {
   pointer-events: none;
   background: linear-gradient(105deg, transparent 42%, rgb(255 255 255 / 0.45) 50%, transparent 58%) 160% 0 / 250% 100% no-repeat;
   animation: rl-sweep 2.6s ease-in-out infinite;
+  will-change: transform; /* its own small layer: the sweep repaints every frame */
 }
 vellum-list::part(label) { border-radius: 3px; background: var(--rl-amber); color: #1a1300; font-weight: 700; letter-spacing: 0.08em; }
 vellum-list::part(icon) { border-radius: 4px; box-shadow: 0 0 0 1px rgb(255 255 255 / 0.9), 0 1px 3px rgb(0 0 0 / 0.3); }
@@ -402,7 +408,7 @@ vellum-list::part(icon) { border-radius: 4px; box-shadow: 0 0 0 1px rgb(255 255 
   background: var(--rl-glass);
   box-shadow: var(--rl-glass-shadow);
   backdrop-filter: blur(10px);
-  animation: rl-slide-in 420ms cubic-bezier(0.25, 1.3, 0.4, 1) both;
+  animation: rl-slide-in 420ms cubic-bezier(0.25, 1.3, 0.4, 1) backwards; /* not both: see garage.css */
 }
 @keyframes rl-slide-in { from { transform: translateX(-40px); opacity: 0; } to { transform: none; opacity: 1; } }
 /* The logo on a dark chrome nameplate: store logos are mostly light, made for dark art. */
@@ -449,6 +455,7 @@ vellum-play-button::part(button)::after {
   pointer-events: none;
   background: linear-gradient(105deg, transparent 40%, rgb(255 255 255 / 0.6) 50%, transparent 60%) 160% 0 / 250% 100% no-repeat;
   animation: rl-sweep 2.6s ease-in-out infinite;
+  will-change: transform; /* its own small layer: the sweep repaints every frame */
 }
 vellum-play-button::part(button):focus-visible { outline: none; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), 0 0 0 2px #fff, 0 0 0 4px var(--rl-blue), 0 0 18px rgb(31 111 224 / 0.6); }
 vellum-play-button::part(icon) { font-size: 0.85em; }
@@ -483,6 +490,40 @@ vellum-play-button::part(via) {
   overflow: hidden;
 }
 .rl-key { display: inline-flex; align-items: center; gap: 0.5rem; }
+
+/* Now playing: the song's name on the footer's left end, for a few seconds when the music first
+   starts (soundtrack.js). Footer height and top edge, opaque enough to cover hints beneath. */
+.rl-song {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  z-index: 90; /* under the ignition and service overlays */
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  height: 2.5rem;
+  padding: 0 3rem 0 1.6rem;
+  background: linear-gradient(90deg, #f7f9fb 0, #f7f9fb calc(100% - 3rem), rgb(247 249 251 / 0));
+  box-shadow: inset 0 1px 0 var(--rl-hair), inset 0 2px 0 #fff;
+  pointer-events: none;
+  transform: translateY(100%);
+  opacity: 0;
+  transition: transform 380ms cubic-bezier(0.25, 1.3, 0.4, 1), opacity 240ms ease;
+}
+.rl-song.is-in { transform: none; opacity: 1; }
+.rl-song-label {
+  padding: 0.15rem 0.7rem;
+  border-radius: 4px;
+  background: var(--rl-gloss);
+  color: #fff;
+  font: 400 0.68rem var(--rl-wide);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 1px rgb(0 0 0 / 0.3);
+}
+.rl-song-label::before { content: "\266A\00A0\00A0"; letter-spacing: 0; } /* a music note */
+.rl-song-name { font: 400 0.95rem var(--rl-wide); letter-spacing: 0.06em; color: var(--rl-ink); }
+:root[data-rl-still] .rl-song { transform: none; transition: opacity 240ms ease; }
 .rl-key kbd {
   display: inline-grid;
   place-items: center;
@@ -562,4 +603,5 @@ vellum-play-button::part(via) {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
   .rl-streaks { display: none; }
+  .rl-song { transform: none; transition: opacity 240ms ease; }
 }
