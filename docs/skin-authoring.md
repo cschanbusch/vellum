@@ -336,7 +336,7 @@ It also survives skin reloads and restarts.
 | `toggleFavorite(id)` | |
 | `setHidden(id, hidden)` | |
 | `setTags(id, tags)` | Up to 32 tags of up to 40 characters |
-| `changeArt(id, kind)` | Opens the shell's Change art dialog (arrives with remote art) |
+| `changeArt(id, kind)` | Opens the shell's Change art dialog at that kind |
 | `showDetails(id)` | Spotlight on that entry; Back returns to the previous view |
 | `openSettings(page?)` | Opens the shell's settings, e.g. `openSettings("skins")` |
 | `randomEntry()` | A random entry from the current query, or `null` |
@@ -453,12 +453,14 @@ work. Mark anything else that shouldn't drag with `data-vellum-no-drag`.
 | Member | Description |
 | --- | --- |
 | `toast(text)` | A short message drawn by the shell |
-| `contextMenu(id, x, y)` | The shell's per-game menu at viewport coordinates. It is the same in every skin: Play, Play via…, details, favorite, tags, hide, change art, store actions, install folder. |
+| `contextMenu(id, x, y, items?)` | The shell's per-game menu at viewport coordinates. It is the same in every skin: Play, Play via…, details, favorite, tags, hide, change art, store actions, install folder. `items` (up to 6 `{ id, label, disabled? }`) adds the skin's own actions at the top. It resolves with the chosen item's `id`, or `null` when the user picked something else or closed the menu. |
+| `menuItems` | `true` when `contextMenu` accepts `items` (Vellum 0.4 and later). On older versions the items are ignored, so check this first if your skin offers the actions another way there. |
 
 ```js
-card.addEventListener("contextmenu", (e) => {
+card.addEventListener("contextmenu", async (e) => {
   e.preventDefault();
-  vellum.ui.contextMenu(entry.id, e.clientX, e.clientY);
+  const pick = await vellum.ui.contextMenu(entry.id, e.clientX, e.clientY, [{ id: "flip", label: "Flip card" }]);
+  if (pick === "flip") flip(card);
 });
 ```
 
@@ -940,11 +942,14 @@ Every entry always has all five kinds of art, so you never need to check before 
 | `header` | Landscape, about 2.14:1 | 460 × 215 to 920 × 430 |
 | `icon` | Square | 32 to 256 |
 
-When a store has no image for a kind, Vellum generates a placeholder: a two-tone image from the
-title's hash, with the title set on it (logos are the title on a transparent background).
-`entry.artStatus[kind]` tells you which one you got (`"local"` or `"placeholder"`; `"remote"`
-arrives with downloaded art). You might hide the title caption for real covers but keep it for
-placeholders:
+Vellum looks for each kind in order: the user's own choice (Change art…), the store's images
+on this PC, the store's image servers, SteamGridDB (when the user has entered a key), and
+finally a generated placeholder: a two-tone image from the title's hash, with the title set on
+it (logos are the title on a transparent background). Downloads happen in the background, so
+an entry can start on a placeholder and upgrade a few seconds later: the library updates and
+the entry's art URLs change. `entry.artStatus[kind]` tells you which one you got (`"local"`,
+`"remote"` or `"placeholder"`). You might hide the title caption for real covers but keep it
+for placeholders:
 
 ```css
 vellum-grid::part(caption) { display: none; }

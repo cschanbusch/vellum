@@ -8,7 +8,7 @@ import { facets } from "../../sdk/src/query";
 import type { Entry, ProviderInfo, SkinOption } from "../../sdk/src/types";
 import type { Backend, SkinRecord, UiSettings } from "../src/host/backend";
 import { SkinHostController } from "../src/host/controller";
-import { entryMenu } from "../src/host/entry-menu";
+import { entryMenu, withSkinItems } from "../src/host/entry-menu";
 import type { ContextMenu, DevErrorOverlay, TagsDialog } from "../src/overlays";
 import { applySkinTheme, controls, tokens } from "../src/theme";
 import { registerToasts, toasts, type ToastHost } from "../src/toasts";
@@ -197,7 +197,7 @@ export class Harness extends LitElement {
     this.backend = new MockBackend(this.cfg);
     const host = (this.host = new SkinHostController(this.backend, {
       toast: (t, e) => toasts().show(t, e),
-      contextMenu: (entry, x, y) => {
+      contextMenu: (entry, x, y, skinItems) => {
         const r = this.frame!.getBoundingClientRect();
         const items = entryMenu(host, entry, {
           editTags: async (e) => {
@@ -207,7 +207,7 @@ export class Harness extends LitElement {
           },
           changeArt: () => toasts().show("Change art isn't available in the harness."),
         });
-        menu.open(entry.title, items, x + r.left, y + r.top, () => this.frame?.focus());
+        return withSkinItems(items, skinItems, (all, onClose) => menu.open(entry.title, all, x + r.left, y + r.top, onClose), () => this.frame?.focus());
       },
       openSettings: () => {
         this.panel = true;

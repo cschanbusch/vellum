@@ -283,12 +283,26 @@ function cacheArt(ctx, id) {
   add("hero", flatFile(`${id}_library_hero.jpg`));
   add("logo", flatFile(`${id}_logo.png`));
   add("header", flatFile(`${id}_header.jpg`));
-  // Lowest resolution last: the 300×450 capsule only when there is nothing better.
-  add("cover", first((n) => n.startsWith("library_capsule")));
   return out;
 }
 
-/** Steam's CDN; downloaded by the backend from Phase 4 on. Newer titles may 404 here. */
+/** The 300×450 capsule: after the CDN's 600×900 cover, so it shows only until that has
+ *  downloaded, or when the CDN has none. */
+function capsuleArt(ctx, id) {
+  const base = join(ctx.locations.root, "appcache", "librarycache", id);
+  const out = [];
+  const walk = (dir, depth) => {
+    for (const f of listing(ctx, dir)) {
+      if (f.isDir && depth < 2) walk(join(dir, f.name), depth + 1);
+      else if (!out.length && !f.isDir && f.name.toLowerCase().startsWith("library_capsule") && IMAGE.test(f.name)) out.push({ kind: "cover", file: join(dir, f.name) });
+    }
+  };
+  walk(base, 0);
+  return out;
+}
+
+/** Steam's CDN, downloaded by the backend. Newer titles use hashed paths and may 404 here;
+ *  misses are remembered, and SteamGridDB (with a key) or a placeholder takes over. */
 function cdnArt(id) {
   const cdn = `https://cdn.cloudflare.steamstatic.com/steam/apps/${id}`;
   return [
@@ -373,10 +387,11 @@ export default {
     ctx.openUri(`steam://store/${appid(game)}`);
   },
 
-  /** Art candidates in priority order: custom grid art, Steam's cache, then the CDN. */
+  /** Art candidates in priority order: custom grid art, Steam's cache, the CDN, then the
+   *  low-resolution capsule. */
   art(ctx, game) {
     const id = appid(game);
-    return [...gridArt(ctx, id), ...cacheArt(ctx, id), ...cdnArt(id)];
+    return [...gridArt(ctx, id), ...cacheArt(ctx, id), ...cdnArt(id), ...capsuleArt(ctx, id)];
   },
 
   watch(ctx) {

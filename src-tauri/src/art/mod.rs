@@ -1,14 +1,16 @@
-//! Art v0: provider file candidates, generated placeholders, and resized variants.
+//! Art: provider candidates, remote images, generated placeholders, and resized variants.
 //!
 //! Skins request `/__vellum/art/<entryId>/<kind>?v=<version>&w=<width>` on their own origin.
-//! For each entry and kind the first usable local candidate wins; otherwise a placeholder SVG
-//! is served. Widths snap up to 160/320/640/1280/1920; `full` (or anything wider) returns the
-//! original bytes. Resized variants are cached in `cache/art/variants/`, keyed by the source
-//! file's path, size and modification time, so replacing a file invalidates its variants.
-//! Remote candidates (Steam CDN, SteamGridDB) arrive in Phase 4.
+//! For each entry and kind the resolution chain (`resolve`) picks the user's override, a
+//! provider candidate, a downloaded remote image or a SteamGridDB result; otherwise a
+//! placeholder SVG is served. Widths snap up to 160/320/640/1280/1920; `full` (or anything
+//! wider) returns the original bytes. Resized variants are cached in `cache/art/variants/`,
+//! keyed by the source file's path, size and modification time, so replacing a file
+//! invalidates its variants. Downloads happen in `crate::net`.
 
 pub mod placeholder;
 mod resize;
+pub mod resolve;
 pub mod style;
 
 use std::borrow::Cow;
@@ -35,7 +37,8 @@ pub struct ArtCandidate {
     /// Canonical path of a local file inside the provider's scope.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub file: Option<String>,
-    /// A remote URL on one of the provider's `artHosts` (downloaded from Phase 4 on).
+    /// A remote URL on one of the provider's `artHosts`, downloaded by the backend. When a
+    /// served candidate has both, `file` is the downloaded original of `url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -47,7 +50,7 @@ pub struct ArtCandidate {
 const IMAGE_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "webp", "gif"];
 const MAX_CANDIDATES: usize = 24;
 
-fn mtime_ms(m: &std::fs::Metadata) -> u64 {
+pub(crate) fn mtime_ms(m: &std::fs::Metadata) -> u64 {
     m.modified()
         .ok()
         .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
@@ -108,11 +111,6 @@ pub fn validate_candidates(value: &Value, scope: &Scope, art_hosts: &[String]) -
         }
     }
     (out, problems)
-}
-
-/// The candidate that will be served for `kind`, if any (local files only in v0).
-pub fn pick<'a>(candidates: &'a [ArtCandidate], kind: &str) -> Option<&'a ArtCandidate> {
-    candidates.iter().find(|c| c.kind == kind && c.file.is_some())
 }
 
 fn short_hash(h: impl Hash) -> String {
@@ -195,6 +193,11 @@ pub fn serve(req: &ArtRequest, cache_dir: &Path) -> ArtResponse {
     ArtResponse { content_type: "image/svg+xml", body: Cow::Owned(placeholder::svg(&req.title, &req.kind).into_bytes()) }
 }
 
+/// A resized copy of an image file (previews in the Change art dialog).
+pub fn resized(file: &Path, c: &ArtCandidate, width: Variant, cache_dir: &Path) -> std::io::Result<ArtResponse> {
+    resize::variant(file, c, width, None, cache_dir)
+}
+
 /// A small fixed pool for decoding and resizing, so a screen of covers doesn't spawn a thread
 /// (and a decoded 1200×1800 image) per request.
 pub fn spawn(job: impl FnOnce() + Send + 'static) {
@@ -256,8 +259,6 @@ mod tests {
         assert!(ok[0].mtime.is_some() && ok[0].size == Some(1));
         assert_eq!(ok[1].url.as_deref(), Some("https://cdn.example.com/a.png"));
         assert_eq!(problems.len(), 7, "{problems:?}");
-        assert_eq!(pick(&ok, "cover").unwrap().kind, "cover");
-        assert!(pick(&ok, "logo").is_none(), "remote candidates aren't served in v0");
     }
 
     #[test]

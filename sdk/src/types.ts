@@ -5,6 +5,13 @@ export const ART_KINDS: readonly ArtKind[] = ["cover", "hero", "logo", "header",
 export type ArtStatus = "local" | "remote" | "placeholder";
 export type EntryKind = "game" | "tool" | "dlc" | "other";
 
+/** A skin's own action at the top of the shell's game menu (`vellum.ui.contextMenu`). */
+export interface MenuItem {
+  id: string;
+  label: string;
+  disabled?: boolean;
+}
+
 export interface Source {
   provider: string;
   providerName: string;

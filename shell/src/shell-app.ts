@@ -1,15 +1,17 @@
 import { LitElement, css, html } from "lit";
 import { api, type AppInfo } from "./api";
-import { entryMenu } from "./host/entry-menu";
+import { entryMenu, withSkinItems } from "./host/entry-menu";
 import { host, hostUi } from "./host/instance";
 import type { LibraryView } from "./library-view";
 import type { ContextMenu, DevErrorOverlay, TagsDialog } from "./overlays";
+import "./art-dialog";
+import type { ArtDialog } from "./art-dialog";
 import "./recommend";
 import type { RecommendDialog } from "./recommend";
 import { store } from "./store";
 import { applySkinTheme, controls, tokens } from "./theme";
 import { registerToasts, toasts, type ToastHost } from "./toasts";
-import type { Entry } from "../../sdk/src/types";
+import type { ArtKind, Entry, MenuItem } from "../../sdk/src/types";
 import { facets } from "../../sdk/src/query";
 import "./library-view";
 import "./overlays";
@@ -20,6 +22,7 @@ import "./pages/views-page";
 import "./pages/developer-page";
 import "./pages/versions-page";
 import "./pages/catalog-page";
+import "./pages/art-page";
 import "./toasts";
 
 interface PageDef {
@@ -38,7 +41,7 @@ const PAGES: PageDef[] = [
   { id: "catalog", label: "Get skins" },
   { id: "views", label: "Views" },
   { id: "controls", label: "Controls", phase: 6 },
-  { id: "art", label: "Art and metadata", phase: 4 },
+  { id: "art", label: "Art and metadata" },
   { id: "versions", label: "Versions" },
   { id: "developer", label: "Developer" },
 ];
@@ -86,6 +89,9 @@ export class VellumShell extends LitElement {
   private get tags() {
     return this.renderRoot.querySelector<TagsDialog>("vellum-tags-dialog")!;
   }
+  private get art() {
+    return this.renderRoot.querySelector<ArtDialog>("vellum-art-dialog")!;
+  }
   private get devError() {
     return this.renderRoot.querySelector<DevErrorOverlay>("vellum-dev-error")!;
   }
@@ -98,9 +104,9 @@ export class VellumShell extends LitElement {
     this.menu.hidden = true;
     Object.assign(hostUi, {
       toast: (text: string, error = false) => toasts().show(text, error),
-      contextMenu: (entry: Entry, x: number, y: number) => this.openMenu(entry, x, y),
+      contextMenu: (entry: Entry, x: number, y: number, items?: MenuItem[]) => this.openMenu(entry, x, y, items),
       openSettings: (page?: string) => this.openSettings(page),
-      changeArt: () => toasts().show("Choosing art arrives with the remote art update. Custom Steam grid art is picked up already."),
+      changeArt: (entry: Entry, kind: ArtKind) => this.changeArt(entry, kind),
       theme: (t: Record<string, string>) => applySkinTheme(t),
       devError: (message: string, stack: string) => {
         console.error(`[skin] ${message}\n${stack}`);
@@ -108,6 +114,8 @@ export class VellumShell extends LitElement {
       },
       skinFailed: (reason: string) => this.skinFailed(reason),
     });
+    this.art.onEntry = (e) => host.entryChanged(e);
+    this.art.onSettings = (page) => this.openSettings(page);
     host.on("skin", () => {
       this.requestUpdate(); // frameless skins get window controls in the settings header
       this.devError?.clear();
@@ -127,14 +135,25 @@ export class VellumShell extends LitElement {
     await api.useFallbackSkin(reason);
   }
 
-  private openMenu(entry: Entry, x: number, y: number) {
+  private openMenu(entry: Entry, x: number, y: number, skinItems?: MenuItem[]) {
     const r = this.library.frame?.getBoundingClientRect();
     const items = entryMenu(host, entry, {
       editTags: (e) => void this.editTags(e),
       changeArt: (e) => hostUi.changeArt(e, "cover"),
     });
-    this.menu.open(entry.title, items, x + (r?.left ?? 0), y + (r?.top ?? 0), () => {
-      if (!this.settingsOpen && !this.tags.entry) this.library.focusSkin();
+    return withSkinItems(
+      items,
+      skinItems,
+      (all, onClose) => this.menu.open(entry.title, all, x + (r?.left ?? 0), y + (r?.top ?? 0), onClose),
+      () => {
+        if (!this.settingsOpen && !this.tags.entry && !this.art.isOpen) this.library.focusSkin();
+      },
+    );
+  }
+
+  private changeArt(e: Entry, kind: ArtKind) {
+    this.art.open(e, kind, () => {
+      if (!this.settingsOpen) this.library.focusSkin();
     });
   }
 
@@ -162,6 +181,9 @@ export class VellumShell extends LitElement {
       e.preventDefault();
       if (this.settingsOpen) this.closeSettings();
       else this.openSettings();
+    } else if (e.key === "Escape" && this.art.isOpen) {
+      e.preventDefault();
+      this.art.close();
     } else if (e.key === "Escape" && this.settingsOpen && !this.menu.isOpen && !this.tags.entry) {
       e.preventDefault();
       this.closeSettings();
@@ -220,6 +242,7 @@ export class VellumShell extends LitElement {
       </div>
       <vellum-context-menu></vellum-context-menu>
       <vellum-tags-dialog></vellum-tags-dialog>
+      <vellum-art-dialog></vellum-art-dialog>
       <vellum-dev-error></vellum-dev-error>
       <vellum-recommend></vellum-recommend>
       <vellum-toasts></vellum-toasts>
@@ -240,6 +263,8 @@ export class VellumShell extends LitElement {
         return html`<vellum-catalog-page></vellum-catalog-page>`;
       case "versions":
         return html`<vellum-versions-page></vellum-versions-page>`;
+      case "art":
+        return html`<vellum-art-page></vellum-art-page>`;
       case "developer":
         return html`<vellum-developer-page></vellum-developer-page>`;
     }

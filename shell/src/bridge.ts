@@ -96,7 +96,15 @@ export function validateCall(method: CallMethod, args: unknown, h: BridgeContext
     case "ui.toast":
       return isStr(args.text, 300) ? null : "text must be a string of at most 300 characters";
     case "ui.contextMenu":
-      return !isNum(args.x) || !isNum(args.y) ? "x and y must be numbers" : entry();
+      if (!isNum(args.x) || !isNum(args.y)) return "x and y must be numbers";
+      if (args.items !== undefined) {
+        const ok =
+          Array.isArray(args.items) &&
+          args.items.length <= 6 &&
+          args.items.every((i) => isObj(i) && isStr(i.id, 32) && isStr(i.label, 48) && (i.disabled === undefined || typeof i.disabled === "boolean"));
+        if (!ok) return "items must be at most 6 { id, label, disabled? } with short strings";
+      }
+      return entry();
     case "ui.theme": {
       if (!isObj(args.tokens)) return "tokens must be an object";
       for (const [k, v] of Object.entries(args.tokens)) {

@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 
 pub use entry::Entry;
 
+use crate::art::resolve::ArtSources;
 use crate::art::ArtCandidate;
 
 use crate::providers::model::ProviderGame;
@@ -57,12 +58,12 @@ pub fn record_id(provider: &str, source_id: &str) -> String {
 }
 
 /// Builds entries for every provider `active` accepts, sorted by sort title.
-pub fn build_entries(snap: &LibrarySnapshot, ud: &UserData, active: &dyn Fn(&str) -> bool) -> Vec<Entry> {
+pub fn build_entries(snap: &LibrarySnapshot, ud: &UserData, active: &dyn Fn(&str) -> bool, src: &dyn ArtSources) -> Vec<Entry> {
     let mut out: Vec<Entry> = snap
         .providers
         .iter()
         .filter(|(id, _)| active(id))
-        .flat_map(|(id, recs)| recs.games.iter().map(move |g| Entry::single(id, recs, g, ud)))
+        .flat_map(|(id, recs)| recs.games.iter().map(move |g| Entry::single(id, recs, g, ud, src)))
         .collect();
     out.sort_by(|a, b| a.sort_title.cmp(&b.sort_title).then_with(|| a.id.cmp(&b.id)));
     out
@@ -92,6 +93,7 @@ pub fn note_first_seen(ud: &mut UserData, provider: &str, games: &[ProviderGame]
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::art::resolve::NoNetwork;
     use crate::providers::model::parse_scan;
     use crate::userdata::games::GameUserData;
     use serde_json::json;
@@ -118,7 +120,7 @@ mod tests {
         let mut ud = UserData::default();
         ud.games.insert("steam:2".into(), GameUserData { hidden: Some(false), favorite: true, ..Default::default() });
         ud.games.insert("steam:1".into(), GameUserData { tags: vec!["backlog".into()], ..Default::default() });
-        let entries = build_entries(&snap(), &ud, &|_| true);
+        let entries = build_entries(&snap(), &ud, &|_| true, &NoNetwork);
         let titles: Vec<&str> = entries.iter().map(|e| e.title.as_str()).collect();
         assert_eq!(titles, ["Hollow Knight", "A Short Hike", "The Witcher 3"]);
         let hk = &entries[0];
@@ -130,7 +132,7 @@ mod tests {
 
     #[test]
     fn inactive_providers_contribute_nothing() {
-        assert!(build_entries(&snap(), &UserData::default(), &|p| p != "steam").is_empty());
+        assert!(build_entries(&snap(), &UserData::default(), &|p| p != "steam", &NoNetwork).is_empty());
     }
 
     #[test]

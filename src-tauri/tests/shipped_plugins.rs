@@ -36,9 +36,9 @@ fn every_shipped_plugin_is_valid() {
 
 #[test]
 fn every_dev_fixture_is_rejected_with_a_reason() {
-    const TEST_SKINS: [&str; 3] = ["sidebar-test", "timeline-test", "token-test"];
+    const TEST_SKINS: [&str; 4] = ["music-test", "sidebar-test", "timeline-test", "token-test"];
     let found = discover(&[repo("tests/fixtures/dev-plugins")]);
-    assert_eq!(found.len(), 7);
+    assert_eq!(found.len(), 8);
     for p in &found {
         if p.kind == PluginKind::Skin && TEST_SKINS.contains(&p.id.as_str()) {
             assert!(p.is_valid(), "test skin {} has errors: {:?}", p.id, p.errors);

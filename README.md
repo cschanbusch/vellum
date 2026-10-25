@@ -116,8 +116,8 @@ library with art URLs on its own origin. The full specification is
 | Library model, search, filters, sorting, groups, favorites, tags | Done |
 | Skin system: protocol, CSP, SDK, kit components, tokens, options, dev mode, hot reload | Done |
 | Views: List, Covers (shelves), Spotlight, and skin-defined views with placement and hotkeys | Done |
-| Art pipeline: local candidates, resizing, caching, placeholders, art styles | Done (local sources only) |
-| Remote art (Steam CDN, SteamGridDB), Change art dialog | Planned (Phase 4) |
+| Art pipeline: local candidates, resizing, caching, placeholders, art styles | Done |
+| Remote art (Steam CDN, SteamGridDB), Change art dialog, Steam store details | Done (Phase 4) |
 | Merging one game owned on several stores | Planned (Phase 5) |
 | Controller input, couch mode polish, `.vplugin` install, global hotkeys | Partly done (Phase 6) |
 | Further stores (Ubisoft Connect, Battle.net, EA app, Xbox) | Planned (Phase 7) |

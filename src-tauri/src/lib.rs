@@ -6,6 +6,7 @@ pub mod diagnose;
 pub mod formats;
 pub mod library;
 pub mod logging;
+pub mod net;
 pub mod paths;
 pub mod platform;
 pub mod plugins;
@@ -47,6 +48,8 @@ pub struct AppState {
     pub runtime: scanner::Runtime,
     pub env: HostEnv,
     pub skins: skins::SkinRuntime,
+    /// Remote art, SteamGridDB and store details.
+    pub net: net::Net,
     /// `--dev` on the command line (the settings toggle is `ui.devMode`).
     pub dev_flag: bool,
 }
@@ -113,6 +116,7 @@ pub fn run() {
         runtime: scanner::Runtime::default(),
         env: HostEnv { registry: Arc::new(SystemRegistry), opener: Arc::new(SystemOpener) },
         skins: skins::SkinRuntime::default(),
+        net: net::Net::open(&paths.data_dir),
         dev_flag: args.dev,
         paths,
     };
@@ -130,6 +134,7 @@ pub fn run() {
         .setup(|app| {
             // The snapshot is already loaded; fresh results replace it as each provider finishes.
             scanner::scan_all(app.handle());
+            net::start(app.handle());
             skins::apply_window(app.handle());
             // The window starts hidden (tauri.conf.json) so it never flashes at the default size.
             if let Some(win) = app.get_webview_window("main") {
@@ -183,6 +188,15 @@ pub fn run() {
             commands::catalog_install,
             commands::catalog_remove,
             commands::catalog_preview,
+            commands::art_settings,
+            commands::set_art_settings,
+            commands::set_steamgriddb_key,
+            commands::retry_missing_art,
+            commands::refresh_details_now,
+            commands::art_choices,
+            commands::art_thumb,
+            commands::set_art_override,
+            commands::set_art_override_file,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
@@ -193,6 +207,7 @@ pub fn run() {
             state.settings.flush();
             state.userdata.flush();
             state.library.flush();
+            state.net.flush();
             handle.state::<window_state::Tracker>().save();
             tracing::info!("exit");
         }

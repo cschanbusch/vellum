@@ -5,7 +5,8 @@ use std::collections::BTreeMap;
 use serde::Serialize;
 
 use super::{record_id, ProviderRecords};
-use crate::art;
+use crate::art::{self, resolve::ArtSources};
+use crate::net::details;
 use crate::providers::model::{GameKind, Metadata, ProviderGame};
 use crate::userdata::games::UserData;
 
@@ -78,10 +79,11 @@ pub fn sort_title(title: &str) -> String {
 }
 
 impl Entry {
-    pub fn single(provider: &str, recs: &ProviderRecords, g: &ProviderGame, ud: &UserData) -> Entry {
+    pub fn single(provider: &str, recs: &ProviderRecords, g: &ProviderGame, ud: &UserData, src: &dyn ArtSources) -> Entry {
         let id = record_id(provider, &g.source_id);
         let user = ud.games.get(&id).cloned().unwrap_or_default();
         let cands = recs.art.get(&g.source_id).map(Vec::as_slice).unwrap_or(&[]);
+        let resolved: Vec<_> = ART_KINDS.iter().map(|k| (*k, art::resolve::resolve(&id, k, cands, Some(&user.art_overrides), src))).collect();
         Entry {
             title: g.title.clone(),
             sort_title: sort_title(&g.title),
@@ -104,9 +106,9 @@ impl Entry {
             size_bytes: g.size_bytes,
             playtime_minutes: g.playtime_minutes,
             last_played: g.last_played.clone(),
-            metadata: g.metadata.clone(),
-            art: ART_KINDS.iter().map(|k| (*k, art::url(&id, k, &art::version(art::pick(cands, k), &g.title)))).collect(),
-            art_status: ART_KINDS.iter().map(|k| (*k, if art::pick(cands, k).is_some() { "local" } else { "placeholder" })).collect(),
+            metadata: details::merge(&g.metadata, src.details(&id).as_ref()),
+            art: resolved.iter().map(|(k, r)| (*k, art::url(&id, k, &art::version(r.candidate.as_ref(), &g.title)))).collect(),
+            art_status: resolved.iter().map(|(k, r)| (*k, r.status())).collect(),
             notes: user.notes,
             id,
         }

@@ -142,7 +142,7 @@ fn login_files_stay_unreadable_even_inside_the_root() {
 }
 
 /// Art candidates, in priority order: custom grid art, Steam's nested per-app cache, the older
-/// flat cache names, the low-resolution capsule, then CDN URLs (downloaded from Phase 4 on).
+/// flat cache names, CDN URLs (downloaded by the backend), then the low-resolution capsule.
 #[test]
 fn art_candidates_follow_the_documented_order() {
     let fx = steam_fixture();
@@ -186,7 +186,16 @@ fn art_candidates_follow_the_documented_order() {
 
     let stardew = art(&mut h, "413150");
     assert_eq!(
-        &ends(&stardew)[..4],
-        ["header=library_header.jpg", "cover=413150_library_600x900.jpg", "header=413150_header.jpg", "cover=library_capsule.jpg"]
+        ends(&stardew),
+        [
+            "header=library_header.jpg",
+            "cover=413150_library_600x900.jpg",
+            "header=413150_header.jpg",
+            "cover=library_600x900_2x.jpg",
+            "hero=library_hero.jpg",
+            "logo=logo.png",
+            "header=header.jpg",
+            "cover=library_capsule.jpg",
+        ]
     );
 }

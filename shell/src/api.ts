@@ -159,6 +159,47 @@ export interface CatalogView {
   url: string;
 }
 
+export interface ArtSettings {
+  storeArt: boolean;
+  fetchDetails: boolean;
+  /** 1, 7, 30, or 0 for never. */
+  retryMissingDays: number;
+  /** 7, 30, 90, or 0 for never. */
+  refreshDetailsDays: number;
+}
+
+export interface ArtSettingsView {
+  settings: ArtSettings;
+  steamgriddbKey: boolean;
+  steamgriddbRejected: boolean;
+  stats: {
+    images: number;
+    misses: number;
+    bytes: number;
+    details: number;
+    queuedDownloads: number;
+    queuedLookups: number;
+    queuedDetails: number;
+  };
+}
+
+export interface ArtOption {
+  id: string;
+  source: string;
+  width?: number;
+  height?: number;
+  state: "ready" | "missing" | "unknown";
+  chosen: boolean;
+  inUse: boolean;
+}
+
+export interface ArtChoices {
+  kind: string;
+  options: ArtOption[];
+  automatic: boolean;
+  steamgriddb: "off" | "on" | "rejected";
+}
+
 export const api = {
   appInfo: () => invoke<AppInfo>("app_info"),
   listPlugins: () => invoke<PluginView[]>("list_plugins"),
@@ -214,6 +255,22 @@ export const api = {
   onVersionProgress: (cb: (p: VersionProgress) => void): Promise<UnlistenFn> =>
     listen<VersionProgress>("vellum://version-progress", (e) => cb(e.payload)),
   onProvidersChanged: (cb: () => void): Promise<UnlistenFn> => listen("vellum://providers-changed", cb),
+
+  artSettings: () => invoke<ArtSettingsView>("art_settings"),
+  setArtSettings: (patch: Partial<ArtSettings>) => invoke<ArtSettingsView>("set_art_settings", { patch }),
+  setSteamGridDbKey: (key: string | null) => invoke<ArtSettingsView>("set_steamgriddb_key", { key }),
+  retryMissingArt: () => invoke<number>("retry_missing_art"),
+  refreshDetailsNow: () => invoke<number>("refresh_details_now"),
+  artChoices: (entryId: string, kind: string) => invoke<ArtChoices>("art_choices", { entryId, kind }),
+  artThumb: (entryId: string, kind: string, option: string) => invoke<string | null>("art_thumb", { entryId, kind, option }),
+  setArtOverride: (entryId: string, kind: string, option: string | null) => invoke<Entry>("set_art_override", { entryId, kind, option }),
+  setArtOverrideFile: (entryId: string, kind: string, path: string) => invoke<Entry>("set_art_override_file", { entryId, kind, path }),
+
+  /** Image file picker; resolves to null when cancelled. */
+  pickImage: async (title: string): Promise<string | null> => {
+    const picked = await open({ multiple: false, title, filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp", "gif"] }] });
+    return typeof picked === "string" ? picked : null;
+  },
 
   /** Folder picker; resolves to null when cancelled. */
   pickFolder: async (title: string): Promise<string | null> => {

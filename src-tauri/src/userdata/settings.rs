@@ -23,6 +23,7 @@ pub struct Settings {
     pub active_skin: String,
     pub plugins: PluginSettings,
     pub ui: UiSettings,
+    pub art: ArtSettings,
     /// Keys this version doesn't know (written by a newer Vellum) are kept, not dropped.
     #[serde(flatten)]
     pub other: Map<String, Value>,
@@ -35,6 +36,7 @@ impl Default for Settings {
             active_skin: DEFAULT_SKIN.into(),
             plugins: PluginSettings::default(),
             ui: UiSettings::default(),
+            art: ArtSettings::default(),
             other: Map::new(),
         }
     }
@@ -96,6 +98,50 @@ impl UiSettings {
             next[k] = v.clone();
         }
         *self = serde_json::from_value(next).map_err(|e| format!("invalid UI settings: {e}"))?;
+        Ok(())
+    }
+}
+
+/// Settings → Art and metadata. Day counts of 0 mean "never" (until the user asks).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", default)]
+pub struct ArtSettings {
+    /// Download art from store servers (Steam's CDN) for the URLs providers name.
+    pub store_art: bool,
+    /// Fetch developer, publisher, release date, genres and description from Steam's store.
+    pub fetch_details: bool,
+    /// How long a missing image stays recorded as missing before it is asked for again.
+    pub retry_missing_days: u32,
+    /// How old fetched store details may get before they are fetched again.
+    pub refresh_details_days: u32,
+}
+
+impl Default for ArtSettings {
+    fn default() -> Self {
+        ArtSettings { store_art: true, fetch_details: true, retry_missing_days: 7, refresh_details_days: 30 }
+    }
+}
+
+/// The choices the settings page offers.
+pub const RETRY_MISSING_CHOICES: [u32; 4] = [1, 7, 30, 0];
+pub const REFRESH_DETAILS_CHOICES: [u32; 4] = [7, 30, 90, 0];
+
+impl ArtSettings {
+    /// Merges a patch from the shell; values outside the offered choices are rejected.
+    pub fn apply_patch(&mut self, patch: &Value) -> Result<(), String> {
+        let obj = patch.as_object().ok_or("the patch must be an object")?;
+        let mut next = serde_json::to_value(&*self).map_err(|e| e.to_string())?;
+        for (k, v) in obj {
+            if next.get(k).is_none() {
+                return Err(format!("unknown art setting {k:?}"));
+            }
+            next[k] = v.clone();
+        }
+        let next: ArtSettings = serde_json::from_value(next).map_err(|e| format!("invalid art settings: {e}"))?;
+        if !RETRY_MISSING_CHOICES.contains(&next.retry_missing_days) || !REFRESH_DETAILS_CHOICES.contains(&next.refresh_details_days) {
+            return Err("That period isn't one of the choices.".into());
+        }
+        *self = next;
         Ok(())
     }
 }
@@ -258,6 +304,19 @@ mod tests {
         assert!(ui.apply_patch(&serde_json::json!({ "nope": 1 })).is_err());
         assert!(ui.apply_patch(&serde_json::json!([1])).is_err());
         assert!(ui.dev_mode, "a rejected patch changes nothing");
+    }
+
+    #[test]
+    fn art_settings_default_and_validate() {
+        let s = load(Path::new("x"), Some(br#"{"schemaVersion":1}"#.to_vec()));
+        assert_eq!(s.art, ArtSettings::default());
+        assert_eq!((s.art.retry_missing_days, s.art.refresh_details_days), (7, 30));
+        let mut a = ArtSettings::default();
+        a.apply_patch(&serde_json::json!({ "retryMissingDays": 0, "fetchDetails": false })).unwrap();
+        assert_eq!((a.retry_missing_days, a.fetch_details), (0, false));
+        assert!(a.apply_patch(&serde_json::json!({ "retryMissingDays": 3 })).is_err());
+        assert!(a.apply_patch(&serde_json::json!({ "bogus": 1 })).is_err());
+        assert_eq!(a.retry_missing_days, 0, "a rejected patch changes nothing");
     }
 
     #[test]

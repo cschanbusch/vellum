@@ -97,7 +97,12 @@ impl AppState {
             if !active.contains(pid) {
                 return None;
             }
-            let candidate = recs.art.get(&g.source_id).and_then(|c| art::pick(c, kind)).cloned();
+            let cands = recs.art.get(&g.source_id).map(Vec::as_slice).unwrap_or(&[]);
+            let view = crate::net::NetView::new(self);
+            let candidate = self.userdata.read(|ud| {
+                let overrides = ud.games.get(entry_id).map(|u| &u.art_overrides);
+                art::resolve::resolve(entry_id, kind, cands, overrides, &view).candidate
+            });
             Some(ArtRequest { kind: kind.to_string(), width, style: None, title: g.title.clone(), candidate })
         })
     }

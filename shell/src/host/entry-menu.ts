@@ -1,12 +1,34 @@
 // The per-game context menu's items, shared by the app and the skin dev harness.
 
-import type { Entry } from "../../../sdk/src/types";
+import type { Entry, MenuItem } from "../../../sdk/src/types";
 import type { MenuAction } from "../overlays";
 import type { SkinHostController } from "./controller";
 
 export interface MenuHooks {
   editTags(entry: Entry): void;
   changeArt(entry: Entry): void;
+}
+
+/**
+ * Puts a skin's own items (from `vellum.ui.contextMenu`) above the game menu and opens it with
+ * `open`. Resolves with the chosen skin item's id, or null when the menu closed any other way.
+ */
+export function withSkinItems(
+  items: MenuAction[],
+  skinItems: MenuItem[] | undefined,
+  open: (items: MenuAction[], onClose: () => void) => void,
+  onClose: () => void,
+): Promise<string | null> {
+  return new Promise((resolve) => {
+    let picked: string | null = null;
+    const own: MenuAction[] = (skinItems ?? []).map((i) => ({ label: i.label, disabled: i.disabled, run: () => (picked = i.id) }));
+    if (own.length && items.length) items[0].separated = true;
+    // The menu closes before it runs the chosen item, so settle once that has had its turn.
+    open([...own, ...items], () => {
+      onClose();
+      queueMicrotask(() => resolve(picked));
+    });
+  });
 }
 
 export function entryMenu(host: SkinHostController, e: Entry, hooks: MenuHooks): MenuAction[] {

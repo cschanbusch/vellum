@@ -31,6 +31,7 @@ import {
   type SkinInfo,
   type UiState,
   type ViewInfo,
+  type MenuItem,
 } from "./types";
 
 type Listener<T> = (value: T) => void;
@@ -488,8 +489,14 @@ export const vellum = {
 
   ui: {
     toast: (text: string) => call<void>("ui.toast", { text }),
-    /** Opens the shell's context menu for an entry at viewport coordinates. */
-    contextMenu: (id: string, x: number, y: number) => call<void>("ui.contextMenu", { id, x: Math.round(x), y: Math.round(y) }),
+    /**
+     * Opens the shell's context menu for an entry at viewport coordinates. `items` (up to 6) are the
+     * skin's own actions, shown first; resolves with the chosen item's id, or null for anything else.
+     */
+    contextMenu: (id: string, x: number, y: number, items?: MenuItem[]) =>
+      call<string | null | undefined>("ui.contextMenu", { id, x: Math.round(x), y: Math.round(y), ...(items?.length ? { items } : {}) }).then((r) => r ?? null),
+    /** `contextMenu` takes skin items (Vellum 0.4 and later); check before relying on them. */
+    menuItems: true as const,
   },
 
   providers: {

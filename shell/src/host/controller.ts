@@ -7,6 +7,7 @@ import {
   DEFAULT_STATE,
   type ArtKind,
   type Entry,
+  type MenuItem,
   type Filters,
   type GroupKey,
   type ProviderInfo,
@@ -25,7 +26,8 @@ import type { ActionKind, Backend, SkinRecord, UiSettings, WindowState } from ".
 export interface HostUi {
   toast(text: string, error?: boolean): void;
   /** `x`/`y` are in the skin's viewport; the host adds the frame's offset. */
-  contextMenu(entry: Entry, x: number, y: number): void;
+  /** Resolves with the chosen skin item's id, or null. */
+  contextMenu(entry: Entry, x: number, y: number, items?: MenuItem[]): Promise<string | null> | void;
   openSettings(page?: string): void;
   changeArt(entry: Entry, kind: ArtKind): void;
   theme(tokens: Record<string, string>): void;
@@ -408,6 +410,11 @@ export class SkinHostController {
     this.emit("library");
   }
 
+  /** An entry the shell changed itself (new art from the Change art dialog). */
+  entryChanged(e: Entry) {
+    this.patch(e);
+  }
+
   async toggleFavorite(id: string) {
     const e = this.byId.get(id);
     if (e) this.patch(await this.backend.setFavorite(id, !e.favorite));
@@ -468,7 +475,7 @@ export class SkinHostController {
       case "ui.toast":
         return this.hostUi.toast(a.text as string);
       case "ui.contextMenu":
-        return this.hostUi.contextMenu(this.byId.get(id)!, a.x as number, a.y as number);
+        return (await this.hostUi.contextMenu(this.byId.get(id)!, a.x as number, a.y as number, a.items as MenuItem[] | undefined)) ?? null;
       case "ui.theme":
         return this.hostUi.theme(a.tokens as Record<string, string>);
       case "window.minimize":

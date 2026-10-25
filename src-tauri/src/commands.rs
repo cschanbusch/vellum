@@ -516,3 +516,92 @@ fn after_catalog_change(app: &AppHandle, state: &AppState, id: &str) {
         skins::skin_changed(app);
     }
 }
+
+// ---- art and metadata (Settings → Art and metadata, Change art; see net/) ------------------
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArtSettingsView {
+    settings: crate::userdata::settings::ArtSettings,
+    /// A SteamGridDB key is saved.
+    steamgriddb_key: bool,
+    /// SteamGridDB refused the saved key this session.
+    steamgriddb_rejected: bool,
+    stats: crate::net::NetStats,
+}
+
+#[tauri::command(async)]
+pub fn art_settings(state: State<AppState>) -> ArtSettingsView {
+    ArtSettingsView {
+        settings: state.settings.read(|s| s.art.clone()),
+        steamgriddb_key: state.net.key().is_some(),
+        steamgriddb_rejected: state.net.key_rejected(),
+        stats: crate::net::stats(&state.net),
+    }
+}
+
+/// Changes art settings, then re-resolves the library (a switch may add or drop sources).
+#[tauri::command(async)]
+pub fn set_art_settings(app: AppHandle, state: State<AppState>, patch: Value) -> Result<ArtSettingsView, String> {
+    state.settings.update(|s| s.art.apply_patch(&patch))?;
+    tracing::info!(%patch, "art settings changed");
+    crate::net::sweep(&app);
+    let _ = app.emit(scanner::EVENT_LIBRARY_CHANGED, ());
+    Ok(art_settings(state))
+}
+
+/// Saves (after checking it with SteamGridDB) or, with `None`, removes the API key.
+#[tauri::command(async)]
+pub fn set_steamgriddb_key(app: AppHandle, state: State<AppState>, key: Option<String>) -> Result<ArtSettingsView, String> {
+    let key = key.map(|k| k.trim().to_string()).filter(|k| !k.is_empty());
+    if let Some(k) = &key {
+        if k.len() > 200 || !k.chars().all(|c| c.is_ascii_alphanumeric()) {
+            return Err("That doesn't look like a SteamGridDB key (letters and digits only).".into());
+        }
+        crate::net::sgdb::check_key(&crate::net::agent(), &crate::net::sgdb::api_base(), k)?;
+    }
+    crate::net::secret::set(key.as_deref())?;
+    tracing::info!(saved = key.is_some(), "SteamGridDB key changed");
+    state.net.set_key(key);
+    crate::net::sweep(&app);
+    let _ = app.emit(scanner::EVENT_LIBRARY_CHANGED, ());
+    Ok(art_settings(state))
+}
+
+/// "Retry missing art now": forgets every recorded miss and looks again.
+#[tauri::command(async)]
+pub fn retry_missing_art(app: AppHandle, state: State<AppState>) -> usize {
+    let n = state.net.clear_misses();
+    tracing::info!(cleared = n, "missing art will be retried");
+    crate::net::sweep(&app);
+    n
+}
+
+/// "Refresh details now": fetches store details for every Steam game again.
+#[tauri::command(async)]
+pub fn refresh_details_now(app: AppHandle) -> usize {
+    crate::net::refresh_all_details(&app)
+}
+
+#[tauri::command(async)]
+pub fn art_choices(state: State<AppState>, entry_id: String, kind: String) -> Result<crate::net::choices::ArtChoices, String> {
+    crate::net::choices::choices(&state, &entry_id, &kind)
+}
+
+#[tauri::command(async)]
+pub fn art_thumb(state: State<AppState>, entry_id: String, kind: String, option: String) -> Result<Option<String>, String> {
+    crate::net::choices::thumb(&state, &entry_id, &kind, &option)
+}
+
+/// Uses an offered image for one kind, or with `None` goes back to automatic.
+#[tauri::command(async)]
+pub fn set_art_override(app: AppHandle, state: State<AppState>, entry_id: String, kind: String, option: Option<String>) -> Result<Entry, String> {
+    let e = crate::net::choices::set(&state, &entry_id, &kind, option.as_deref())?;
+    crate::net::sweep(&app);
+    Ok(e)
+}
+
+#[tauri::command(async)]
+pub fn set_art_override_file(state: State<AppState>, entry_id: String, kind: String, path: String) -> Result<Entry, String> {
+    crate::net::choices::set_file(&state, &entry_id, &kind, &path)
+}

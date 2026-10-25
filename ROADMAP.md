@@ -14,7 +14,7 @@ real store installs.
 | 1 | Foundation: plugins, settings, portable mode, packaging | Done |
 | 2 | Provider host, Steam, library, diagnostics | Done |
 | 3 | Skin system, SDK, views, input model, local art | Done |
-| 4 | Remote art and metadata | Next |
+| 4 | Remote art and metadata | Done (unreleased) |
 | 5 | GOG and Custom providers, merging games across stores, provider authoring guide | Planned (Epic, pulled forward, is done) |
 | 6 | Controllers, couch mode, modules, plugin install | Partly done |
 | 7 | Further stores | Planned |
@@ -43,7 +43,7 @@ real store installs.
 - Version management: Settings → Versions installs GitHub releases side by side, switches between
   them and rolls back a version that won't start (released in 0.2.0).
 
-## Phase 4: remote art and metadata (next)
+## Phase 4: remote art and metadata (built, not yet released)
 
 **Goal:** every entry has all five art kinds (cover, hero, logo, header, icon) at full resolution,
 and what is cached keeps working offline.
@@ -68,6 +68,13 @@ and what is cached keeps working offline.
   off in settings. Provider metadata wins over fetched metadata.
 - **Privacy:** both network features are explained in settings; SteamGridDB stays off until a key
   is entered.
+- **Cache timing is configurable** in Settings → Art & metadata:
+  - "Retry missing art after": 1 day, 7 days (default), 30 days or never, with a **Retry missing
+    art now** button that clears the negative cache.
+  - "Refresh Steam game details every": 7 days, 30 days (default), 90 days or never, with a
+    **Refresh details now** button (still throttled to one request every 1.5 s).
+  - Expired details stay in place until a refresh succeeds, so the library still looks complete
+    offline. Downloaded art never expires: it is cached by a hash of its source.
 
 **Done when:** every entry shows all five kinds, custom Steam grid art takes precedence, and the
 library still looks complete with the network unplugged.

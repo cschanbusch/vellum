@@ -146,7 +146,8 @@ impl AppState {
 
     pub fn entries(&self) -> Vec<library::Entry> {
         let active = self.active_providers();
-        self.library.read(|snap| self.userdata.read(|ud| library::build_entries(snap, ud, &|p| active.contains(p))))
+        let view = crate::net::NetView::new(self);
+        self.library.read(|snap| self.userdata.read(|ud| library::build_entries(snap, ud, &|p| active.contains(p), &view)))
     }
 
     pub fn entry(&self, id: &str) -> Option<library::Entry> {
@@ -317,6 +318,8 @@ pub fn scan_one(app: &AppHandle, id: &str) {
             }
             emit_providers(app);
             refresh_art(app, &spec, &games, generation);
+            // Downloads, lookups and store details for whatever the candidates leave missing.
+            crate::net::sweep(app);
             if spec.can("watch") {
                 start_watch(app, &spec);
             }
