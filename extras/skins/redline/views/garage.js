@@ -165,6 +165,12 @@ function renderStrip() {
         t.append(img, el("span", "rl-grime"), el("span", "rl-gar-thumb-no"));
         t.addEventListener("click", () => select(Number(t.dataset.i)));
         t.addEventListener("dblclick", () => api.actions.launch(e.id).catch(() => {}));
+        t.addEventListener("contextmenu", (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          select(Number(t.dataset.i));
+          void api.ui.contextMenu(e.id, ev.clientX, ev.clientY);
+        });
         thumbs.set(e.id, t);
       }
       const src = art(e, "cover", 160);
@@ -363,6 +369,9 @@ function createStage(floor) {
     cases3d = new CaseStage(floor, {
       still: () => document.documentElement.hasAttribute("data-rl-still"),
       reflect: () => api.skin.options.reflections !== false,
+      // Right-clicking the case: the game's menu, with the case's own actions first. Vellum 0.3
+      // can't add those, so there right-click keeps turning the case to its front and back.
+      onMenu: api.ui.menuItems ? (ev) => void caseMenu(ev) : null,
     });
   } catch (err) {
     console.warn("Grand Tour: WebGL unavailable, showing flat covers", err);
@@ -589,6 +598,24 @@ function enter(from) {
   select(best);
 }
 
+/** The game menu for the case on the turntable, led by what the case itself can do. */
+async function caseMenu(ev) {
+  const e = current();
+  const s = cases3d;
+  if (!e || !s) return;
+  const open = s.lidTarget > 0;
+  const items = [
+    s.facing === "front" ? { id: "turn", label: "Let it turn" } : { id: "front", label: "Show front" },
+    s.facing === "back" ? { id: "turn", label: "Let it turn" } : { id: "back", label: "Show back" },
+    { id: "open", label: open ? "Close case" : "Open case", disabled: !s.canOpen },
+  ];
+  const pick = await api.ui.contextMenu(e.id, ev.clientX, ev.clientY, items);
+  if (cases3d !== s || current()?.id !== e.id) return;
+  if (pick === "front" || pick === "back") s.setFace(pick);
+  else if (pick === "turn") s.setFace(null);
+  else if (pick === "open") s.toggleOpen();
+}
+
 // ---- view -----------------------------------------------------------------------------------
 
 export default {
@@ -604,12 +631,12 @@ export default {
     const lights = el("div", "rl-gar-lights");
     const tips = el("div", "rl-gar-tips");
     tips.append(
-      el("p", "rl-gar-tip", "Click to open · Right-click: front, back, turn"),
+      el("p", "rl-gar-tip", api.ui.menuItems ? "Click to open · Right-click - Front, back, menu" : "Click to open · Right-click: front, back, turn"),
       el("p", "rl-gar-tip is-test", "T - Test Ignition"),
       el("p", "rl-gar-tip is-test", "Shift+T - Test with wear"),
     );
     floor.append(backdrop, lights, tips);
-    // Clicking the case (open it, or right-click for its faces) would leave keyboard focus on the
+    // Clicking the case (open it, or right-click for its menu) would leave keyboard focus on the
     // page, and the next arrow would only bring it back to the strip instead of stepping.
     const refocus = () => strip?.focus({ preventScroll: true });
     floor.addEventListener("pointerup", refocus);
@@ -633,15 +660,17 @@ export default {
       const e = current();
       if (e) api.actions.launch(e.id).catch(() => {});
     };
-    // S services the selected model and T test-drives it (the ignition, without launching).
+    // S services the selected model, T test-drives it (the ignition, without launching) and F
+    // shows the case's front, then its back, then lets the turntable turn it again.
     // Handled here, on the strip, so they only act while it has focus.
     strip.addEventListener("keydown", (ev) => {
       if (ev.ctrlKey || ev.altKey || ev.metaKey) return;
       const k = ev.key.toLowerCase();
-      if (k !== "s" && k !== "t") return;
+      if (k !== "s" && k !== "t" && k !== "f") return;
       ev.preventDefault();
       ev.stopPropagation();
       if (k === "s") void serviceCurrent();
+      else if (k === "f") cases3d?.toggleFace();
       else void testIgnition(current(), { wear: ev.shiftKey });
     });
     dock.append(makersEl, strip);

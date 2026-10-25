@@ -22,6 +22,8 @@ const TABLE_R = 112; // turntable radius, mm
 const SPACING = 262; // centre to centre of the turntables
 const BACK = 70; // the side turntables stand this much further back
 const SLIDE_MS = 450;
+/** In a close-up (front or back held), the share of the stage the case may fill. */
+const CLOSE_FILL = 0.94;
 const ease = (t) => 1 - (1 - t) ** 3;
 
 /** Pixels of case texture uploaded per frame (about 1 MB). A whole full-size wrap in one call
@@ -257,10 +259,12 @@ export class CaseStage {
    * later). `still()`: true when cases must not rotate or slide. `reflect()`: whether the
    * turntables show the cases' reflections.
    */
-  constructor(host, { still, reflect = () => true }) {
+  constructor(host, { still, reflect = () => true, onMenu = null }) {
     this.host = host;
     this.still = still;
     this.reflect = reflect;
+    /** Right click on the stage: `onMenu(event)` (the game's menu), else front, back, let go. */
+    this.onMenu = onMenu;
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, stencil: true, powerPreference: "high-performance" });
     this.renderer.setPixelRatio(Math.min(2, devicePixelRatio));
     // Checking each shader's log after compiling waits on the GPU (~200 ms seen); the shaders are
@@ -307,6 +311,7 @@ export class CaseStage {
     this.lid = 0; // the centre case's lid
     this.lidTarget = 0;
     this.facing = null;
+    this.zoom = 0; // 0 = the showroom view, 1 = close up on the held front or back
     this.slide = 0; // start time of the current slide, or 0
     this.last = 0;
     this.drawn = 0;
@@ -767,22 +772,43 @@ export class CaseStage {
     this.renderer.setSize(w, h, false);
     const cam = this.camera;
     cam.aspect = w / h;
-    const H = this.profile?.outer.h ?? 190;
+    const outer = this.profile?.outer ?? { w: 135, h: 190, d: 14 };
+    const H = outer.h;
     // The focused case fills about half the height (a big box a little more), its base at 80%,
     // leaving room for the neighbours at the edges.
     const frac = Math.min(0.6, 0.5 * (H / 190) ** 0.35);
-    const fov = THREE.MathUtils.degToRad(cam.fov);
-    const dist = H / (frac * 2 * Math.tan(fov / 2));
+    const tan = Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2);
+    const dist = H / (frac * 2 * tan);
     const el = THREE.MathUtils.degToRad(10);
+    this.placeAt(dist, el, 0);
+    const base = new THREE.Vector3(0, 0, 0).project(cam);
+    // The close-up: straight on, centred, as large as fits the stage's height and width.
+    const close = Math.max(H / (CLOSE_FILL * 2 * tan), outer.w / (CLOSE_FILL * 2 * tan * cam.aspect)) + outer.d / 2;
+    this.view = { dist, el, shift: 1 - 2 * 0.8 - base.y, close };
+    this.placeCamera();
+    this.render();
+  }
+
+  /** Points the camera at the centre case from `dist` away, `el` above, shifted `shift` (clip space) up. */
+  placeAt(dist, el, shift) {
+    const cam = this.camera;
+    const H = this.profile?.outer.h ?? 190;
     cam.position.set(0, H / 2 + Math.sin(el) * dist, Math.cos(el) * dist);
     cam.lookAt(0, H / 2, 0);
     cam.updateMatrixWorld();
     cam.updateProjectionMatrix();
-    const base = new THREE.Vector3(0, 0, 0).project(cam);
-    const shift = new THREE.Matrix4().makeTranslation(0, 1 - 2 * 0.8 - base.y, 0);
-    cam.projectionMatrix.premultiply(shift);
-    cam.projectionMatrixInverse.copy(cam.projectionMatrix).invert();
-    this.render();
+    if (shift) {
+      cam.projectionMatrix.premultiply(new THREE.Matrix4().makeTranslation(0, shift, 0));
+      cam.projectionMatrixInverse.copy(cam.projectionMatrix).invert();
+    }
+  }
+
+  /** The camera between the showroom view and the close-up, by `zoom`. */
+  placeCamera() {
+    const v = this.view;
+    if (!v) return;
+    const z = this.zoom * this.zoom * (3 - 2 * this.zoom); // smoothstep
+    this.placeAt(v.dist + (v.close - v.dist) * z, v.el * (1 - z), v.shift * (1 - z));
   }
 
   // ---- motion ----------------------------------------------------------------------------------
@@ -800,8 +826,13 @@ export class CaseStage {
    * again. Opening the case lets it go too.
    */
   toggleFace() {
-    if (!this.center) return;
-    this.facing = this.facing === null ? "front" : this.facing === "front" ? "back" : null;
+    this.setFace(this.facing === null ? "front" : this.facing === "front" ? "back" : null);
+  }
+
+  /** Holds the centre case's "front" or "back" to the viewer, or (null) lets the turntable turn it. */
+  setFace(face) {
+    if (!this.center || face === this.facing) return;
+    this.facing = face;
     this.lidTarget = 0;
     const apply = () => {
       if (this.facing === null) this.yawTarget = this.still() ? this.nearest(STILL_YAW) : null;
@@ -864,8 +895,8 @@ export class CaseStage {
     this.canvas.classList.remove("is-fading");
   }
 
-  /** Click opens or closes the case; right click holds its front, then its back, then lets go.
-   *  The case isn't turned by hand: the turntable turns it. */
+  /** Click opens or closes the case; right click opens the game's menu (`onMenu`), or with none
+   *  holds its front, then its back, then lets go. The turntable turns it, not the hand. */
   bindPointer() {
     let down = null;
     this.canvas.addEventListener("pointerdown", (e) => {
@@ -878,11 +909,11 @@ export class CaseStage {
       if (click && this.canOpen) this.toggleOpen();
     });
     this.canvas.addEventListener("pointercancel", () => (down = null));
-    // Right click (and keeps the shell's context menu away).
     this.canvas.addEventListener("contextmenu", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      this.toggleFace();
+      if (this.onMenu) this.onMenu(e);
+      else this.toggleFace();
     });
   }
 
@@ -954,12 +985,25 @@ export class CaseStage {
         }
       }
     } else if (this.yawTarget == null) this.yaw = STILL_YAW;
+    // Front and back are held close up; anything else steps back to the showroom view.
+    const zoomTo = this.facing && this.center ? 1 : 0;
+    // The host can step its own overlays aside while the case is held close up.
+    this.host?.classList.toggle("is-close", zoomTo === 1);
+    if (this.zoom !== zoomTo) {
+      if (still) this.zoom = zoomTo;
+      else {
+        const step = dt * 2.6;
+        this.zoom = zoomTo > this.zoom ? Math.min(zoomTo, this.zoom + step) : Math.max(zoomTo, this.zoom - step);
+        moving = true;
+      }
+      this.placeCamera();
+    }
     if (this.slide) {
       if (now - this.slide >= SLIDE_MS) this.finishSlide();
       else moving = true;
     }
     // Only the turntable turning: about 60 frames a second is plenty, whatever the display's rate.
-    const easy = spinning && !this.slide && this.lid === this.lidTarget;
+    const easy = spinning && !this.slide && this.lid === this.lidTarget && this.zoom === 0;
     if (!easy || now - this.drawn >= 15) {
       this.drawn = now;
       this.pose();

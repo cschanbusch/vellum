@@ -733,11 +733,39 @@ test.describe("Grand Tour", () => {
     await page.keyboard.press("ArrowLeft");
     await expect.poll(slots).toMatchObject({ C: before.C, R: before.R });
 
-    // Right click holds the front, then the back; a click opens it on its disc and lets go.
+    // Right click opens the game's menu, as in Covers, led by the case's own actions: front, back
+    // (and back to turning), open. F does front, back, turn from the keyboard. A click opens the
+    // case on its disc and lets go.
     const gl = frame.locator(".rl-gar-gl");
-    await gl.click({ button: "right" });
+    const menu = page.locator("vellum-context-menu .menu");
+    const caseMenu = async (choice: string) => {
+      await gl.click({ button: "right" });
+      await expect(menu).toBeVisible();
+      await expect(menu.getByRole("menuitem", { name: "Change art…" })).toBeVisible();
+      await menu.getByRole("menuitem", { name: choice }).click();
+      await expect(menu).toBeHidden();
+    };
+    // Front and back are shown close up, as large as the stage allows; letting go steps back.
+    await caseMenu("Show front");
+    await expect.poll(() => probe<string | null>("s.facing")).toBe("front");
+    await expect.poll(() => probe<number>("s.zoom")).toBe(1);
+    await expect(frame.locator(".rl-gar-floor.is-close")).toHaveCount(1);
+    await caseMenu("Show back");
+    await expect.poll(() => probe<string | null>("s.facing")).toBe("back");
+    await expect.poll(() => probe<number>("s.zoom")).toBe(1);
+    await caseMenu("Let it turn");
+    await expect.poll(() => probe<string | null>("s.facing")).toBeNull();
+    await expect.poll(() => probe<number>("s.zoom")).toBe(0);
+    await expect(frame.locator(".rl-gar-floor.is-close")).toHaveCount(0);
+    await frame.locator(".rl-gar-thumb.is-selected").click({ button: "right" });
+    await expect(menu).toBeVisible();
+    await expect(menu.getByRole("menuitem", { name: "Show front" })).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(menu).toBeHidden();
+    await frame.locator(".rl-gar-strip").focus();
+    await page.keyboard.press("f");
     expect(await probe<string | null>("s.facing")).toBe("front");
-    await gl.click({ button: "right" });
+    await page.keyboard.press("f");
     expect(await probe<string | null>("s.facing")).toBe("back");
     await gl.click();
     expect(await probe<number>("s.lidTarget")).toBeGreaterThan(2.5);

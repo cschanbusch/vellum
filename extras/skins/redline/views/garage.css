@@ -128,6 +128,9 @@
 @container (max-width: 800px) {
   .rl-gar-tips { top: 3.4rem; }
 }
+/* Front or back held close up: the tips step aside so they don't cover the case. */
+.rl-gar-tips { transition: opacity 200ms ease; }
+.rl-gar-floor.is-close .rl-gar-tips { opacity: 0; pointer-events: none; }
 /* Without WebGL: the cover, standing on the floor. */
 .rl-gar-flat {
   position: absolute;
