@@ -14,7 +14,7 @@ real store installs.
 | 1 | Foundation: plugins, settings, portable mode, packaging | Done |
 | 2 | Provider host, Steam, library, diagnostics | Done |
 | 3 | Skin system, SDK, views, input model, local art | Done |
-| 4 | Remote art and metadata | Done (unreleased) |
+| 4 | Remote art and metadata | Done (0.4.0) |
 | 5 | GOG and Custom providers, merging games across stores, provider authoring guide | Planned (Epic, pulled forward, is done) |
 | 6 | Controllers, couch mode, modules, plugin install | Partly done |
 | 7 | Further stores | Planned |
@@ -43,7 +43,7 @@ real store installs.
 - Version management: Settings → Versions installs GitHub releases side by side, switches between
   them and rolls back a version that won't start (released in 0.2.0).
 
-## Phase 4: remote art and metadata (built, not yet released)
+## Phase 4: remote art and metadata (released in 0.4.0)
 
 **Goal:** every entry has all five art kinds (cover, hero, logo, header, icon) at full resolution,
 and what is cached keeps working offline.
@@ -175,6 +175,9 @@ system itself. Concepts on the list:
   on the beat or bar and pick up where the music is, SoundFonts, a Music volume, music only while
   Vellum has focus), the new app icon, typing no longer jumping into search, and a start-up
   recommendation for Grand Tour.
+- **0.4.0** (released): Phase 4. Art from Steam's image servers and SteamGridDB, the Change
+  art dialog, Steam store details, Settings → Art and metadata with configurable retry and
+  refresh periods, and skin items in the game menu (`vellum.ui.contextMenu(…, items)`).
 - **Next:** a changelog.
 - **Continuous integration:** run the Rust, unit and end-to-end tests and build the release zips on
   each push to `main`.
