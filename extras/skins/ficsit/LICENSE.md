@@ -17,7 +17,7 @@ written permission.
 
 These keep their own licences, which this licence does not change:
 
-- fonts/*-OFL.txt: Barlow Condensed and Share Tech Mono, SIL Open Font License 1.1.
+- fonts/*-OFL.txt: Chakra Petch and IBM Plex Mono, SIL Open Font License 1.1.
 
 ## Fan work
 

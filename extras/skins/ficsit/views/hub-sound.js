@@ -324,3 +324,54 @@ export function printer(dur = 0.7) {
   const tear = noise(a, t + dur, 0.14, "highpass", 2000, 0.16, 0.7, 0.01);
   tear.f.frequency.exponentialRampToValueAtTime(5000, t + dur + 0.14);
 }
+
+// ---- the terminal's buttons and cursor (../menu-sounds.js) ---------------------------------
+
+/**
+ * Small sounds for moving around the terminal, kept short and quiet so they sit under the
+ * ambience: `move` a relay tick (a little higher or lower by direction), `bump` a dull thunk at an
+ * edge, `select` a relay clack and a rising two-tone beep, `back` the beep falling, `view` a
+ * pneumatic hiss and a latch, `favorite` an approval blip, `open` a soft click and hiss.
+ */
+export function ui(kind, dir) {
+  if (vellum.skin.options.menuSounds === false) return;
+  const a = audio();
+  if (!a) return;
+  (window.__fxUi ??= []).push(kind); // for tests: what played, without listening
+  const t = a.currentTime + 0.005;
+  const vary = 1 + (Math.random() - 0.5) * 0.06;
+  switch (kind) {
+    case "move": {
+      const up = dir === "up" || dir === "left" || dir === "pageUp";
+      noise(a, t, 0.018, "bandpass", 3400 * vary, 0.16, 3);
+      tone(a, t, "square", (up ? 1960 : 1760) * vary, (up ? 1960 : 1760) * vary, 0.022, 0.018);
+      break;
+    }
+    case "bump":
+      tone(a, t, "sine", 120, 84, 0.09, 0.14, 0.003);
+      noise(a, t, 0.05, "lowpass", 600, 0.12);
+      break;
+    case "select":
+      noise(a, t, 0.02, "bandpass", 2600, 0.2, 2.5);
+      tone(a, t + 0.012, "square", 880, 880, 0.045, 0.035, 0.003);
+      tone(a, t + 0.062, "square", 1318.5, 1318.5, 0.07, 0.035, 0.003);
+      break;
+    case "back":
+      noise(a, t, 0.018, "bandpass", 2200, 0.14, 2.5);
+      tone(a, t + 0.01, "square", 1318.5, 1318.5, 0.045, 0.03, 0.003);
+      tone(a, t + 0.06, "square", 880, 880, 0.07, 0.03, 0.003);
+      break;
+    case "view":
+      noise(a, t, 0.26, "highpass", 3200, 0.07, 0.7, 0.03);
+      tone(a, t + 0.2, "sine", 190, 150, 0.08, 0.1, 0.003);
+      noise(a, t + 0.2, 0.04, "bandpass", 1500, 0.12, 2);
+      break;
+    case "favorite":
+      [1046.5, 1568, 2093].forEach((f, i) => tone(a, t + i * 0.055, "triangle", f, f, 0.08, 0.05, 0.003));
+      break;
+    case "open":
+      noise(a, t, 0.015, "bandpass", 3000, 0.14, 3);
+      noise(a, t + 0.01, 0.12, "highpass", 4000, 0.035, 0.7, 0.02);
+      break;
+  }
+}

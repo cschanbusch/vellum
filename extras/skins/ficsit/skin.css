@@ -5,10 +5,12 @@
    Layers, back to front: the factory (.fx-bg), the title bar, <vellum-app>, the status strip,
    and the boot overlay. */
 
-@font-face { font-family: "Barlow Condensed"; src: url("fonts/barlow-condensed-latin-500-normal.woff2") format("woff2"); font-weight: 500; font-display: swap; }
-@font-face { font-family: "Barlow Condensed"; src: url("fonts/barlow-condensed-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
-@font-face { font-family: "Barlow Condensed"; src: url("fonts/barlow-condensed-latin-800-normal.woff2") format("woff2"); font-weight: 800; font-display: swap; }
-@font-face { font-family: "Share Tech Mono"; src: url("fonts/share-tech-mono-latin-400-normal.woff2") format("woff2"); font-display: swap; }
+/* Chakra Petch: squared, industrial display type. IBM Plex Mono: the terminal's readouts. */
+@font-face { font-family: "Chakra Petch"; src: url("fonts/chakra-petch-latin-500-normal.woff2") format("woff2"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "Chakra Petch"; src: url("fonts/chakra-petch-latin-600-normal.woff2") format("woff2"); font-weight: 600; font-display: swap; }
+@font-face { font-family: "Chakra Petch"; src: url("fonts/chakra-petch-latin-700-normal.woff2") format("woff2"); font-weight: 700 900; font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url("fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url("fonts/ibm-plex-mono-latin-500-normal.woff2") format("woff2"); font-weight: 500 900; font-display: swap; }
 
 :root {
   --v-accent: #f39a3d;
@@ -20,8 +22,8 @@
   --fx-steel: #2b2e33;
   --fx-steel-hi: #3b3f45;
   --fx-line: rgb(255 255 255 / 0.07);
-  --fx-mono: "Share Tech Mono", "Cascadia Mono", monospace;
-  --fx-cond: "Barlow Condensed", "Inter", sans-serif;
+  --fx-mono: "IBM Plex Mono", "Cascadia Mono", monospace;
+  --fx-cond: "Chakra Petch", "Inter", sans-serif;
   --fx-hazard: repeating-linear-gradient(-45deg, var(--fx-orange) 0 10px, var(--fx-ink) 10px 20px);
   --fx-rivets:
     radial-gradient(circle at 7px 7px, #9aa0a7 0 1.6px, #1b1d20 2.4px, transparent 3.2px),
@@ -230,6 +232,7 @@ vellum-app .v-brand::after {
   text-shadow: 0 2px 0 rgb(0 0 0 / 0.6);
 }
 vellum-app .v-count {
+  flex: none; /* never squeezed to "74 GA…" by the wider type */
   font: 400 0.75rem var(--fx-mono);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -313,15 +316,26 @@ vellum-filter-bar::part(badge) { background: var(--fx-orange); color: var(--fx-i
 
 /* ---- covers: crates in riveted steel frames, stamped by FICSIT ------------------------- */
 
+/* Room between rows for the tags. */
+vellum-grid,
+vellum-shelf { --v-gap: 26px; }
+
+/* The frame: a dark seam, a 4px steel band with a lit top edge and a shaded bottom edge, an
+   outer seam, then a contact shadow and a soft one that grounds the crate. */
 vellum-grid::part(art),
 vellum-cover-row::part(art),
 vellum-shelf::part(art) {
+  --fx-frame: #41464d;
   border-radius: 2px;
   box-shadow:
     0 0 0 1px #0b0c0d,
-    0 0 0 4px #3a3e44,
-    0 0 0 5px #0b0c0d,
-    0 12px 22px rgb(0 0 0 / 0.6);
+    0 0 0 4px var(--fx-frame),
+    0 -1px 0 4px #6c737c,
+    0 1px 0 4px #1e2125,
+    0 0 0 6px #0b0c0d,
+    0 3px 3px 5px rgb(0 0 0 / 0.45),
+    0 18px 26px rgb(0 0 0 / 0.55);
+  transition: transform 140ms ease, box-shadow 140ms ease;
 }
 /* Rivets in the frame corners, a FICSIT stamp, and wear. */
 vellum-grid::part(art)::after,
@@ -333,10 +347,20 @@ vellum-shelf::part(art)::after {
   padding: 6px 0 0 22px;
   font: 800 0.6rem/1 var(--fx-cond);
   letter-spacing: 0.22em;
-  color: rgb(255 255 255 / 0.55);
+  color: rgb(255 255 255 / 0.62);
+  text-shadow: 0 1px 0 rgb(0 0 0 / 0.6);
+  /* The stamp's band, glass sheen from the top left, shade at the foot, and wear. */
   background:
-    linear-gradient(90deg, rgb(0 0 0 / 0.55), transparent 55%) 0 0 / 100% 18px no-repeat,
+    linear-gradient(90deg, rgb(0 0 0 / 0.6), transparent 60%) 0 0 / 100% 18px no-repeat,
+    linear-gradient(160deg, rgb(255 255 255 / 0.16) 0%, rgb(255 255 255 / 0.05) 26%, transparent 40%),
+    linear-gradient(0deg, rgb(0 0 0 / 0.38), transparent 32%),
     url("textures/grit.svg") 0 0 / 320px;
+  /* Set into the frame: a lit lower lip and a shadowed top, and a vignette. */
+  box-shadow:
+    inset 0 1px 0 rgb(0 0 0 / 0.7),
+    inset 0 -1px 0 rgb(255 255 255 / 0.12),
+    inset 0 0 0 1px rgb(0 0 0 / 0.35),
+    inset 0 0 26px rgb(0 0 0 / 0.45);
   opacity: 1;
   pointer-events: none;
   mix-blend-mode: normal;
@@ -357,34 +381,50 @@ vellum-shelf::part(art-selected) {
   box-shadow:
     0 0 0 1px #0b0c0d,
     0 0 0 4px var(--fx-orange),
-    0 0 0 5px #0b0c0d,
+    0 -1px 0 4px color-mix(in srgb, var(--fx-orange) 55%, #fff),
+    0 1px 0 4px var(--fx-orange-deep),
+    0 0 0 6px #0b0c0d,
     0 0 26px color-mix(in srgb, var(--fx-orange) 45%, transparent),
-    0 14px 26px rgb(0 0 0 / 0.65);
+    0 18px 28px rgb(0 0 0 / 0.6);
 }
+/* In focus the crate lifts off the floor: a longer, softer shadow and the work light's glow. */
 vellum-grid::part(art-focused),
 vellum-cover-row::part(art-focused),
 vellum-shelf::part(art-focused) {
-  transform: translateY(-4px);
+  transform: translateY(-6px) scale(1.02);
   box-shadow:
     0 0 0 1px #0b0c0d,
     0 0 0 4px var(--fx-orange),
+    0 -1px 0 4px color-mix(in srgb, var(--fx-orange) 55%, #fff),
+    0 1px 0 4px var(--fx-orange-deep),
     0 0 0 6px var(--v-focus-ring),
-    0 0 34px color-mix(in srgb, var(--fx-orange) 60%, transparent),
-    0 16px 30px rgb(0 0 0 / 0.7);
+    0 0 36px color-mix(in srgb, var(--fx-orange) 55%, transparent),
+    0 26px 36px rgb(0 0 0 / 0.65);
 }
-/* The caption is an embossed label plate. */
+/* The caption is a stamped tag screwed to the crate: an orange tab, embossed letters, a screw
+   at each end. */
 vellum-grid::part(caption),
 vellum-shelf::part(caption) {
-  margin-top: 0.15rem;
-  padding: 0.15rem 0.45rem;
-  height: 1.7em;
-  font: 700 0.92rem var(--fx-cond);
-  letter-spacing: 0.06em;
+  /* Clear of the frame, in the same row height the plain caption had. */
+  margin-top: 0.4rem;
+  padding: 0.22rem 1.05rem 0.2rem 1.1rem;
+  height: 1.75em;
+  font: 600 0.84rem/1.25 var(--fx-cond);
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--fx-ink);
-  background: linear-gradient(180deg, #f3efe6, #d6d1c5);
-  border-radius: 1px;
-  box-shadow: inset 0 -1px 0 rgb(0 0 0 / 0.25), 0 2px 3px rgb(0 0 0 / 0.5);
+  color: #24262a;
+  text-shadow: 0 1px 0 rgb(255 255 255 / 0.55);
+  background:
+    radial-gradient(circle at calc(100% - 7px) 50%, #8c9299 0 1.4px, #3a3d42 2.2px, transparent 2.9px),
+    linear-gradient(90deg, var(--fx-orange) 0 4px, transparent 4px),
+    radial-gradient(circle at 11px 50%, #8c9299 0 1.4px, #3a3d42 2.2px, transparent 2.9px),
+    linear-gradient(180deg, #f4f0e7, #ddd8cc 60%, #cdc7b9);
+  border-radius: 2px;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.8),
+    inset 0 -1px 0 rgb(0 0 0 / 0.22),
+    0 0 0 1px rgb(0 0 0 / 0.55),
+    0 3px 5px rgb(0 0 0 / 0.5);
 }
 vellum-grid::part(favorite),
 vellum-cover-row::part(favorite),

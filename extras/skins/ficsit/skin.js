@@ -1,5 +1,7 @@
 // FICSIT Terminal: the status strip, clock, corporate notices and the boot sequence.
 import vellum from "/__vellum/sdk.js";
+import { initAmbience } from "./ambience.js";
+import { installMenuSounds } from "./menu-sounds.js";
 
 const $ = (s) => document.querySelector(s);
 
@@ -119,4 +121,6 @@ vellum.library.on("change", updateStatus);
 vellum.skin.on("options", applyOptions);
 addEventListener("fx:dispatch", onDispatch);
 addEventListener("fx:return", onReturn);
+initAmbience();
+installMenuSounds();
 void boot();

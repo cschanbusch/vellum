@@ -71,7 +71,7 @@
 .fx-hub-console {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(200px, 16rem) 1fr;
+  grid-template-columns: minmax(220px, 17.5rem) minmax(0, 1fr);
   gap: 12px;
   outline: none;
 }
@@ -100,7 +100,8 @@
 }
 .fx-hub-tier {
   display: grid;
-  grid-template-columns: 3.6rem 1fr auto;
+  /* minmax(0, …): a long Tier name shortens with an ellipsis instead of pushing out of the rail. */
+  grid-template-columns: 3.1rem minmax(0, 1fr) auto;
   align-items: baseline;
   gap: 6px;
   padding: 7px 10px 7px 12px;
@@ -117,9 +118,9 @@
   border-left-color: var(--fx-orange);
   background: linear-gradient(90deg, color-mix(in srgb, var(--fx-orange) 22%, transparent), transparent);
 }
-.fx-hub-tier-n { font: 400 0.76rem var(--fx-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--v-text-muted); }
+.fx-hub-tier-n { font: 400 0.7rem var(--fx-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--v-text-muted); }
 .fx-hub-tier[aria-current] .fx-hub-tier-n { color: var(--fx-orange); }
-.fx-hub-tier-name { font: 700 1.02rem var(--fx-cond); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fx-hub-tier-name { font: 700 0.98rem var(--fx-cond); letter-spacing: 0.03em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fx-hub-tier-count { font: 400 0.8rem var(--fx-mono); color: var(--v-text-muted); }
 
 /* Milestone panel. */
@@ -622,7 +623,7 @@
   .fx-hub-cost { padding: 1px 0; }
 }
 @media (max-width: 1100px) {
-  .fx-hub-console { grid-template-columns: 180px 1fr; }
-  .fx-hub-tier { grid-template-columns: 1fr auto; }
+  .fx-hub-console { grid-template-columns: 200px minmax(0, 1fr); }
+  .fx-hub-tier { grid-template-columns: minmax(0, 1fr) auto; }
   .fx-hub-tier-n { display: none; }
 }
