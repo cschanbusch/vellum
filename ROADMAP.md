@@ -178,6 +178,8 @@ system itself. Concepts on the list:
 - **0.4.0** (released): Phase 4. Art from Steam's image servers and SteamGridDB, the Change
   art dialog, Steam store details, Settings → Art and metadata with configurable retry and
   refresh periods, and skin items in the game menu (`vellum.ui.contextMenu(…, items)`).
+- **0.5.0** (released): `vellum.window.isFocused()` for skins that go quiet in the background,
+  and a skin downloaded from Get skins no longer shows twice beside a newer bundled copy.
 - **Next:** a changelog.
 - **Continuous integration:** run the Rust, unit and end-to-end tests and build the release zips on
   each push to `main`.
