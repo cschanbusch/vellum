@@ -16,8 +16,8 @@ To add a song, put its files here under a new name (midnight.garage.mid, midnigh
 new track picks up at the same point: the same beat for tracks of the same length (write a
 song's tracks as variations of one piece), else the same share of the way through.
 
-Grand Tour ships with five songs, "expressway", "lounge", "nightdrive", "pace" and "strike",
-and GeneralUser GS v2.0.3 by S. Christian Collins as the instruments (see LICENSE.txt). Every song uses the instruments from
+Grand Tour ships with six songs, "expressway", "lounge", "nightdrive", "pace", "strike" and
+"truism", and GeneralUser GS v2.0.3 by S. Christian Collins as the instruments (see LICENSE.txt). Every song uses the instruments from
 the first .sf2, .sf3 or .dls file in this folder. Replace any of it with your own.
 
 The music waits for the PRESS ANY BUTTON title screen and follows Settings > General > Sound.

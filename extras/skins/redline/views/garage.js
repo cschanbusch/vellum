@@ -1,13 +1,13 @@
 // Grand Tour's Garage view: a showroom. The selected game's case (built for it by the case
 // builder, ../case-builder) stands on a turntable under studio lights, a spec card gives its model year, manufacturer (developer), body type (genre) and
-// condition, and a model-select strip runs along the bottom, one body type at a time (or the
-// current grouping).
+// condition, and a model-select strip runs along the bottom, one group at a time: by body type,
+// or however the Group by picker (or G) arranges the showroom.
 //
-// The strip is a focus container: Left/Right choose the model, Up/Down change body type, Enter
-// starts the game, S services it and T test-drives it (the ignition without launching; Shift+T
-// with the start's wear). On the case: click opens it; right click holds its front,
-// then its back, then lets it turn again. The card's buttons sit outside it, so the focus manager reaches them
-// normally.
+// The strip is a focus container: Left/Right choose the model, Up/Down change group, Enter
+// starts the game, S services it, T test-drives it (the ignition without launching; Shift+T
+// with the start's wear), F turns the case to its front and back, and G changes the grouping.
+// On the case: click opens it; right click opens the game menu, led by the case's own actions.
+// The card's buttons sit outside the strip, so the focus manager reaches them normally.
 import { TIERS, caseFor, dropQueued, loadCases, requestWrap, surfaceMaps } from "../case-builder/compose.js";
 import { CaseStage, quickWrap } from "../case-builder/renderer.js";
 import { condition, describe, failChance, grade, lastWear, serviced } from "../condition.js";
@@ -20,6 +20,8 @@ let root = null;
 let stage = null;
 let card = null;
 let makersEl = null;
+let groupBtn = null;
+let groupMenu = null;
 let strip = null;
 let unsubs = [];
 
@@ -79,14 +81,109 @@ function wearNote(id) {
 const art = (e, kind, width) => api.art.url(e.id, kind, width, null);
 
 // ---- makers ---------------------------------------------------------------------------------
+// The groups along the dock. How the showroom is arranged is the user's choice (Group by, or G),
+// kept in skin storage. "Library groups" follows Vellum's own grouping, and is the default while
+// one is set there.
+
+const GROUP_KEY = "garage-group";
+const MILEAGE = [
+  [6000, "100 h and up"],
+  [3000, "50 to 100 h"],
+  [600, "10 to 50 h"],
+  [60, "1 to 10 h"],
+  [1, "Under 1 h"],
+  [0, "Not driven"],
+];
+const DRIVEN = ["This week", "This month", "This year", "Earlier", "Never driven"];
+const CONDITIONS = ["Showroom fresh", "Well kept", "Road worn", "Needs service", "Barely running"];
+
+const minutes = (e) => e.playtimeMinutes ?? 0;
+const drivenAt = (e) => Math.max(e.lastPlayed ? Date.parse(e.lastPlayed) : 0, e.lastLaunched ? Date.parse(e.lastLaunched) : 0);
+const unknownLast = (unknown) => (a, b) => (a === unknown) - (b === unknown) || a.localeCompare(b);
+const byIndex = (list) => (a, b) => list.indexOf(a) - list.indexOf(b);
+
+/** Each grouping: a label, the group a game falls in, the order of groups, and optionally the
+ *  order inside one (otherwise the library's sort). */
+const GROUPINGS = [
+  { id: "library", label: "Library groups", available: () => !!api.state.get().groupBy },
+  {
+    id: "body",
+    label: "Body type",
+    // By body type when the stores say; otherwise by store.
+    keyOf: (entries) => (entries.filter(bodyType).length >= entries.length / 2 ? (e) => bodyType(e) ?? "Unclassified" : (e) => stores(e)[0] ?? "Other"),
+    order: unknownLast("Unclassified"),
+  },
+  {
+    id: "letter",
+    label: "A to Z",
+    keyOf: () => (e) => {
+      const c = (e.sortTitle || e.title).charAt(0).toUpperCase();
+      return /[A-Z]/.test(c) ? c : "#";
+    },
+    order: (a, b) => (a === "#" ? -1 : b === "#" ? 1 : a.localeCompare(b)),
+  },
+  { id: "make", label: "Make", keyOf: () => (e) => e.metadata.developer || "Unknown make", order: unknownLast("Unknown make") },
+  {
+    id: "year",
+    label: "Year",
+    keyOf: () => (e) => e.metadata.releaseDate?.slice(0, 4) || "Year unknown",
+    order: (a, b) => (a === "Year unknown") - (b === "Year unknown") || b.localeCompare(a),
+  },
+  {
+    id: "mileage",
+    label: "Mileage",
+    keyOf: () => (e) => MILEAGE.find(([min]) => minutes(e) >= min)[1],
+    order: byIndex(MILEAGE.map(([, l]) => l)),
+    within: (a, b) => minutes(b) - minutes(a),
+  },
+  {
+    id: "driven",
+    label: "Last driven",
+    keyOf: () => {
+      const now = Date.now();
+      return (e) => {
+        const t = drivenAt(e);
+        if (!t) return "Never driven";
+        const days = (now - t) / 86_400_000;
+        return days < 7 ? "This week" : days < 31 ? "This month" : days < 365 ? "This year" : "Earlier";
+      };
+    },
+    order: byIndex(DRIVEN),
+    within: (a, b) => drivenAt(b) - drivenAt(a),
+  },
+  { id: "condition", label: "Condition", keyOf: () => (e) => describe(condition(e.id)), order: byIndex(CONDITIONS), within: (a, b) => condition(b.id) - condition(a.id) },
+  { id: "store", label: "Store", keyOf: () => (e) => stores(e)[0] ?? "Other", order: unknownLast("Other") },
+];
+
+function groupings() {
+  return GROUPINGS.filter((g) => !g.available || g.available());
+}
+
+/** The grouping in use: the saved choice when it's available, else the first one offered. */
+function grouping() {
+  const list = groupings();
+  return list.find((g) => g.id === api.skin.storage.get(GROUP_KEY, null)) ?? list[0];
+}
+
+function setGrouping(id) {
+  if (id === grouping().id) return;
+  api.skin.storage.set(GROUP_KEY, id);
+  rebuild(); // the selected game stays selected, in its new group
+}
+
+/** G (and Shift+G): the next (previous) grouping. */
+function cycleGrouping(dir) {
+  const list = groupings();
+  const i = list.indexOf(grouping());
+  setGrouping(list[(i + dir + list.length) % list.length].id);
+}
 
 function buildMakers(entries) {
-  if (api.state.get().groupBy) {
-    return api.library.groups().filter((g) => g.entries.length).map((g) => ({ label: g.label, entries: g.entries }));
+  const g = grouping();
+  if (g.id === "library") {
+    return api.library.groups().filter((x) => x.entries.length).map((x) => ({ label: x.label, entries: x.entries }));
   }
-  // By body type when the stores say; otherwise by store.
-  const typed = entries.filter(bodyType).length;
-  const keyOf = typed >= entries.length / 2 ? (e) => bodyType(e) ?? "Unclassified" : (e) => stores(e)[0] ?? "Other";
+  const keyOf = g.keyOf(entries);
   const by = new Map();
   for (const e of entries) {
     const k = keyOf(e);
@@ -94,8 +191,8 @@ function buildMakers(entries) {
     by.get(k).push(e);
   }
   return [...by.entries()]
-    .sort(([a], [b]) => (a === "Unclassified") - (b === "Unclassified") || a.localeCompare(b))
-    .map(([label, list]) => ({ label, entries: list }));
+    .sort(([a], [b]) => g.order(a, b))
+    .map(([label, list]) => ({ label, entries: g.within ? list.sort(g.within) : list }));
 }
 
 function rebuild() {
@@ -131,6 +228,9 @@ const current = () => makers[maker]?.entries[sel] ?? null;
 // ---- rendering ------------------------------------------------------------------------------
 
 function renderMakers() {
+  const g = grouping();
+  groupBtn.querySelector(".rl-gar-group-value").textContent = g.label;
+  makersEl.setAttribute("aria-label", g.label);
   makersEl.replaceChildren(
     ...makers.map((m, i) => {
       const b = el("button", "rl-gar-maker");
@@ -517,6 +617,8 @@ async function serviceCurrent() {
 /** Condition changed (a start, a service): redraw the card and the grime. */
 function onCondition() {
   if (!root) return;
+  // A start or a service can move a game to another condition group.
+  if (grouping().id === "condition") return rebuild();
   renderModel(true);
   const m = makers[maker];
   for (const t of strip.querySelectorAll(".rl-gar-thumb")) {
@@ -634,6 +736,7 @@ export default {
       el("p", "rl-gar-tip", api.ui.menuItems ? "Click to open · Right-click - Front, back, menu" : "Click to open · Right-click: front, back, turn"),
       el("p", "rl-gar-tip is-test", "T - Test Ignition"),
       el("p", "rl-gar-tip is-test", "Shift+T - Test with wear"),
+      el("p", "rl-gar-tip is-test", "G - Group by"),
     );
     floor.append(backdrop, lights, tips);
     // Clicking the case (open it, or right-click for its menu) would leave keyboard focus on the
@@ -666,14 +769,68 @@ export default {
     strip.addEventListener("keydown", (ev) => {
       if (ev.ctrlKey || ev.altKey || ev.metaKey) return;
       const k = ev.key.toLowerCase();
-      if (k !== "s" && k !== "t" && k !== "f") return;
+      if (k !== "s" && k !== "t" && k !== "f" && k !== "g") return;
       ev.preventDefault();
       ev.stopPropagation();
       if (k === "s") void serviceCurrent();
       else if (k === "f") cases3d?.toggleFace();
+      else if (k === "g") cycleGrouping(ev.shiftKey ? -1 : 1);
       else void testIgnition(current(), { wear: ev.shiftKey });
     });
-    dock.append(makersEl, strip);
+    // Group by: a pill at the start of the group tabs, opening a list upward.
+    const row = el("div", "rl-gar-dock-row");
+    const picker = el("div", "rl-gar-group");
+    groupBtn = el("button", "rl-gar-group-btn");
+    groupBtn.setAttribute("aria-haspopup", "listbox");
+    groupBtn.setAttribute("aria-expanded", "false");
+    groupBtn.append(el("span", "rl-gar-group-label", "Group by"), el("span", "rl-gar-group-value"), el("span", "rl-gar-group-caret", "\u25BE"));
+    groupMenu = el("div", "rl-gar-group-menu");
+    groupMenu.setAttribute("role", "listbox");
+    groupMenu.hidden = true;
+    const outside = (ev) => {
+      if (!picker.contains(ev.target)) closeMenu();
+    };
+    const closeMenu = () => {
+      groupMenu.hidden = true;
+      groupBtn.setAttribute("aria-expanded", "false");
+      removeEventListener("pointerdown", outside, true);
+    };
+    groupBtn.addEventListener("click", () => {
+      if (!groupMenu.hidden) return closeMenu();
+      const now = grouping();
+      groupMenu.replaceChildren(
+        ...groupings().map((g) => {
+          const b = el("button", "rl-gar-group-item", g.label);
+          b.setAttribute("role", "option");
+          b.setAttribute("aria-selected", String(g === now));
+          b.addEventListener("click", () => {
+            closeMenu();
+            setGrouping(g.id);
+            strip.focus({ preventScroll: true });
+          });
+          return b;
+        }),
+      );
+      groupMenu.hidden = false;
+      groupBtn.setAttribute("aria-expanded", "true");
+      addEventListener("pointerdown", outside, true);
+      groupMenu.querySelector('[aria-selected="true"]')?.focus();
+    });
+    groupMenu.addEventListener("keydown", (ev) => {
+      const items = [...groupMenu.querySelectorAll("button")];
+      const i = items.indexOf(document.activeElement);
+      if (ev.key === "Escape") {
+        closeMenu();
+        groupBtn.focus();
+      } else if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
+        items[(i + (ev.key === "ArrowDown" ? 1 : -1) + items.length) % items.length]?.focus();
+      } else return;
+      ev.preventDefault();
+      ev.stopPropagation();
+    });
+    picker.append(groupBtn, groupMenu);
+    row.append(picker, makersEl);
+    dock.append(row, strip);
 
     root.append(stage, dock);
     host.append(root);

@@ -36,7 +36,7 @@ const HELP = {
   garage: [
     ["Enter", "Start"],
     ["←→", "Model"],
-    ["↑↓", "Body type"],
+    ["↑↓", "Group"],
     ["S", "Service"],
     ["Ctrl D", "Add to garage"],
   ],

@@ -430,11 +430,111 @@ test("Frontier's Catalogue: the contents turn to a game; arrows turn leaves; tab
 
 // Grand Tour's Garage draws its case in WebGL, so these run in the "gpu" project (see
 // playwright.config.ts).
+test("FICSIT's factory ambience: starts on the first input, mixes per view, ducks for the ceremony, and goes quiet in the background", async ({ page }) => {
+  const frame = await open(page, 5218);
+  await show(page, "covers");
+  type Amb = { started: boolean; state: string | null; view: string; inFront: boolean; ducked: boolean; target: number; mix: Record<string, number> };
+  const amb = () => frame.locator("body").evaluate(() => (window as unknown as { __fxAmbience: () => Amb }).__fxAmbience());
+  // Browsers allow sound only after an input; the first click starts the factory.
+  await frame.locator("vellum-grid .cell").first().click();
+  await expect.poll(async () => (await amb()).state, { timeout: 5000 }).toBe("running");
+  expect((await amb()).target).toBeCloseTo(0.4);
+
+  // The HUB is busier than Covers: louder machines and belt.
+  const covers = (await amb()).mix;
+  await show(page, "hub");
+  await expect.poll(async () => (await amb()).view).toBe("hub");
+  const hub = (await amb()).mix;
+  expect(hub.machines).toBeGreaterThan(covers.machines);
+  expect(hub.belt).toBeGreaterThan(covers.belt);
+
+  // The submit ceremony ducks it; the return brings it back.
+  await frame.locator("body").evaluate(() => dispatchEvent(new CustomEvent("fx:dispatch", { detail: { title: "x", line: "y" } })));
+  await expect.poll(async () => (await amb()).ducked).toBe(true);
+  expect((await amb()).target).toBeLessThan(0.2);
+  await frame.locator("body").evaluate(() => dispatchEvent(new CustomEvent("fx:return")));
+  await expect.poll(async () => (await amb()).ducked).toBe(false);
+
+  // A game in front (the window unfocused) fades it out and stops the audio thread; back in
+  // Vellum it carries on.
+  const focus = (focused: boolean) =>
+    page.evaluate((focused) => {
+      const h = document.querySelector("vellum-harness");
+      const iframe = (h?.shadowRoot ?? document).querySelector("iframe") as HTMLIFrameElement;
+      iframe.contentWindow!.postMessage({ v: 1, type: "event", name: "window", data: { maximized: false, frameless: true, focused } }, "*");
+    }, focused);
+  await focus(false);
+  await expect.poll(async () => (await amb()).target).toBe(0);
+  await expect.poll(async () => (await amb()).state, { timeout: 6000 }).toBe("suspended");
+  await focus(true);
+  await expect.poll(async () => (await amb()).state, { timeout: 5000 }).toBe("running");
+
+  // Its own switch turns it off.
+  await page.evaluate(() => (document.querySelector("vellum-harness") as HarnessEl).backend.setOption("ficsit", "ambience", false));
+  await expect.poll(async () => (await amb()).target).toBe(0);
+});
+
+test("FICSIT's button and cursor sounds: steps tick, edges thunk, confirm and back beep, views hiss, and they have a switch", async ({ page }) => {
+  const frame = await open(page, 5218);
+  await show(page, "covers");
+  // What has played since the last clear().
+  const heard = () => frame.locator("body").evaluate(() => [...((window as unknown as { __fxUi?: string[] }).__fxUi ?? [])]);
+  const clear = () => frame.locator("body").evaluate(() => void ((window as unknown as { __fxUi?: string[] }).__fxUi = []));
+  await frame.locator("vellum-grid .cell").first().click();
+  await clear();
+  await page.keyboard.press("ArrowRight");
+  await expect.poll(heard).toContain("move");
+  await clear();
+  // Confirm beeps up; a view change hisses; Back beeps down.
+  await page.keyboard.press("Enter");
+  await expect.poll(heard).toContain("select");
+  await clear();
+  await show(page, "spotlight");
+  await expect.poll(heard).toContain("view");
+  await clear();
+  await page.keyboard.press("Escape");
+  await expect.poll(heard).toEqual(expect.arrayContaining(["back"]));
+
+  // In the HUB, Up past Tier 0 has nowhere to go: a thunk, not a tick.
+  await show(page, "hub");
+  await frame.locator(".fx-hub-console").focus();
+  for (let i = 0; i < 10; i++) await page.keyboard.press("ArrowUp");
+  await page.waitForTimeout(150);
+  await clear();
+  await page.keyboard.press("ArrowUp");
+  await expect.poll(heard).toEqual(["bump"]);
+  await show(page, "covers");
+
+  await page.evaluate(() => (document.querySelector("vellum-harness") as HarnessEl).backend.setOption("ficsit", "menuSounds", false));
+  await page.waitForTimeout(200);
+  await clear();
+  await page.keyboard.press("ArrowRight");
+  await page.waitForTimeout(300);
+  expect(await heard()).toEqual([]);
+});
+
 test("FICSIT's HUB: games sit in Tiers by lifetime hours; arrows change Tier and Milestone; the rail takes clicks", async ({ page }) => {
   const frame = await open(page, 5218);
   await show(page, "hub");
   await expect(frame.locator(".fx-hub-elev-count")).toContainText("assets operational");
   await expect(frame.locator(".fx-hub-tier")).toHaveCount(9);
+  // Every Tier name fits the rail, whole, from the skin's narrowest window up (Commissioned once
+  // ran off it).
+  const viewport = page.viewportSize()!;
+  for (const width of [1330, 1450, 1600, 1920]) {
+    await page.setViewportSize({ width, height: viewport.height });
+    await page.waitForTimeout(150);
+    const overflow = await frame.locator(".fx-hub-rail").evaluate((rail) => {
+      const r = rail.getBoundingClientRect();
+      return [...rail.querySelectorAll<HTMLElement>(".fx-hub-tier")].flatMap((t) => {
+        const name = t.querySelector<HTMLElement>(".fx-hub-tier-name")!;
+        const box = t.getBoundingClientRect();
+        return name.scrollWidth > name.clientWidth + 1 || box.right > r.right + 1 ? [name.textContent] : [];
+      });
+    });
+    expect(overflow, `at ${width}px`).toEqual([]);
+  }
+  await page.setViewportSize(viewport);
   const current = frame.locator(".fx-hub-tier[aria-current]");
   const tierNo = async () => Number(await current.getAttribute("data-tier"));
   // The Milestone shown is the selected game, in the Tier its playtime puts it in.
@@ -708,6 +808,54 @@ test.describe("Grand Tour", () => {
     await page.screenshot({ path: "test-artifacts/views/redline-garage.png" });
   });
 
+  test("Grand Tour's Garage: Group by arranges the showroom another way, keeps the selection, and G cycles", async ({ page }) => {
+    const frame = await open(page, 5226);
+    await show(page, "garage");
+    const strip = frame.locator(".rl-gar-strip");
+    await expect(frame.locator(".rl-gar-thumb").first()).toBeVisible();
+    await expect(frame.locator(".rl-gar-group-value")).toHaveText("Body type");
+    await strip.focus();
+    await page.keyboard.press("ArrowRight");
+    const name = await frame.locator(".rl-gar-name").textContent();
+
+    // A to Z: one tab per first letter, in order, and the same game still selected.
+    await frame.locator(".rl-gar-group-btn").click();
+    const menu = frame.locator(".rl-gar-group-menu");
+    await expect(menu).toBeVisible();
+    await expect(menu.getByRole("option")).toHaveText(["Body type", "A to Z", "Make", "Year", "Mileage", "Last driven", "Condition", "Store"]);
+    await menu.getByRole("option", { name: "A to Z" }).click();
+    await expect(menu).toBeHidden();
+    await expect(frame.locator(".rl-gar-group-value")).toHaveText("A to Z");
+    const tabs = (await frame.locator(".rl-gar-maker span:last-child").allTextContents()).map((t) => t.trim());
+    expect(tabs.every((t) => /^[A-Z#]$/.test(t)), tabs.join(",")).toBe(true);
+    expect(tabs).toEqual([...tabs].sort((a, b) => (a === "#" ? -1 : b === "#" ? 1 : a.localeCompare(b))));
+    await expect(frame.locator(".rl-gar-name")).toHaveText(name!);
+    await expect(frame.locator('.rl-gar-maker[aria-current="true"]')).toHaveText(new RegExp(`${name!.trim().charAt(0).toUpperCase()}$`));
+
+    // Mileage: most played first, inside each band too.
+    await frame.locator(".rl-gar-group-btn").click();
+    await menu.getByRole("option", { name: "Mileage" }).click();
+    const minutes = await host(page, (h) => Object.fromEntries(h.entries.map((e) => [e.title, e.playtimeMinutes ?? 0])));
+    const shown = (await frame.locator(".rl-gar-thumb").evaluateAll((ts) => ts.map((t) => t.getAttribute("aria-label")))) as string[];
+    const played = shown.map((t) => minutes[t]);
+    expect(played).toEqual([...played].sort((a, b) => b - a));
+
+    // G steps to the next grouping from the strip, and the choice survives a reload.
+    await strip.focus();
+    await page.keyboard.press("g");
+    await expect(frame.locator(".rl-gar-group-value")).toHaveText("Last driven");
+    await host(page, (h) => h.reloadSkinPage());
+    await show(page, "garage");
+    await expect(frame.locator(".rl-gar-group-value")).toHaveText("Last driven");
+    await frame.locator(".rl-gar-strip").focus();
+    await page.keyboard.press("Shift+G");
+    await page.keyboard.press("Shift+G");
+    await page.keyboard.press("Shift+G");
+    await page.keyboard.press("Shift+G");
+    await page.keyboard.press("Shift+G");
+    await expect(frame.locator(".rl-gar-group-value")).toHaveText("Body type");
+  });
+
   test("Grand Tour's Garage builds each game a case: composed wrap, neighbours preloaded, front/back hold, open, forms", async ({ page }) => {
     const frame = await open(page, 5226);
     await show(page, "garage");
@@ -895,7 +1043,7 @@ test.describe("Grand Tour", () => {
   test("Grand Tour picks one song per launch from music/, names it once as it starts, and keeps it through a skin reload", async ({ page }) => {
     const frame = await open(page, 5226);
     const html = frame.locator("html");
-    await expect(html).toHaveAttribute("data-rl-song", /^(expressway|lounge|nightdrive|pace|strike)$/);
+    await expect(html).toHaveAttribute("data-rl-song", /^(expressway|lounge|nightdrive|pace|strike|truism)$/);
     const song = (await html.getAttribute("data-rl-song"))!;
     expect(await html.evaluate(() => sessionStorage.getItem("rl-song"))).toBe(song);
     // When the music starts, a plate on the footer's left end names the song, then goes.
