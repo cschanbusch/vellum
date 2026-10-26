@@ -438,7 +438,25 @@ Shelf preferences for grouped Covers (the kit uses these; custom shelf UIs can t
 | --- | --- |
 | `minimize()`, `toggleMaximize()`, `close()` | For frameless skins |
 | `isMaximized()`, `isFrameless()` | |
-| `on("change", cb)` | Maximized state changed |
+| `isFocused()` | Whether Vellum's window is in front: `false` while a game, another app or the desktop is (Vellum 0.5 and later) |
+| `on("change", cb)` | The window changed: `cb({ maximized, frameless, focused })` |
+
+**Going quiet in the background.** `vellum.music` already stops while Vellum isn't in front. Your
+own sound (ambience, loops, anything long) should too: a player who launches a game shouldn't
+hear the launcher underneath it. Follow `focused`, and fade rather than cut:
+
+```js
+// isFocused() is Vellum 0.5+; before that, assume Vellum is in front until a change says otherwise.
+let quiet = !(vellum.window.isFocused?.() ?? true);
+vellum.window.on("change", ({ focused }) => {
+  if (focused === undefined || focused === !quiet) return;
+  quiet = !focused;
+  ambience.gain.setTargetAtTime(quiet ? 0 : level, ctx.currentTime, 0.4);
+});
+```
+
+`focused` is `false` from the moment a game (or anything else) takes the foreground until the
+player comes back to Vellum, even while the game keeps running.
 
 **Dragging.** Any element with the `data-vellum-drag` attribute moves the window when dragged,
 and double-clicking it maximizes. Buttons, inputs, links and focusable elements inside it still

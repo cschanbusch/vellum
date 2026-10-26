@@ -484,6 +484,8 @@ export const vellum = {
     close: () => call<void>("window.close"),
     isMaximized: () => windowInfo.maximized,
     isFrameless: () => windowInfo.frameless,
+    /** Whether Vellum's window is in front (false while a game or another app is). */
+    isFocused: () => windowInfo.focused ?? true,
     on: (event: "change", cb: Listener<WindowInfo>) => (event === "change" ? windowChanged.on(cb) : () => {}),
   },
 

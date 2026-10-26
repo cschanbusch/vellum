@@ -72,28 +72,39 @@ impl PluginRecord {
     }
 }
 
-/// Scans each root's `providers/`, `skins/` and `modules/` folders. Later roots never
-/// replace earlier ones: a repeated id is reported as an error on the later plugin.
+/// Scans each root's `providers/`, `skins/` and `modules/` folders. When roots share an
+/// id (a downloaded skin and the copy bundled with the app), the newer version is kept and
+/// the other is left out; a tie keeps the earlier root. A repeated id within one root is
+/// reported as an error on the later plugin.
 pub fn discover(roots: &[PathBuf]) -> Vec<PluginRecord> {
     let mut out: Vec<PluginRecord> = Vec::new();
-    let mut seen: HashMap<(PluginKind, String), PathBuf> = HashMap::new();
+    // (kind, id) -> (root index, index in `out`)
+    let mut seen: HashMap<(PluginKind, String), (usize, usize)> = HashMap::new();
 
-    for root in roots {
+    for (r, root) in roots.iter().enumerate() {
         for kind in PluginKind::ALL {
             for dir in subfolders(&root.join(kind.folder())) {
                 let mut rec = load(&dir, kind);
                 if rec.is_valid() {
                     let key = (kind, rec.id.clone());
-                    if let Some(first) = seen.get(&key) {
+                    if let Some(&(first_root, at)) = seen.get(&key) {
+                        if first_root != r {
+                            if is_newer(rec.version.as_deref(), out[at].version.as_deref()) {
+                                tracing::info!(id = %rec.id, newer = %rec.dir.display(), older = %out[at].dir.display(), "newer plugin copy wins");
+                                out[at] = rec;
+                                seen.insert(key, (r, at));
+                            }
+                            continue;
+                        }
                         rec.errors.push(format!(
                             "Another {} already uses the id \"{}\" ({}).",
                             kind.as_str(),
                             rec.id,
-                            first.display()
+                            out[at].dir.display()
                         ));
                         rec.manifest = None;
                     } else {
-                        seen.insert(key, dir.clone());
+                        seen.insert(key, (r, out.len()));
                     }
                 }
                 out.push(rec);
@@ -101,6 +112,11 @@ pub fn discover(roots: &[PathBuf]) -> Vec<PluginRecord> {
         }
     }
     out
+}
+
+fn is_newer(a: Option<&str>, b: Option<&str>) -> bool {
+    let key = |s: Option<&str>| s.and_then(crate::versions::parse_version).map(|(v, pre)| (v, pre.is_none(), pre));
+    key(a) > key(b)
 }
 
 fn subfolders(dir: &Path) -> Vec<PathBuf> {
@@ -208,13 +224,35 @@ mod tests {
     }
 
     #[test]
-    fn duplicate_ids_across_roots_keep_the_first() {
+    fn duplicate_ids_across_roots_keep_one_copy() {
         let a = tempfile::tempdir().unwrap();
         let b = tempfile::tempdir().unwrap();
         plugin(a.path(), PluginKind::Provider, "steam", &provider_json("steam"), &["provider.js"]);
         plugin(b.path(), PluginKind::Provider, "steam-copy", &provider_json("steam"), &["provider.js"]);
         let found = discover(&[a.path().to_path_buf(), b.path().to_path_buf()]);
+        assert_eq!(found.len(), 1);
         assert!(found[0].is_valid());
+        assert!(found[0].dir.starts_with(a.path()));
+    }
+
+    #[test]
+    fn newer_copy_in_a_later_root_wins() {
+        let a = tempfile::tempdir().unwrap();
+        let b = tempfile::tempdir().unwrap();
+        let json = |v: &str| provider_json("steam").replace("\"1.0.0\"", &format!("\"{v}\""));
+        plugin(a.path(), PluginKind::Provider, "steam", &json("1.8.0"), &["provider.js"]);
+        plugin(b.path(), PluginKind::Provider, "steam", &json("1.9.0"), &["provider.js"]);
+        let found = discover(&[a.path().to_path_buf(), b.path().to_path_buf()]);
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].version.as_deref(), Some("1.9.0"));
+    }
+
+    #[test]
+    fn duplicate_ids_in_one_root_are_an_error() {
+        let a = tempfile::tempdir().unwrap();
+        plugin(a.path(), PluginKind::Provider, "steam", &provider_json("steam"), &["provider.js"]);
+        plugin(a.path(), PluginKind::Provider, "steam-copy", &provider_json("steam"), &["provider.js"]);
+        let found = discover(&[a.path().to_path_buf()]);
         assert!(!found[1].is_valid());
         assert!(found[1].errors[0].contains("already uses the id"));
     }
