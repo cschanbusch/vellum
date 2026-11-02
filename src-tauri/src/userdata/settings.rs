@@ -7,14 +7,39 @@ use serde_json::{Map, Value};
 use super::atomic;
 use crate::plugins::PluginKind;
 
-pub const SCHEMA_VERSION: u32 = 1;
+pub const SCHEMA_VERSION: u32 = 2;
 pub const DEFAULT_SKIN: &str = "basis";
 
 /// Each entry migrates a settings document from version `index` to `index + 1`.
 const MIGRATIONS: &[fn(&mut Value)] = &[
     // 0 -> 1: pre-release files had no schemaVersion; the shape is unchanged.
     |_| {},
+    // 1 -> 2: renamed skins keep being the active skin, their options and what was answered.
+    |doc| {
+        for (old, new) in crate::plugins::RENAMED_SKINS {
+            rename_skin(doc, old, new);
+        }
+    },
 ];
+
+fn rename_skin(doc: &mut Value, old: &str, new: &str) {
+    if doc.get("activeSkin").and_then(Value::as_str) == Some(old) {
+        doc["activeSkin"] = new.into();
+    }
+    if let Some(skins) = doc.pointer_mut("/plugins/skins").and_then(Value::as_object_mut) {
+        if let Some(entry) = skins.remove(old) {
+            skins.entry(new).or_insert(entry);
+        }
+    }
+    for list in ["/ui/skinsSeen", "/ui/dismissedRecommendations"] {
+        if let Some(ids) = doc.pointer_mut(list).and_then(Value::as_array_mut) {
+            if ids.iter().any(|v| v == old) {
+                ids.retain(|v| v != old && v != new);
+                ids.push(new.into());
+            }
+        }
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -268,6 +293,24 @@ mod tests {
         let s = load(Path::new("x"), Some(br#"{"activeSkin":"neon"}"#.to_vec()));
         assert_eq!(s.schema_version, SCHEMA_VERSION);
         assert_eq!(s.active_skin, "neon");
+    }
+
+    #[test]
+    fn renamed_skins_keep_their_settings() {
+        let s = load(
+            Path::new("x"),
+            Some(
+                br#"{"schemaVersion":1,"activeSkin":"redline",
+                    "plugins":{"skins":{"redline":{"values":{"volume":40}}}},
+                    "ui":{"skinsSeen":["basis","redline"],"dismissedRecommendations":["redline"]}}"#
+                    .to_vec(),
+            ),
+        );
+        assert_eq!(s.active_skin, "grandtour");
+        assert_eq!(s.plugins.skins["grandtour"].values["volume"], 40);
+        assert!(!s.plugins.skins.contains_key("redline"));
+        assert_eq!(s.ui.skins_seen, ["basis", "grandtour"]);
+        assert_eq!(s.ui.dismissed_recommendations, ["grandtour"]);
     }
 
     #[test]

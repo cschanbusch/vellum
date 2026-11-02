@@ -15,6 +15,8 @@ pub const MANIFEST_FILE: &str = "plugin.json";
 pub const API_VERSION: u32 = 1;
 /// The oldest host API version still supported.
 pub const MIN_API_VERSION: u32 = 1;
+/// Skins whose id changed, as (old, new). Settings, downloaded copies and skin storage move over.
+pub const RENAMED_SKINS: &[(&str, &str)] = &[("redline", "grandtour")];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]

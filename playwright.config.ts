@@ -36,6 +36,6 @@ export default defineConfig({
     harness("extras/skins/calling-card", 5216),
     harness("extras/skins/ficsit", 5218),
     harness("extras/skins/frontier", 5224),
-    harness("extras/skins/redline", 5226),
+    harness("extras/skins/grandtour", 5226),
   ],
 });

@@ -655,7 +655,7 @@ test.describe("Grand Tour", () => {
     expect(await launched()).toBeNull();
 
     // Service: pressure-wash (hold Enter), then three presses with the needle in the green band.
-    await page.evaluate(() => (document.querySelector("vellum-harness") as HarnessEl).backend.setOption("redline", "tuneUp", "relaxed"));
+    await page.evaluate(() => (document.querySelector("vellum-harness") as HarnessEl).backend.setOption("grandtour", "tuneUp", "relaxed"));
     await page.keyboard.press("s");
     await expect(frame.locator(".rl-svc")).toBeVisible();
     const washFrom = Date.now();
@@ -777,7 +777,7 @@ test.describe("Grand Tour", () => {
     await expect(frame.locator(".rl-ign")).toBeHidden({ timeout: 5000 });
     expect(await launched()).toBeNull();
     expect(await cond()).toBeLessThan(before);
-    await page.screenshot({ path: "test-artifacts/views/redline-garage-tips.png" });
+    await page.screenshot({ path: "test-artifacts/views/grandtour-garage-tips.png" });
   });
 
   test("Grand Tour's Garage: left/right pick the model, up/down change maker, the card follows", async ({ page }) => {
@@ -805,7 +805,7 @@ test.describe("Grand Tour", () => {
     await host(page, (h) => h.setState({ selectedId: h.entries[h.entries.length - 1].id }));
     await expect(frame.locator(".rl-gar-name")).toHaveText(other.title);
     await page.waitForTimeout(800);
-    await page.screenshot({ path: "test-artifacts/views/redline-garage.png" });
+    await page.screenshot({ path: "test-artifacts/views/grandtour-garage.png" });
   });
 
   test("Grand Tour's Garage: Group by arranges the showroom another way, keeps the selection, and G cycles", async ({ page }) => {
@@ -926,7 +926,7 @@ test.describe("Grand Tour", () => {
     // The form is a skin option per store: the change rebuilds the case without a restart. Big
     // boxes don't open.
     const setOption = (k: string, v: unknown) =>
-      page.evaluate(([k, v]) => (document.querySelector("vellum-harness") as HarnessEl).backend.setOption("redline", k as string, v), [k, v] as const);
+      page.evaluate(([k, v]) => (document.querySelector("vellum-harness") as HarnessEl).backend.setOption("grandtour", k as string, v), [k, v] as const);
     await setOption("caseOther", "bigbox");
     await expect.poll(() => probe<string | null>("s.current?.key ?? null"), { timeout: 30_000 }).toMatch(/\|bigbox\|(medium|full)\|/); // the tier follows the screen size
     await gl.click();
@@ -937,7 +937,7 @@ test.describe("Grand Tour", () => {
     await setOption("reflections", true);
     await setOption("caseOther", "keepcase-dvd");
     await page.waitForTimeout(500);
-    await page.screenshot({ path: "test-artifacts/views/redline-garage-case.png" });
+    await page.screenshot({ path: "test-artifacts/views/grandtour-garage-case.png" });
   });
 
   test("Grand Tour's Garage keeps the right cases on the turntables through fast, mixed navigation", async ({ page }) => {
@@ -1025,7 +1025,7 @@ test.describe("Grand Tour", () => {
     // Every wrap decoded, at the medium tier's size (front panel 640 px wide plus back, spine and bleed).
     const widths = await page.locator("figure img").evaluateAll((imgs) => imgs.map((i) => (i as HTMLImageElement).naturalWidth));
     expect(widths.every((w) => w > 1300)).toBe(true);
-    await page.screenshot({ path: "test-artifacts/views/redline-case-gallery.png", fullPage: true });
+    await page.screenshot({ path: "test-artifacts/views/grandtour-case-gallery.png", fullPage: true });
   });
 
   test("Grand Tour's title screen waits for any button, and that press goes no further", async ({ page }) => {
@@ -1040,10 +1040,19 @@ test.describe("Grand Tour", () => {
     expect((await state(page)).query, "the key that dismissed it didn't start a search").toBe("");
   });
 
+  test("Grand Tour takes over what it saved under its old id", async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("vellum:redline:rename-check", "\"kept\""));
+    const frame = await open(page, 5226);
+    await expect(frame.locator("html")).toHaveAttribute("data-rl-song", /./);
+    const [moved, left] = await frame.locator("html").evaluate(() => [localStorage.getItem("vellum:grandtour:rename-check"), localStorage.getItem("vellum:redline:rename-check")]);
+    expect(moved).toBe("\"kept\"");
+    expect(left).toBeNull();
+  });
+
   test("Grand Tour picks one song per launch from music/, names it once as it starts, and keeps it through a skin reload", async ({ page }) => {
     const frame = await open(page, 5226);
     const html = frame.locator("html");
-    await expect(html).toHaveAttribute("data-rl-song", /^(expressway|lounge|nightdrive|pace|strike|truism)$/);
+    await expect(html).toHaveAttribute("data-rl-song", /^(angular|circuit|drift|expressway|lounge|nightdrive|pace|strike|truism)$/);
     const song = (await html.getAttribute("data-rl-song"))!;
     expect(await html.evaluate(() => sessionStorage.getItem("rl-song"))).toBe(song);
     // When the music starts, a plate on the footer's left end names the song, then goes.
@@ -1122,7 +1131,7 @@ test.describe("Grand Tour", () => {
     await expect.poll(heard).toContain(1720);
 
     // Menu sounds have their own switch.
-    await page.evaluate(() => (document.querySelector("vellum-harness") as HarnessEl).backend.setOption("redline", "menuSounds", false));
+    await page.evaluate(() => (document.querySelector("vellum-harness") as HarnessEl).backend.setOption("grandtour", "menuSounds", false));
     await page.waitForTimeout(200);
     await heard();
     await frame.locator("vellum-grid .cell").nth(3).click();
@@ -1131,7 +1140,7 @@ test.describe("Grand Tour", () => {
   });
 });
 
-for (const [id, port] of [["synthwave", 5210], ["aero", 5212], ["gridline", 5214], ["calling-card", 5216], ["ficsit", 5218], ["frontier", 5224], ["redline", 5226]] as const) {
+for (const [id, port] of [["synthwave", 5210], ["aero", 5212], ["gridline", 5214], ["calling-card", 5216], ["ficsit", 5218], ["frontier", 5224], ["grandtour", 5226]] as const) {
   test(`the ${id} skin renders every view`, async ({ page }) => {
     const frame = await open(page, port);
     for (const view of ["list", "covers", "spotlight"]) {
@@ -1147,7 +1156,7 @@ for (const [id, port] of [["synthwave", 5210], ["aero", 5212], ["gridline", 5214
   });
 }
 
-for (const [id, port] of [["synthwave", 5210], ["gridline", 5214], ["calling-card", 5216], ["ficsit", 5218], ["frontier", 5224], ["redline", 5226], ["sidebar-test", 5198]] as const) {
+for (const [id, port] of [["synthwave", 5210], ["gridline", 5214], ["calling-card", 5216], ["ficsit", 5218], ["frontier", 5224], ["grandtour", 5226], ["sidebar-test", 5198]] as const) {
   test(`frameless ${id} always shows window controls, even in a narrow window`, async ({ browser }) => {
     for (const width of [1600, 1100, 960]) {
       const page = await browser.newPage({ viewport: { width, height: 800 } });

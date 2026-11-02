@@ -100,6 +100,7 @@ pub fn run() {
             std::process::exit(1);
         }
     };
+    catalog::migrate_renamed(&paths.downloaded_plugins_dir());
     if run_cli(&args, &paths) {
         return;
     }

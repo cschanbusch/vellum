@@ -16,7 +16,9 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const REPO = "cschanbusch/vellum-skins";
-const SHOWCASE = ["frontier", "ficsit", "redline", "calling-card"];
+const SHOWCASE = ["frontier", "ficsit", "grandtour", "calling-card"];
+/** The oldest Vellum a skin's new versions work with, where the plugin API doesn't say. */
+const MIN_APP = { grandtour: "0.6.0" };
 /** Folders a skin keeps for development only. */
 const DEV_ONLY = ["dev"];
 
@@ -88,6 +90,7 @@ for (const id of skins) {
   const entry = {
     version,
     apiVersion: manifest.apiVersion ?? 1,
+    ...(MIN_APP[id] ? { minApp: MIN_APP[id] } : {}),
     url: download(tag, `${id}-${version}.zip`),
     size: statSync(zip).size,
     sha256: sha256(zip),

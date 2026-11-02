@@ -34,7 +34,7 @@ param(
   # leaves out what doesn't work yet (the GOG and Custom provider stubs, the module placeholders,
   # which wait for module hosting in Phase 6), the mock provider (a development tool) and the
   # showcase skins, which aren't distributed in releases.
-  [string[]]$ZipWithout = @('gog', 'custom', 'mock', 'quick-launch', 'random-pick', 'frontier', 'ficsit', 'redline', 'calling-card')
+  [string[]]$ZipWithout = @('gog', 'custom', 'mock', 'quick-launch', 'random-pick', 'frontier', 'ficsit', 'grandtour', 'calling-card')
 )
 
 $ErrorActionPreference = 'Stop'

@@ -1,5 +1,10 @@
 # Decisions
 
+## 2026-11-01 — Grand Tour's id becomes `grandtour`
+
+- **The id finally follows the name.** The skin started as Redline and kept that id through two renames so settings and storage would survive. Now they move instead: settings schema 2 renames the active skin, its options, `skinsSeen` and `dismissedRecommendations`; `catalog::migrate_renamed` moves a downloaded `plugins/skins/redline` at startup, keeping its version so Get skins offers the update; the SDK moves `vellum:redline:*` storage when the skin loads. `plugins::RENAMED_SKINS` lists the rename for the next one.
+- **The catalog keeps both entries.** Vellum 0.5.0 and older recommend and update `redline`, so that entry stays at 1.9.0; `grandtour` needs Vellum 0.6.0 (`minApp`), and newer apps hide the old entry. The internal `rl-` prefix in the skin's CSS and sessions stays: nothing outside the skin sees it.
+
 ## 2026-10-25 — Phase 4 (remote art and metadata) choices
 
 - **One resolver, used everywhere.** `art/resolve.rs` runs the chain for an entry and kind: the user's override, the provider's candidates in the provider's order, SteamGridDB, then the placeholder. Entries (`art`, `artStatus`), the art route and the Change art dialog all call it, so they can't disagree. A remote image counts only once it's downloaded; anything the chain skipped because it isn't downloaded or looked up yet comes back as a *want*. The entry shows the best image available now and upgrades when a want arrives.

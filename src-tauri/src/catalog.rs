@@ -226,6 +226,40 @@ pub fn remove(root: &Path, kind: PluginKind, id: &str) -> Result<(), String> {
     fs::remove_dir_all(&dir).map_err(|e| format!("Couldn't remove it: {e}"))
 }
 
+/// Moves downloaded copies of renamed skins to their new id, keeping the installed version, so
+/// Get skins offers the update. The manifest changes first: a rename that fails (another Vellum
+/// has the folder open) is tried again next start.
+pub fn migrate_renamed(root: &Path) {
+    for (old, new) in crate::plugins::RENAMED_SKINS {
+        let dir = plugin_dir(root, PluginKind::Skin, old);
+        let dest = plugin_dir(root, PluginKind::Skin, new);
+        if !dir.join("plugin.json").is_file() {
+            continue;
+        }
+        let result = if dest.exists() {
+            // Already has the new skin. Only a download of ours is ours to delete.
+            if dir.join(MARKER).is_file() { fs::remove_dir_all(&dir).map_err(|e| e.to_string()) } else { Ok(()) }
+        } else {
+            rewrite_id(&dir, new).and_then(|()| fs::rename(&dir, &dest).map_err(|e| e.to_string()))
+        };
+        match result {
+            Ok(()) => tracing::info!(old, new, "moved a renamed skin"),
+            Err(e) => tracing::warn!(old, new, error = %e, "couldn't move a renamed skin"),
+        }
+    }
+}
+
+fn rewrite_id(dir: &Path, id: &str) -> Result<(), String> {
+    for file in ["plugin.json", MARKER] {
+        let path = dir.join(file);
+        let Ok(text) = fs::read_to_string(&path) else { continue };
+        let mut doc: serde_json::Value = serde_json::from_str(text.trim_start_matches('\u{feff}')).map_err(|e| format!("{file}: {e}"))?;
+        doc["id"] = id.into();
+        fs::write(&path, serde_json::to_vec_pretty(&doc).unwrap()).map_err(|e| format!("{file}: {e}"))?;
+    }
+    Ok(())
+}
+
 /// A catalog plugin's preview image as a data: URL (the shell's CSP allows no remote images).
 /// Only URLs the catalog lists are fetched.
 pub fn preview(url: &str) -> Result<String, String> {
@@ -286,7 +320,8 @@ pub fn view(root: &Path, running: &str, fetch_now: bool, present: impl Fn(Plugin
         .map(|c| c.plugins)
         .unwrap_or_default()
         .into_iter()
-        .filter(|p| valid_id(&p.id))
+        // A renamed skin's old entry stays for older Vellums; here its new entry stands for it.
+        .filter(|p| valid_id(&p.id) && !crate::plugins::RENAMED_SKINS.iter().any(|(old, _)| *old == p.id))
         .map(|p| {
             let installed = installed_version(root, p.kind, &p.id);
             let present = if installed.is_some() { None } else { present(p.kind, &p.id) };
@@ -326,6 +361,32 @@ mod tests {
         assert!(incompatible(&version("1.0.0", 1, Some("0.2.1")), "0.2.1-rc.1").is_some());
         assert!(incompatible(&version("1.0.0", 1, Some("0.2.1")), "0.2.1").is_none());
         assert!(incompatible(&version("1.0.0", 1, Some("0.2.1")), "0.3.0").is_none());
+    }
+
+    #[test]
+    fn a_downloaded_renamed_skin_moves_to_its_new_id() {
+        let tmp = tempfile::tempdir().unwrap();
+        let old = tmp.path().join("skins/redline");
+        fs::create_dir_all(old.join("music")).unwrap();
+        fs::write(old.join("plugin.json"), "\u{feff}{\"id\":\"redline\",\"version\":\"1.9.0\"}").unwrap();
+        fs::write(old.join(MARKER), r#"{"id":"redline","version":"1.9.0","installedAt":"x"}"#).unwrap();
+        fs::write(old.join("music/a.mid"), "a").unwrap();
+        migrate_renamed(tmp.path());
+        assert!(!old.exists());
+        let new = tmp.path().join("skins/grandtour");
+        assert!(new.join("music/a.mid").is_file());
+        assert_eq!(installed_version(tmp.path(), PluginKind::Skin, "grandtour").as_deref(), Some("1.9.0"));
+        let manifest: serde_json::Value = serde_json::from_slice(&fs::read(new.join("plugin.json")).unwrap()).unwrap();
+        assert_eq!(manifest["id"], "grandtour");
+
+        // With the new skin already there, a leftover download goes; a hand-copied folder stays.
+        fs::create_dir_all(&old).unwrap();
+        fs::write(old.join("plugin.json"), r#"{"id":"redline"}"#).unwrap();
+        migrate_renamed(tmp.path());
+        assert!(old.is_dir());
+        fs::write(old.join(MARKER), "{}").unwrap();
+        migrate_renamed(tmp.path());
+        assert!(!old.exists());
     }
 
     #[test]

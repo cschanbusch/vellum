@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { rolldown } from "rolldown";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const OUT = join(ROOT, "extras", "skins", "redline", "lib", "three.js");
+const OUT = join(ROOT, "extras", "skins", "grandtour", "lib", "three.js");
 
 const EXPORTS = [
   "AlwaysStencilFunc", "Box2", "BufferGeometry", "CanvasTexture", "CircleGeometry", "Color", "CylinderGeometry",

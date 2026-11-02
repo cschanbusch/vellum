@@ -2,6 +2,13 @@
 
 Work in progress, so the next session can pick it up.
 
+## FICSIT button-sound e2e test flakes (open, 2026-11-01)
+
+`FICSIT's button and cursor sounds` failed 1 of 5 repeats and once in a full run: after
+`host.switchView("hub")`, `.v-view[data-view="hub"]` isn't there within 5 s (`show()` in
+`tests/e2e/skins.e2e.ts`). Seen while renaming Grand Tour, which doesn't touch FICSIT. Not yet
+checked against the previous commit or investigated.
+
 ## Grand Tour: turning off motion removes menus (open, 2026-10-23; still mode disabled)
 
 Reported by the user: with the skin's Motion option off, Spotlight's information panel and the

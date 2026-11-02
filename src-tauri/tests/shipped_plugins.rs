@@ -30,7 +30,7 @@ fn every_shipped_plugin_is_valid() {
     assert!(ids("plugins", PluginKind::Module).is_empty());
     // Extras: safe to leave out of an install.
     assert_eq!(ids("extras", PluginKind::Provider), ["mock"]);
-    assert_eq!(ids("extras", PluginKind::Skin), ["aero", "calling-card", "ficsit", "frontier", "gridline", "redline", "synthwave"]);
+    assert_eq!(ids("extras", PluginKind::Skin), ["aero", "calling-card", "ficsit", "frontier", "grandtour", "gridline", "synthwave"]);
     assert_eq!(ids("extras", PluginKind::Module), ["quick-launch", "random-pick"]);
 }
 

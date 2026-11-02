@@ -197,11 +197,32 @@ export function call<T = unknown>(method: CallMethod, args: unknown = {}): Promi
   });
 }
 
+/** Skins whose id changed, new to old: what they saved under the old id moves over. */
+const RENAMED_SKINS: Record<string, string> = { grandtour: "redline" };
+
+function moveRenamedStorage(id: string) {
+  const old = RENAMED_SKINS[id];
+  if (!old) return;
+  try {
+    const from = `vellum:${old}:`;
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith(from)) continue;
+      const to = `vellum:${id}:${key.slice(from.length)}`;
+      if (localStorage.getItem(to) === null) localStorage.setItem(to, localStorage.getItem(key)!);
+      localStorage.removeItem(key);
+    }
+  } catch {
+    // Storage full or unavailable: conveniences only.
+  }
+}
+
 function receiveInit(d: InitData) {
   setLibrary(d.library);
   providers = d.providers;
   views = d.views;
   skin = d.skin;
+  moveRenamedStorage(skin.id);
   shelves = d.shelves;
   windowInfo = d.window;
   if (d.audio) audio = d.audio;
