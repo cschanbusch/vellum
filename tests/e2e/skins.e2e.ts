@@ -1049,26 +1049,80 @@ test.describe("Grand Tour", () => {
     expect(left).toBeNull();
   });
 
+  test("Grand Tour's note button lists the songs, shows what's playing and switches song", async ({ page }) => {
+    const frame = await open(page, 5226);
+    const html = frame.locator("html");
+    await expect(html).toHaveAttribute("data-rl-song", /./);
+    const button = frame.locator(".rl-song");
+    await expect(button).toBeVisible({ timeout: 30_000 });
+    // The plate can be clicked before it folds; opening the list folds it.
+    await button.click();
+    await expect(button).toHaveClass(/is-docked/);
+    const panel = frame.locator(".rl-music");
+    const songs = panel.locator(".rl-music-song");
+    await expect(songs).toHaveCount(9);
+    const first = (await html.getAttribute("data-rl-song"))!;
+    const title = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+    await expect(panel.locator('[aria-current="true"]')).toContainText(new RegExp(`^${first}`, "i"));
+    await page.waitForTimeout(600); // the fold
+    await page.screenshot({ path: "test-artifacts/views/grand-tour-music-list.png", clip: { x: 0, y: 450, width: 760, height: 500 } });
+    // Choosing another plays it from its beginning, and stays open.
+    const next = first === "truism" ? "angular" : "truism";
+    await panel.locator(`[data-song="${next}"]`).click();
+    await expect(html).toHaveAttribute("data-rl-song", next);
+    await expect(panel.locator('[aria-current="true"]')).toContainText(new RegExp(`^${next}`, "i"));
+    await expect(frame.locator(".rl-song-name")).toHaveText(title(next));
+    expect(await html.evaluate(() => sessionStorage.getItem("rl-song"))).toBe(next);
+    const scene = await html.evaluate(async () => {
+      const music = (window as unknown as { vellum: { music: { position(): Promise<{ scene: string | null; beat: number }> } } }).vellum.music;
+      for (let i = 0; i < 40; i++) {
+        const p = await music.position();
+        if (p.scene?.endsWith("@top")) return p;
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      return music.position();
+    });
+    expect(scene.scene).toMatch(/@top$/);
+    expect(scene.beat).toBeLessThan(40);
+    // Keys belong to the list: arrows move within it, nothing behind it moves, Esc closes.
+    const selected = (await state(page)).selectedId;
+    await page.keyboard.press("ArrowDown");
+    expect((await state(page)).selectedId).toBe(selected);
+    await page.keyboard.press("Escape");
+    await expect(panel).toHaveCount(0);
+    await expect(button).toBeFocused();
+    // M opens it, a click elsewhere closes it, and the choice survives a skin reload.
+    await page.keyboard.press("m");
+    await expect(panel).toBeVisible();
+    await frame.locator(".rl-help").click();
+    await expect(panel).toHaveCount(0);
+    await host(page, (h) => h.reloadSkinPage());
+    await expect(page.frameLocator("iframe").locator("html")).toHaveAttribute("data-rl-song", next);
+    expect(errors).toEqual([]);
+  });
+
   test("Grand Tour picks one song per launch from music/, names it once as it starts, and keeps it through a skin reload", async ({ page }) => {
     const frame = await open(page, 5226);
     const html = frame.locator("html");
     await expect(html).toHaveAttribute("data-rl-song", /^(angular|circuit|drift|expressway|lounge|nightdrive|pace|strike|truism)$/);
     const song = (await html.getAttribute("data-rl-song"))!;
     expect(await html.evaluate(() => sessionStorage.getItem("rl-song"))).toBe(song);
-    // When the music starts, a plate on the footer's left end names the song, then goes.
+    // When the music starts, a plate on the footer's left end names the song, then folds into a note button.
     const plate = frame.locator(".rl-song.is-in");
     await expect(plate).toBeVisible({ timeout: 30_000 });
     await expect(plate.locator(".rl-song-name")).toHaveText(song.charAt(0).toUpperCase() + song.slice(1));
     await page.waitForTimeout(600); // the slide in
     await page.screenshot({ path: "test-artifacts/views/grand-tour-now-playing.png", clip: { x: 0, y: 820, width: 760, height: 130 } });
-    await expect(frame.locator(".rl-song")).toHaveCount(0, { timeout: 8_000 });
+    await expect(frame.locator(".rl-song.is-docked")).toBeVisible({ timeout: 8_000 });
     // The song's files and the SoundFont load: the paths it configured are real.
     await html.evaluate(() => (window as unknown as { vellum: { music: { preload(): Promise<void> } } }).vellum.music.preload());
     await host(page, (h) => h.reloadSkinPage());
     await expect(page.frameLocator("iframe").locator("html")).toHaveAttribute("data-rl-song", song);
-    // Once per launch: not again after a reload.
+    // Spelled out once per launch: after a reload it comes back folded.
     await page.waitForTimeout(3000);
-    await expect(page.frameLocator("iframe").locator(".rl-song")).toHaveCount(0);
+    await expect(page.frameLocator("iframe").locator(".rl-song.is-docked")).toBeVisible({ timeout: 30_000 });
+    await page.waitForTimeout(600);
+    await expect(page.frameLocator("iframe").locator(".rl-song-name")).toHaveCSS("max-width", "0px");
   });
 
   test("Grand Tour's menu sounds: steps tick, a dead end knocks, Back and a mode change have their own sounds", async ({ page }) => {

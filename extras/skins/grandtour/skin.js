@@ -53,7 +53,7 @@ function renderHelp() {
   const view = vellum.state.get().view;
   if (view === shownFor) return;
   shownFor = view;
-  const items = [...(HELP[view] ?? FALLBACK), ["Ctrl Tab", "Mode"], ["Ctrl ,", "Options"]];
+  const items = [...(HELP[view] ?? FALLBACK), ...(vellum.music ? [["M", "Music"]] : []), ["Ctrl Tab", "Mode"], ["Ctrl ,", "Options"]];
   bar.replaceChildren(
     ...items.map(([key, action]) => {
       const p = document.createElement("span");

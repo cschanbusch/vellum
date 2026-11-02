@@ -3,8 +3,11 @@
 // of them. Each launch of Vellum picks one song and plays only its files until Vellum closes; a
 // new launch picks again, a different song where there is more than one. A view the song has no
 // file for is silent. When the music first starts, a plate on the footer's left end names the
-// song for a few seconds.
+// song for a few seconds, then folds into a music note button. The button (or M) opens a list of
+// the songs: it shows what's playing, and choosing another switches to it from its beginning.
 import vellum from "/__vellum/sdk.js";
+import { modalOpen } from "./modal.js";
+import { ui } from "./sound.js";
 
 const FOLDER = "music";
 const THIS_LAUNCH = "rl-song"; // sessionStorage: kept through skin reloads, gone when Vellum closes
@@ -66,58 +69,229 @@ function pick(names) {
  *  screen; see skin.js). Does nothing before Vellum 0.3.0, which has no music. */
 export async function setupSoundtrack() {
   if (!vellum.music?.configure) return;
-  const { songs, soundbank } = await catalogue();
-  if (!soundbank || !songs.size) return;
-  const song = pick([...songs.keys()].sort());
-  const scenes = songs.get(song);
-  document.documentElement.dataset.rlSong = song; // for tests and the curious
-  announceOnStart(song);
-  vellum.music.configure({
-    soundbank,
+  const found = await catalogue();
+  if (!found.soundbank || !found.songs.size) return;
+  library = found;
+  current = pick([...found.songs.keys()].sort());
+  document.documentElement.dataset.rlSong = current; // for tests and the curious
+  appearOnStart();
+  vellum.music.configure(configFor(current));
+}
+
+let library = null; // the catalogue
+let current = null; // the song playing
+
+/** The engine's setup for a song: its views, and `<view>@top` to enter a view's file at its start
+ *  (a change of view picks up where the music is; choosing a song begins it). */
+function configFor(song) {
+  const files = library.songs.get(song);
+  const scenes = { ...files };
+  for (const [view, midi] of Object.entries(files)) scenes[`${view}@top`] = { midi, from: 0 };
+  return {
+    soundbank: library.soundbank,
     autoplay: false,
     at: "beat",
     scenes,
-    views: Object.fromEntries(Object.keys(scenes).map((v) => [v, v])),
-  });
+    views: Object.fromEntries(Object.keys(files).map((v) => [v, v])),
+  };
+}
+
+/** Switches to `song` now. It lasts until Vellum closes, like a song picked at launch. */
+function choose(song) {
+  if (song === current) return;
+  current = song;
+  document.documentElement.dataset.rlSong = song;
+  try {
+    store("session")?.setItem(THIS_LAUNCH, song);
+    store("local")?.setItem(LAST_LAUNCH, song);
+  } catch {
+    // storage full or blocked: it still plays for now
+  }
+  vellum.music.configure(configFor(song));
+  // The music has started, so configure() starts the view's file where the old one had got to;
+  // this replaces that before it's heard.
+  const view = vellum.state.get().view;
+  if (library.songs.get(song)[view]) void vellum.music.play(`${view}@top`, { at: "now" });
+  refreshPlate();
+  renderList();
 }
 
 /** "nightdrive" -> "Nightdrive". */
 const title = (song) => song.charAt(0).toUpperCase() + song.slice(1);
 
-/** Names the song once the music is first heard this launch (not after a skin reload, and not
- *  when the Music volume is off). */
-function announceOnStart(song) {
-  if (store("session")?.getItem(ANNOUNCED) || !vellum.music.on) return;
+/** Brings up the plate once the music has started: spelled out the first time it's heard this
+ *  launch, already folded after a skin reload or with the Music volume off. */
+function appearOnStart() {
+  if (!vellum.music.on) return;
   const off = vellum.music.on("scene", () => {
     off?.();
     const audible = (vellum._internal?.audio?.().music ?? 1) > 0;
-    if (!audible) return;
+    const announce = audible && !store("session")?.getItem(ANNOUNCED);
     try {
-      store("session")?.setItem(ANNOUNCED, "1");
+      if (announce) store("session")?.setItem(ANNOUNCED, "1");
     } catch {
-      // storage blocked: it may show again after a reload
+      // storage blocked: it may spell it out again after a reload
     }
-    show(title(song));
+    showPlate(announce);
   });
 }
 
-/** The plate: it rises out of the footer's left end, holds, and sinks back. */
-function show(name) {
-  const plate = document.createElement("div");
+// ---- the plate and its button -------------------------------------------------------------------
+
+let plate = null;
+let foldTimer = 0;
+
+function refreshPlate() {
+  if (!plate) return;
+  plate.querySelector(".rl-song-name").textContent = title(current);
+  plate.setAttribute("aria-label", `Music: ${title(current)}. Choose a song`);
+}
+
+const fold = () => {
+  clearTimeout(foldTimer);
+  plate?.classList.add("is-docked");
+};
+
+/** It rises out of the footer's left end, holds, and folds leftward into the note button. */
+function showPlate(announce) {
+  plate = document.createElement("button");
   plate.className = "rl-song";
-  plate.setAttribute("role", "status");
+  plate.type = "button";
+  plate.setAttribute("aria-haspopup", "dialog");
+  plate.setAttribute("aria-expanded", "false");
   const label = document.createElement("span");
   label.className = "rl-song-label";
-  label.textContent = "Now playing";
-  const n = document.createElement("span");
-  n.className = "rl-song-name";
-  n.textContent = name;
-  plate.append(label, n);
+  const note = document.createElement("span");
+  note.className = "rl-song-note";
+  note.textContent = "♪";
+  const word = document.createElement("span");
+  word.className = "rl-song-word";
+  word.textContent = "Now playing";
+  label.append(note, word);
+  const name = document.createElement("span");
+  name.className = "rl-song-name";
+  plate.append(label, name);
+  refreshPlate();
+  plate.addEventListener("click", () => (panel ? closePanel() : openPanel()));
   document.body.append(plate);
+  if (!announce) plate.classList.add("is-docked");
   requestAnimationFrame(() => requestAnimationFrame(() => plate.classList.add("is-in")));
-  setTimeout(() => {
-    plate.classList.remove("is-in");
-    plate.addEventListener("transitionend", () => plate.remove(), { once: true });
-    setTimeout(() => plate.remove(), 800); // in case no transition runs
-  }, SHOW_MS);
+  if (announce) foldTimer = setTimeout(fold, SHOW_MS);
 }
+
+// ---- the song list -------------------------------------------------------------------------------
+
+let panel = null;
+let list = null;
+
+function renderList() {
+  if (!list) return;
+  const focused = document.activeElement?.dataset?.song;
+  list.replaceChildren(
+    ...[...library.songs.keys()].sort().map((song) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "rl-music-song";
+      b.dataset.song = song;
+      const name = document.createElement("span");
+      name.textContent = title(song);
+      b.append(name);
+      if (song === current) {
+        b.setAttribute("aria-current", "true");
+        const playing = document.createElement("span");
+        playing.className = "rl-music-playing";
+        playing.textContent = "♪ Playing";
+        b.append(playing);
+      }
+      b.addEventListener("click", () => choose(song));
+      return b;
+    }),
+  );
+  (list.querySelector(`[data-song="${CSS.escape(focused ?? current)}"]`) ?? list.firstElementChild)?.focus({ preventScroll: true });
+}
+
+function step(by) {
+  const items = [...list.children];
+  items[(items.indexOf(document.activeElement) + by + items.length) % items.length]?.focus({ preventScroll: true });
+}
+
+const outside = (e) => {
+  if (!panel?.contains(e.target) && !plate?.contains(e.target)) closePanel();
+};
+
+function openPanel() {
+  if (panel || !plate) return;
+  fold();
+  panel = document.createElement("div");
+  panel.className = "rl-music";
+  panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-label", "Music");
+  const head = document.createElement("div");
+  head.className = "rl-music-head";
+  head.textContent = "Music";
+  list = document.createElement("div");
+  list.className = "rl-music-list";
+  panel.append(head, list);
+  if ((vellum._internal?.audio?.().music ?? 1) <= 0) {
+    const muted = document.createElement("p");
+    muted.className = "rl-music-muted";
+    muted.textContent = "Music volume is off in Settings";
+    panel.append(muted);
+  }
+  // Keys stop here, so nothing behind the list moves. Enter and Space press the focused song.
+  panel.addEventListener("keydown", (e) => {
+    e.stopPropagation();
+    if (e.key === "Escape" || e.key === "m" || e.key === "M") {
+      closePanel();
+      ui("back");
+    } else if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) {
+      step(1);
+      ui("move", "down");
+    } else if (e.key === "ArrowUp" || e.key === "Tab") {
+      step(-1);
+      ui("move", "up");
+    } else if (e.key === "Home") list.firstElementChild?.focus();
+    else if (e.key === "End") list.lastElementChild?.focus();
+    else return;
+    e.preventDefault();
+  });
+  document.body.append(panel);
+  plate.setAttribute("aria-expanded", "true");
+  addEventListener("pointerdown", outside, true);
+  renderList();
+}
+
+function closePanel() {
+  if (!panel) return;
+  panel.remove();
+  panel = list = null;
+  removeEventListener("pointerdown", outside, true);
+  plate.setAttribute("aria-expanded", "false");
+  plate.focus({ preventScroll: true });
+}
+
+// Controller buttons come as nav events; keyboard keys never get this far while the list is open.
+vellum.input.on("nav", (e) => {
+  if (!panel) return;
+  e.preventDefault();
+  if (e.name === "back") closePanel();
+  else if (e.name === "up") step(-1);
+  else if (e.name === "down") step(1);
+  else if (e.name === "confirm") document.activeElement?.click?.();
+});
+
+// M opens the list from anywhere, except while typing or with an overlay up.
+addEventListener(
+  "keydown",
+  (e) => {
+    if (panel || !plate || modalOpen() || e.repeat || e.ctrlKey || e.altKey || e.metaKey || (e.key !== "m" && e.key !== "M")) return;
+    let a = document.activeElement;
+    while (a?.shadowRoot?.activeElement) a = a.shadowRoot.activeElement;
+    if (a?.matches?.('input, textarea, select, [contenteditable=""], [contenteditable="true"]')) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    openPanel();
+    ui("open");
+  },
+  true,
+);

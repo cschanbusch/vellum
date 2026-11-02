@@ -9,7 +9,8 @@ The music comes in songs. A song is a MIDI file per view, named <song>.<view>.mi
 
 Each time Vellum starts, Grand Tour picks one song and plays only its files until Vellum
 closes. With more than one song here, a new launch picks a different song from the last one.
-A view the song has no file for is silent.
+A view the song has no file for is silent. The music note button in the bottom-left corner (or M)
+shows what is playing and lets you switch to another song until Vellum closes.
 
 To add a song, put its files here under a new name (midnight.garage.mid, midnight.covers.mid
 ...). Switching views changes the music on the next beat of the track that is playing, and the
