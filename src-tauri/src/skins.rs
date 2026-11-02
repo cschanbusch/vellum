@@ -26,6 +26,8 @@ pub const EVENT_SKIN_CHANGED: &str = "vellum://skin-changed";
 pub struct SkinRuntime {
     /// Session-only override after the active skin failed to load (spec: fall back to basis).
     pub fallback: Mutex<Option<String>>,
+    /// The minimum window size to apply once the window is no longer maximized.
+    pending_min_size: Mutex<Option<tauri::LogicalSize<f64>>>,
     watcher: Mutex<Option<Debouncer<RecommendedWatcher>>>,
 }
 
@@ -118,9 +120,33 @@ pub fn apply_window(app: &AppHandle) {
     let _ = win.set_decorations(!frameless);
     let min_w = w.get("minWidth").and_then(Value::as_f64).unwrap_or(960.0).max(640.0);
     let min_h = w.get("minHeight").and_then(Value::as_f64).unwrap_or(600.0).max(400.0);
-    let _ = win.set_min_size(Some(tauri::LogicalSize::new(min_w, min_h)));
+    let min = tauri::LogicalSize::new(min_w, min_h);
+    // Setting a minimum size re-applies the window's current size, which un-maximizes it and
+    // leaves it at the maximized size, so that waits until the window is restored.
+    if fills_screen(&win) {
+        *state.skins.pending_min_size.lock().unwrap() = Some(min);
+    } else {
+        *state.skins.pending_min_size.lock().unwrap() = None;
+        let _ = win.set_min_size(Some(min));
+    }
     if let Some(bg) = w.get("background").and_then(Value::as_str).and_then(parse_hex_color) {
         let _ = win.set_background_color(Some(bg));
+    }
+}
+
+fn fills_screen(win: &tauri::WebviewWindow) -> bool {
+    win.is_maximized().unwrap_or(false) || win.is_fullscreen().unwrap_or(false) || win.is_minimized().unwrap_or(false)
+}
+
+/// Applies a minimum size held back by `apply_window`, once the window has been restored.
+pub fn apply_pending_min_size(app: &AppHandle, win: &tauri::WebviewWindow) {
+    let Some(state) = app.try_state::<AppState>() else { return };
+    if fills_screen(win) {
+        return;
+    }
+    let pending = state.skins.pending_min_size.lock().unwrap().take();
+    if let Some(min) = pending {
+        let _ = win.set_min_size(Some(min));
     }
 }
 

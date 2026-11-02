@@ -135,6 +135,7 @@ pub fn on_event(app: &AppHandle, win: &tauri::Window, event: &WindowEvent) {
         WindowEvent::Moved(_) | WindowEvent::Resized(_) => {
             if let Some(w) = app.get_webview_window("main") {
                 tracker.observe(&w);
+                crate::skins::apply_pending_min_size(app, &w);
             }
         }
         WindowEvent::CloseRequested { .. } | WindowEvent::Destroyed => tracker.save(),
