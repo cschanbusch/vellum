@@ -1,5 +1,6 @@
 // Steam: installed games from appmanifest files in every library folder, collections from
-// the account's cloud-storage namespace, launches through steam:// URIs.
+// the account's cloud-storage namespace, launches through steam.exe -silent (Steam's window
+// stays hidden) or steam:// URIs.
 // Never reads config/loginusers.vdf, config/config.vdf or ssfn* (denied in plugin.json too).
 //
 // Everything installed is reported; what is shown is up to the user's filters. Tools and
@@ -371,7 +372,14 @@ export default {
     return { games };
   },
 
+  /** `steam.exe -silent -applaunch` starts the game without bringing up Steam's window (a
+   *  running Steam takes the command over); steam:// URIs open the window if Steam is closed. */
   launch(ctx, game) {
+    const exe = join(ctx.locations.root, "steam.exe");
+    if (ctx.settings.silentLaunch !== false && ctx.fs.exists(exe)) {
+      ctx.run(exe, ["-silent", "-applaunch", appid(game)]);
+      return;
+    }
     ctx.openUri(`steam://rungameid/${appid(game)}`);
   },
 

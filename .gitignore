@@ -17,3 +17,4 @@ extras/providers/mock/art/
 test-results/
 playwright-report/
 test-artifacts/
+.claude/settings.local.json

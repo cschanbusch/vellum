@@ -107,6 +107,23 @@ fn chosen_account_overrides_most_recent() {
 }
 
 #[test]
+fn launch_runs_steam_silently() {
+    let fx = steam_fixture();
+    let exe = fx.root.join("steam.exe");
+    std::fs::write(&exe, b"").unwrap();
+    let game = json!({ "sourceId": "620", "title": "Portal 2", "launchData": { "appid": "620" } });
+    let mut h = harness(&fx, Map::new());
+    h.call(Method::Launch, Some(&game)).unwrap();
+    assert_eq!(h.opened(), [format!("run {} -silent -applaunch 620", exe.display())]);
+
+    let mut settings = Map::new();
+    settings.insert("silentLaunch".into(), json!(false));
+    let mut h = harness(&fx, settings);
+    h.call(Method::Launch, Some(&game)).unwrap();
+    assert_eq!(h.opened(), ["uri steam://rungameid/620"], "the setting turns it off");
+}
+
+#[test]
 fn actions_open_steam_uris() {
     let fx = steam_fixture();
     let mut h = harness(&fx, Map::new());

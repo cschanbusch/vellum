@@ -8,7 +8,8 @@
   "description": "Installed games from Steam",
   "entry": "provider.js",
   "settings": [
-    { "id": "respectHidden", "label": "Respect Steam's hidden collection", "type": "toggle", "default": true }
+    { "id": "respectHidden", "label": "Respect Steam's hidden collection", "type": "toggle", "default": true },
+    { "id": "silentLaunch", "label": "Start games without opening Steam's window", "type": "toggle", "default": true }
   ],
   "provider": {
     "locations": {
