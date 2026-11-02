@@ -6,8 +6,12 @@ Work in progress, so the next session can pick it up.
 
 `FICSIT's button and cursor sounds` failed 1 of 5 repeats and once in a full run: after
 `host.switchView("hub")`, `.v-view[data-view="hub"]` isn't there within 5 s (`show()` in
-`tests/e2e/skins.e2e.ts`). Seen while renaming Grand Tour, which doesn't touch FICSIT. Not yet
-checked against the previous commit or investigated.
+`tests/e2e/skins.e2e.ts`). Not caused by recent work: it fails the same way on the 0.5.0 commit
+(2 of 8 repeats). Not yet investigated.
+
+In a full run, `music: a scene per view...` (test global `__scenes` undefined) and `a rearranged
+layout works...` (`link[href="/covers.css"]` missing) can also fail once. Each passed 10 of 10
+alone on 0.6.1, so they look like timing under load, possibly the same race as above.
 
 ## Grand Tour: turning off motion removes menus (open, 2026-10-23; still mode disabled)
 
