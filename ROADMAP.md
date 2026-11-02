@@ -180,6 +180,9 @@ system itself. Concepts on the list:
   refresh periods, and skin items in the game menu (`vellum.ui.contextMenu(…, items)`).
 - **0.5.0** (released): `vellum.window.isFocused()` for skins that go quiet in the background,
   and a skin downloaded from Get skins no longer shows twice beside a newer bundled copy.
+- **0.6.0** (released): Steam games start without opening Steam's window (`steam.exe -silent`,
+  with a setting), and Grand Tour's id becomes `grandtour`, with settings, saved data and downloaded
+  copies moved over.
 - **Next:** a changelog.
 - **Continuous integration:** run the Rust, unit and end-to-end tests and build the release zips on
   each push to `main`.
