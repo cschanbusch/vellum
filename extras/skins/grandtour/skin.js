@@ -175,7 +175,7 @@ void setupSoundtrack(); // this launch's song; it plays once the title screen ha
 installIgnition();
 installMenuSounds();
 // Hours on the clock wear a game too: read the odometers now and whenever the library changes
-// (Steam records playtime when a game closes, and Vellum rescans).
+// (Steam records playtime when a game closes; Vellum reads it at its next scan).
 notePlaytime(vellum.library.all());
 vellum.library.on("change", () => notePlaytime(vellum.library.all()));
 boot();

@@ -210,6 +210,23 @@ function rebuild() {
   renderModel(true);
 }
 
+/** What the Garage draws from the library: the strip, the tabs and, in full, the three cases. */
+function drawnKey(list, id) {
+  const groups = list.map((m) => [m.label, m.entries.map((e) => [e.id, e.title, e.art])]);
+  const m = list.find((x) => x.entries.some((e) => e.id === id));
+  const i = m ? m.entries.findIndex((e) => e.id === id) : -1;
+  return JSON.stringify([groups, m ? m.entries.slice(Math.max(0, i - 1), i + 2) : null]);
+}
+
+/** A library update that changes nothing on show (playtime on another game) redraws nothing. */
+function onLibrary() {
+  if (!root) return;
+  const next = buildMakers(api.library.query());
+  const id = current()?.id;
+  if (id && drawnKey(next, id) === drawnKey(makers, id)) makers = next;
+  else rebuild();
+}
+
 function locate(id) {
   if (!id) return false;
   for (let m = 0; m < makers.length; m++) {
@@ -446,6 +463,18 @@ function onOptions() {
   shownCenter = null;
   modelFor = "";
   renderModel(true);
+}
+
+const providersKey = () => JSON.stringify(api.providers.list().map((p) => [p.id, p.name, p.icon]));
+let shownProviders = "";
+
+/** The cases print stores' names and icons, and nothing else about them: a store starting or
+ *  finishing a scan leaves them as they are. */
+function onProviders() {
+  const k = providersKey();
+  if (k === shownProviders) return;
+  shownProviders = k;
+  onOptions();
 }
 
 /** An overlay (ignition, service) covers the turntable: stop drawing until it closes. */
@@ -842,12 +871,13 @@ export default {
     const s = vellum.state.get();
     key = JSON.stringify([s.query, s.filters, s.sort, s.groupBy]);
     rebuild();
+    shownProviders = providersKey();
     addEventListener("rl-condition", onCondition);
     addEventListener("rl-modal", onModal);
     unsubs = [
-      vellum.library.on("change", rebuild),
+      vellum.library.on("change", onLibrary),
       vellum.skin.on("options", onOptions),
-      vellum.providers.on("change", onOptions),
+      vellum.providers.on("change", onProviders),
       () => removeEventListener("rl-condition", onCondition),
       () => removeEventListener("rl-modal", onModal),
     ];

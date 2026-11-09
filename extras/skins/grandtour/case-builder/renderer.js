@@ -670,7 +670,9 @@ export class CaseStage {
           normalMap: sleeveMap ? own(tiled(sleeveMap.normal, 120, 1)) : null,
           normalScale: new THREE.Vector2(0.15, 0.15),
         });
-    c.mats = { shell, insert, sleeve };
+    // The card's edges: the unprinted stock, a warm off-white.
+    const paper = new THREE.MeshStandardMaterial({ color: 0xeeeae0, roughness: 0.9, metalness: 0 });
+    c.mats = { shell, insert, sleeve, paper };
     if (p.disc) {
       c.mats.label = new THREE.MeshStandardMaterial({ map: m.discTex, transparent: true, roughness: 0.35, metalness: 0.1 });
       c.mats.hub = new THREE.MeshPhysicalMaterial({
@@ -722,6 +724,7 @@ export class CaseStage {
     body.add(new THREE.Mesh(geo.tray, mats.shell));
     if (geo.spineCap) body.add(new THREE.Mesh(geo.spineCap, mats.shell));
     body.add(new THREE.Mesh(geo.insertBack, mats.insert));
+    if (geo.paperBack) body.add(new THREE.Mesh(geo.paperBack, mats.paper));
     const sb = new THREE.Mesh(geo.sleeveBack, mats.sleeve);
     sb.renderOrder = 1;
     body.add(sb);
@@ -731,6 +734,7 @@ export class CaseStage {
       lid = new THREE.Group();
       lid.position.set(geo.hinge.x, 0, geo.hinge.z);
       lid.add(new THREE.Mesh(geo.lid, mats.shell), new THREE.Mesh(geo.insertFront, mats.insert));
+      if (geo.paperFront) lid.add(new THREE.Mesh(geo.paperFront, mats.paper));
       const sf = new THREE.Mesh(geo.sleeveFront, mats.sleeve);
       sf.renderOrder = 1;
       lid.add(sf);
