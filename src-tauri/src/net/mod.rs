@@ -1,4 +1,5 @@
-//! Phase 4's network side: remote art downloads, SteamGridDB lookups and Steam store details.
+//! Phase 4's network side: remote art downloads, SteamGridDB lookups and store details (Steam's
+//! and GOG's own APIs).
 //!
 //! Nothing here blocks the UI. A *sweep* resolves every entry's art and lists what the chain
 //! passed over (an image not downloaded yet, a SteamGridDB lookup not made yet, store details
@@ -9,6 +10,7 @@
 
 pub mod choices;
 pub mod details;
+pub mod gog;
 pub mod remote;
 pub mod secret;
 pub mod sgdb;
@@ -25,7 +27,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::art::resolve::{self, ArtSources, LookupState, RemoteState, Want};
-use crate::library::{self, entry::ART_KINDS};
+use crate::library::entry::ART_KINDS;
 use crate::providers::model::Metadata;
 use crate::userdata::settings::ArtSettings;
 use crate::userdata::store::JsonStore;
@@ -80,6 +82,8 @@ pub struct Net {
     pub remote: JsonStore<remote::RemoteIndex>,
     pub sgdb: JsonStore<sgdb::SgdbIndex>,
     pub details: JsonStore<details::DetailsIndex>,
+    /// GOG's details, by GOG product id (gog.rs).
+    pub gog_details: JsonStore<details::DetailsIndex>,
     pub originals: PathBuf,
     pub custom: PathBuf,
     queues: Mutex<Queues>,
@@ -100,6 +104,7 @@ impl Net {
             remote: JsonStore::open(cache.join("art").join("remote.json"), remote::load),
             sgdb: JsonStore::open(cache.join("metadata").join("steamgriddb.json"), sgdb::load),
             details: JsonStore::open(cache.join("metadata").join("steam.json"), details::load),
+            gog_details: JsonStore::open(cache.join("metadata").join("gog.json"), details::load),
             originals: remote::originals_dir(data_dir),
             custom: custom_dir(data_dir),
             queues: Mutex::new(Queues::default()),
@@ -117,6 +122,7 @@ impl Net {
         self.remote.flush();
         self.sgdb.flush();
         self.details.flush();
+        self.gog_details.flush();
     }
 
     pub fn key(&self) -> Option<String> {
@@ -162,6 +168,15 @@ impl Net {
             }
         });
         n
+    }
+
+    /// The details cache for a store whose own API Vellum asks: Steam's or GOG's.
+    pub fn details_store(&self, provider: &str) -> Option<&JsonStore<details::DetailsIndex>> {
+        match provider {
+            "steam" => Some(&self.details),
+            "gog" => Some(&self.gog_details),
+            _ => None,
+        }
     }
 
     pub fn queue_lengths(&self) -> (usize, usize, usize) {
@@ -224,11 +239,11 @@ impl ArtSources for NetView<'_> {
     }
 
     fn details(&self, record_id: &str) -> Option<Metadata> {
-        let appid = record_id.strip_prefix("steam:")?;
+        let (provider, id) = record_id.split_once(':')?;
         if !self.settings.fetch_details {
             return None;
         }
-        self.net.details.read(|d| d.apps.get(appid).and_then(|r| r.metadata.clone()))
+        self.net.details_store(provider)?.read(|d| d.apps.get(id).and_then(|r| r.metadata.clone()))
     }
 }
 
@@ -238,8 +253,9 @@ fn job_download(url: &str) -> String {
 fn job_lookup(entry_id: &str) -> String {
     format!("l:{entry_id}")
 }
-fn job_details(appid: &str) -> String {
-    format!("m:{appid}")
+/// `record` is a game record id: `steam:620`, `gog:1207658695`.
+fn job_details(record: &str) -> String {
+    format!("m:{record}")
 }
 
 /// What one sweep found to do.
@@ -253,42 +269,43 @@ pub struct Plan {
 /// Lists the downloads, lookups and store-details fetches the library needs right now.
 pub fn plan(state: &AppState) -> Plan {
     let view = NetView::new(state);
-    let active = state.active_providers();
     let mut plan = Plan::default();
     let mut seen = HashSet::new();
-    state.library.read(|snap| {
-        state.userdata.read(|ud| {
-            for (pid, recs) in snap.providers.iter().filter(|(p, _)| active.contains(*p)) {
-                for g in &recs.games {
-                    let id = library::record_id(pid, &g.source_id);
-                    let cands = recs.art.get(&g.source_id).map(Vec::as_slice).unwrap_or(&[]);
-                    let overrides = ud.games.get(&id).map(|u| &u.art_overrides);
-                    let mut lookup_kinds = Vec::new();
-                    for kind in ART_KINDS {
-                        for w in resolve::resolve(&id, kind, cands, overrides, &view).wants {
-                            match w {
-                                Want::Download(u) => {
-                                    if seen.insert(u.clone()) {
-                                        plan.downloads.push(u);
-                                    }
-                                }
-                                Want::Lookup => lookup_kinds.push(kind.to_string()),
+    state.with_groups(|groups, ud| {
+        for group in groups.list.iter().filter(|g| g.visible()) {
+            let cands = group.candidates();
+            let overrides = group.overrides(ud);
+            let mut lookup_kinds = Vec::new();
+            for kind in ART_KINDS {
+                for w in resolve::resolve(&group.id, kind, &cands, Some(&overrides), &view).wants {
+                    match w {
+                        Want::Download(u) => {
+                            if seen.insert(u.clone()) {
+                                plan.downloads.push(u);
                             }
                         }
-                    }
-                    if !lookup_kinds.is_empty() {
-                        let target = if pid == "steam" { LookupTarget::Steam(g.source_id.clone()) } else { LookupTarget::Title(g.title.clone()) };
-                        plan.lookups.push(LookupJob { entry_id: id.clone(), target, kinds: lookup_kinds });
-                    }
-                    if pid == "steam" && view.settings.fetch_details {
-                        let rec = state.net.details.read(|d| d.apps.get(&g.source_id).cloned());
-                        if details::due(rec.as_ref(), view.now, view.settings.refresh_details_days) {
-                            plan.details.push(g.source_id.clone());
-                        }
+                        Want::Lookup => lookup_kinds.push(kind.to_string()),
                     }
                 }
             }
-        })
+            if !lookup_kinds.is_empty() {
+                // One lookup per entry: by Steam appid when it has a Steam copy, the surest match.
+                let steam = group.records.iter().find(|r| r.provider == "steam");
+                let target = match (steam, group.preferred()) {
+                    (Some(r), _) => LookupTarget::Steam(r.game.source_id.clone()),
+                    (None, Some(r)) => LookupTarget::Title(r.game.title.clone()),
+                    (None, None) => continue,
+                };
+                plan.lookups.push(LookupJob { entry_id: group.id.clone(), target, kinds: lookup_kinds });
+            }
+            for r in group.records.iter().filter(|_| view.settings.fetch_details) {
+                let Some(store) = state.net.details_store(r.provider) else { continue };
+                let rec = store.read(|d| d.apps.get(&r.game.source_id).cloned());
+                if details::due(rec.as_ref(), view.now, view.settings.refresh_details_days) {
+                    plan.details.push(format!("{}:{}", r.provider, r.game.source_id));
+                }
+            }
+        }
     });
     plan
 }
@@ -334,12 +351,17 @@ pub fn sweep(app: &AppHandle) {
     }
 }
 
-/// Queues store details for every Steam game, due or not ("Refresh details now").
+/// Queues store details for every Steam and GOG game, due or not ("Refresh details now").
 pub fn refresh_all_details(app: &AppHandle) -> usize {
     let state = app.state::<AppState>();
-    let appids: Vec<String> = state.library.read(|snap| snap.providers.get("steam").map(|r| r.games.iter().map(|g| g.source_id.clone()).collect()).unwrap_or_default());
-    let n = appids.len();
-    enqueue(&state.net, Plan { details: appids, ..Default::default() });
+    let records: Vec<String> = state.library.read(|snap| {
+        ["steam", "gog"]
+            .iter()
+            .flat_map(|p| snap.providers.get(*p).into_iter().flat_map(move |r| r.games.iter().map(move |g| format!("{p}:{}", g.source_id))))
+            .collect()
+    });
+    let n = records.len();
+    enqueue(&state.net, Plan { details: records, ..Default::default() });
     n
 }
 
@@ -425,15 +447,21 @@ fn lookup_failed(net: &Net, entry_id: &str, e: sgdb::LookupError) {
     }
 }
 
-fn run_details(net: &Net, agent: &ureq::Agent, appid: &str) -> Result<(), ()> {
-    match details::fetch(agent, &details::api_base(), appid) {
+fn run_details(net: &Net, agent: &ureq::Agent, record: &str) -> Result<(), ()> {
+    let Some((provider, id)) = record.split_once(':') else { return Ok(()) };
+    let (result, store) = match provider {
+        "steam" => (details::fetch(agent, &details::api_base(), id), &net.details),
+        "gog" => (gog::fetch(agent, &gog::api_base(), id), &net.gog_details),
+        _ => return Ok(()),
+    };
+    match result {
         Ok(metadata) => {
-            net.details.update(|d| d.apps.insert(appid.to_string(), details::DetailsRecord { at: now_secs(), metadata }));
+            store.update(|d| d.apps.insert(id.to_string(), details::DetailsRecord { at: now_secs(), metadata }));
             Ok(())
         }
         Err(details::FetchError::Limited) => Err(()),
         Err(details::FetchError::Failed(why)) => {
-            tracing::info!(appid, why, "store details fetch failed; will retry next sweep");
+            tracing::info!(record, why, "store details fetch failed; will retry next sweep");
             Ok(())
         }
     }
@@ -487,7 +515,7 @@ fn worker(app: AppHandle, pool: Pool) {
                 run_lookup(net, &agent, &job);
                 finish(net, &job_lookup(&job.entry_id));
             }
-            Job::Details(appid) => {
+            Job::Details(record) => {
                 if let Some(until) = *net.details_paused_until.lock().unwrap() {
                     std::thread::sleep(until.saturating_duration_since(Instant::now()));
                 }
@@ -496,16 +524,16 @@ fn worker(app: AppHandle, pool: Pool) {
                 }
                 last_details = Some(Instant::now());
                 if !state.settings.read(|s| s.art.fetch_details) {
-                    finish(net, &job_details(&appid));
+                    finish(net, &job_details(&record));
                     continue;
                 }
-                if run_details(net, &agent, &appid).is_err() {
-                    tracing::info!("Steam store rate limit reached; pausing details for 5 minutes");
+                if run_details(net, &agent, &record).is_err() {
+                    tracing::info!(record, "store rate limit reached; pausing details for 5 minutes");
                     *net.details_paused_until.lock().unwrap() = Some(Instant::now() + LIMIT_BACKOFF);
-                    net.queues.lock().unwrap().details.push_back(appid);
+                    net.queues.lock().unwrap().details.push_back(record);
                     continue;
                 }
-                finish(net, &job_details(&appid));
+                finish(net, &job_details(&record));
             }
         }
     }
@@ -565,7 +593,7 @@ pub fn stats(net: &Net) -> NetStats {
         images,
         misses,
         bytes,
-        details: net.details.read(|d| d.apps.values().filter(|r| r.metadata.is_some()).count()),
+        details: [&net.details, &net.gog_details].iter().map(|s| s.read(|d| d.apps.values().filter(|r| r.metadata.is_some()).count())).sum(),
         queued_downloads: d,
         queued_lookups: l,
         queued_details: m,
@@ -591,6 +619,17 @@ mod live {
         assert_eq!(m.developer.as_deref(), Some("Valve"));
         assert_eq!(m.release_date.as_deref(), Some("2011-04-18"));
         assert!(m.description.is_some() && !m.genres.is_empty(), "{m:?}");
+        println!("{m:?}");
+    }
+
+    #[test]
+    #[ignore]
+    fn live_gog_details() {
+        let m = super::gog::fetch(&super::agent(), &super::gog::api_base(), "1207658695").unwrap().unwrap();
+        assert_eq!(m.developer.as_deref(), Some("Revolution Software"));
+        assert_eq!(m.release_date.as_deref(), Some("1994-04-11"));
+        assert!(m.description.is_some() && !m.genres.is_empty(), "{m:?}");
+        assert_eq!(super::gog::fetch(&super::agent(), &super::gog::api_base(), "999999999999").unwrap(), None);
         println!("{m:?}");
     }
 

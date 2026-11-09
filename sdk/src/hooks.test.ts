@@ -1,5 +1,34 @@
 import { describe, expect, it } from "vitest";
-import { allowLaunch } from "./hooks";
+import { allowLaunch, prepareLaunch } from "./hooks";
+
+describe("launching an entry set to ask each time", () => {
+  const ask = { id: "a", askSource: true };
+
+  it("asks first, then runs the hooks with the chosen store", async () => {
+    const seen: string[] = [];
+    const out = await prepareLaunch(ask, "a", undefined, async () => (seen.push("ask"), "gog"), [(_, p) => void seen.push(`hook:${p}`)]);
+    expect(out).toEqual({ provider: "gog" });
+    expect(seen).toEqual(["ask", "hook:gog"]);
+  });
+
+  it("runs no hooks and doesn't launch when the picker is cancelled", async () => {
+    const seen: string[] = [];
+    expect(await prepareLaunch(ask, "a", undefined, async () => null, [() => void seen.push("hook")])).toBeNull();
+    expect(seen).toEqual([]);
+  });
+
+  it("doesn't ask when a store was named, or the entry isn't set to ask", async () => {
+    const never = async () => {
+      throw new Error("asked");
+    };
+    expect(await prepareLaunch(ask, "a", "steam", never, [])).toEqual({ provider: "steam" });
+    expect(await prepareLaunch({ id: "b" }, "b", undefined, never, [])).toEqual({ provider: undefined });
+  });
+
+  it("still lets a hook call it off after the choice", async () => {
+    expect(await prepareLaunch(ask, "a", undefined, async () => "gog", [() => false])).toBeNull();
+  });
+});
 
 describe("launch hooks", () => {
   it("lets launches through with no hooks or with hooks that return nothing", async () => {

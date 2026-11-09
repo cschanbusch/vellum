@@ -28,6 +28,9 @@ fn spec(dir: &Path, source: &str, derived: bool) -> ProviderSpec {
         capabilities: vec!["launch".into()],
         deny_files: vec!["config/loginusers.vdf".into(), "ssfn*".into()],
         settings: Map::new(),
+        game_settings: Vec::new(),
+        game_values: Map::new(),
+        separate_duplicates: false,
     }
 }
 

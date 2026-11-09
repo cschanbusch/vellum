@@ -1,7 +1,7 @@
 //! `userdata.json`: everything the user says about a game, keyed by game record id
 //! (`<provider>:<sourceId>`) so it survives disabling a provider, merges and unmerges.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
@@ -16,17 +16,40 @@ pub const SCHEMA_VERSION: u32 = 1;
 pub struct UserData {
     pub schema_version: u32,
     pub games: BTreeMap<String, GameUserData>,
-    /// Manual merge/unmerge overrides (Phase 5).
+    /// Records the user put in one entry (library/merge.rs).
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub merges: Vec<Value>,
+    pub merges: Vec<MergeRule>,
+    /// Records the user has already answered for, so a duplicate prompts once per copy.
+    #[serde(skip_serializing_if = "BTreeSet::is_empty")]
+    pub decided: BTreeSet<String>,
     #[serde(flatten)]
     pub other: Map<String, Value>,
 }
 
 impl Default for UserData {
     fn default() -> Self {
-        UserData { schema_version: SCHEMA_VERSION, games: BTreeMap::new(), merges: Vec::new(), other: Map::new() }
+        UserData { schema_version: SCHEMA_VERSION, games: BTreeMap::new(), merges: Vec::new(), decided: BTreeSet::new(), other: Map::new() }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum MergeMode {
+    /// Play uses the preferred store.
+    One,
+    /// Play asks which store.
+    Ask,
+}
+
+/// These records are one entry.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MergeRule {
+    pub records: Vec<String>,
+    pub mode: MergeMode,
+    /// A provider id; without one, store priority decides.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preferred: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -50,6 +73,10 @@ pub struct GameUserData {
     pub preferred_source: Option<String>,
     #[serde(skip_serializing_if = "Map::is_empty")]
     pub art_overrides: Map<String, Value>,
+    /// This copy's values for its provider's `gameSettings`; only those that differ from the
+    /// default are kept.
+    #[serde(skip_serializing_if = "Map::is_empty")]
+    pub launch_options: Map<String, Value>,
 }
 
 /// Loads `userdata.json`, keeping one `.bak` copy of the file as it was at startup.

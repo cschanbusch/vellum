@@ -25,7 +25,7 @@ fn every_shipped_plugin_is_valid() {
         v
     };
     // Core: what the launcher needs on its own. The default skin must be here.
-    assert_eq!(ids("plugins", PluginKind::Provider), ["custom", "epic", "gog", "steam"]);
+    assert_eq!(ids("plugins", PluginKind::Provider), ["custom", "epic", "gog", "pcsx2", "steam"]);
     assert_eq!(ids("plugins", PluginKind::Skin), ["basis"]);
     assert!(ids("plugins", PluginKind::Module).is_empty());
     // Extras: safe to leave out of an install.

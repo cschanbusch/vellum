@@ -296,8 +296,11 @@ export abstract class CoverCollection extends LitElement implements NavContainer
     c.el.setAttribute("aria-label", e.title);
     this.mark(c, i === this.selectedIndex);
     c.title.textContent = e.title;
-    c.label.textContent = e.labels?.[0] ?? "";
-    c.label.hidden = !e.labels?.length;
+    // Store badges would crowd a wall of covers, so a tile names its stores only when it has several.
+    const stores = e.sources.length > 1 ? `${e.sources.length} stores` : "";
+    c.label.textContent = e.labels?.[0] ?? stores;
+    c.label.hidden = !c.label.textContent;
+    c.el.title = e.sources.map((s) => s.providerName).join(", ");
     const url = vellum.art.url(e.id, "cover", this.cellWidth, this.artStyle);
     if (url !== c.url) {
       c.url = url;

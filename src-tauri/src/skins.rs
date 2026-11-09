@@ -12,7 +12,6 @@ use serde_json::{Map, Value};
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::art::{self, ArtRequest, Variant};
-use crate::library;
 use crate::plugins::PluginKind;
 use crate::userdata::settings::DEFAULT_SKIN;
 use crate::AppState;
@@ -93,19 +92,11 @@ impl AppState {
 
     /// Looks up what to serve for an entry's art; `None` when the entry isn't shown.
     pub fn art_request(&self, entry_id: &str, kind: &str, width: Variant) -> Option<ArtRequest> {
-        let active = self.active_providers();
-        self.library.read(|snap| {
-            let (pid, recs, g) = library::find(snap, entry_id)?;
-            if !active.contains(pid) {
-                return None;
-            }
-            let cands = recs.art.get(&g.source_id).map(Vec::as_slice).unwrap_or(&[]);
-            let view = crate::net::NetView::new(self);
-            let candidate = self.userdata.read(|ud| {
-                let overrides = ud.games.get(entry_id).map(|u| &u.art_overrides);
-                art::resolve::resolve(entry_id, kind, cands, overrides, &view).candidate
-            });
-            Some(ArtRequest { kind: kind.to_string(), width, style: None, title: g.title.clone(), candidate })
+        let view = crate::net::NetView::new(self);
+        self.with_groups(|groups, ud| {
+            let group = groups.shown(entry_id)?;
+            let candidate = art::resolve::resolve(&group.id, kind, &group.candidates(), Some(&group.overrides(ud)), &view).candidate;
+            Some(ArtRequest { kind: kind.to_string(), width, style: None, title: group.preferred()?.game.title.clone(), candidate })
         })
     }
 }

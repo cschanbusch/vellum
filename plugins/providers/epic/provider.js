@@ -108,7 +108,8 @@ export default {
   launch(ctx, game) {
     const d = game.launchData ?? {};
     const id = [d.namespace, d.catalogItemId, d.appName ?? game.sourceId].map(encodeURIComponent).join("%3A");
-    ctx.openUri(`com.epicgames.launcher://apps/${id}?action=launch&silent=true`);
+    const silent = ctx.settings.silentLaunch !== false ? "&silent=true" : "";
+    ctx.openUri(`com.epicgames.launcher://apps/${id}?action=launch${silent}`);
   },
 
   watch(ctx) {

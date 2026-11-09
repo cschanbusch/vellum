@@ -1,4 +1,4 @@
-// Settings → Art and metadata: store downloads, Steam store details, SteamGridDB, and how
+// Settings → Art and metadata: store downloads, Steam and GOG store details, SteamGridDB, and how
 // long misses and details are kept before Vellum asks again.
 import { LitElement, css, html, nothing } from "lit";
 import { api, type ArtSettings, type ArtSettingsView } from "../api";
@@ -110,7 +110,7 @@ export class ArtPage extends LitElement {
     try {
       const n = await api.refreshDetailsNow();
       const minutes = Math.ceil((n * 1.5) / 60);
-      toasts().show(n ? `Refreshing details for ${n} Steam game${n === 1 ? "" : "s"} (about ${minutes} minute${minutes === 1 ? "" : "s"}).` : "There are no Steam games to refresh.");
+      toasts().show(n ? `Refreshing details for ${n} Steam and GOG game${n === 1 ? "" : "s"} (about ${minutes} minute${minutes === 1 ? "" : "s"}).` : "There are no Steam or GOG games to refresh.");
       await this.load();
     } finally {
       this.busy = null;
@@ -147,12 +147,13 @@ export class ArtPage extends LitElement {
           names only the game's Steam app ID.
         </p>
         <div class="row">
-          <label for="details">Fetch game details from Steam</label>
+          <label for="details">Fetch game details from stores</label>
           <input id="details" type="checkbox" .checked=${s.fetchDetails} @change=${(e: Event) => this.set({ fetchDetails: (e.target as HTMLInputElement).checked })} />
         </div>
         <p class="muted small">
-          Developer, publisher, release date, genres and a short description from the Steam store, one game every 1.5 seconds
-          in the background. Details Steam keeps on this PC always come first.
+          Developer, publisher, release date, genres and a short description from the Steam and GOG stores, one game every
+          1.5 seconds in the background. Each request names only the game's store ID. Details a store keeps on this PC always
+          come first.
         </p>
       </section>
 

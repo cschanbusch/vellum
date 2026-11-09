@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { Entry } from "../../sdk/src/types";
+import type { ChoiceMode, DuplicateAnswer, DuplicateView } from "./duplicates-dialog";
 import type { SkinRecord, UiSettings, WindowState } from "./host/backend";
 
 export type PluginKind = "provider" | "skin" | "module";
@@ -31,6 +32,30 @@ export interface PluginView {
   errors: string[];
   warnings: string[];
   section: Record<string, unknown> | null;
+  /** The options the manifest declares, and each one's value now. */
+  options: PluginOption[];
+  values: Record<string, unknown>;
+}
+
+export interface PluginOption {
+  id: string;
+  label: string;
+  /** What the option does and why, shown on mouseover. */
+  tooltip?: string;
+  type: string;
+  min?: number;
+  max?: number;
+  step?: number;
+  choices?: { value: string; label: string }[];
+  default?: unknown;
+}
+
+/** A provider's per-game launch options for one copy (Launch options… in the game menu). */
+export interface GameSettingsView {
+  providerName: string;
+  title: string;
+  options: PluginOption[];
+  values: Record<string, unknown>;
 }
 
 export interface LocationCandidate {
@@ -266,6 +291,30 @@ export const api = {
   setArtOverride: (entryId: string, kind: string, option: string | null) => invoke<Entry>("set_art_override", { entryId, kind, option }),
   setArtOverrideFile: (entryId: string, kind: string, path: string) => invoke<Entry>("set_art_override_file", { entryId, kind, path }),
 
+  duplicates: (all: boolean) => invoke<DuplicateView[]>("duplicates", { all }),
+  resolveDuplicates: (choices: DuplicateAnswer[]) => invoke<void>("resolve_duplicates", { choices }),
+  setSourceChoice: (entryId: string, mode: ChoiceMode, preferred?: string) => invoke<void>("set_source_choice", { entryId, mode, preferred }),
+  mergeEntries: (entryId: string, otherId: string) => invoke<Entry>("merge_entries", { entryId, otherId }),
+  separateSource: (entryId: string, record: string) => invoke<void>("separate_source", { entryId, record }),
+  librarySettings: () => invoke<LibrarySettings>("library_settings"),
+  setLibrarySettings: (patch: Partial<LibrarySettings>) => invoke<LibrarySettings>("set_library_settings", { patch }),
+
+  setProviderOption: (id: string, key: string, value: unknown) => invoke<void>("set_provider_option", { id, key, value }),
+  gameSettings: (entryId: string, provider: string) => invoke<GameSettingsView>("game_settings", { entryId, provider }),
+  setGameSettings: (entryId: string, provider: string, values: Record<string, unknown>) =>
+    invoke<void>("set_game_settings", { entryId, provider, values }),
+
+  customGames: () => invoke<CustomGame[]>("custom_games"),
+  /** Resolves with the game's record id, such as "custom:19a2". */
+  customGameSave: (game: CustomGame) => invoke<string>("custom_game_save", { game }),
+  customGameRemove: (id: string) => invoke<void>("custom_game_remove", { id }),
+
+  /** Program or shortcut picker; resolves to null when cancelled. */
+  pickProgram: async (title: string): Promise<string | null> => {
+    const picked = await open({ multiple: false, title, filters: [{ name: "Programs and shortcuts", extensions: ["exe", "lnk", "url"] }] });
+    return typeof picked === "string" ? picked : null;
+  },
+
   /** Image file picker; resolves to null when cancelled. */
   pickImage: async (title: string): Promise<string | null> => {
     const picked = await open({ multiple: false, title, filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp", "gif"] }] });
@@ -278,6 +327,22 @@ export const api = {
     return typeof picked === "string" ? picked : null;
   },
 };
+
+/** Settings → Library. */
+export interface LibrarySettings {
+  onDuplicate: "ask" | "merge" | "separate";
+  /** Provider ids, most preferred first. */
+  providerPriority: string[];
+}
+
+/** A hand-added game. An empty id means it hasn't been saved yet. */
+export interface CustomGame {
+  id: string;
+  title: string;
+  exe: string;
+  args: string;
+  cwd: string;
+}
 
 /** Browse for a provider location until the user picks a valid folder or cancels.
  *  Returns null on success, or the validation message for the last folder tried. */

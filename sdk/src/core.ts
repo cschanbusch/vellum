@@ -7,7 +7,7 @@
 
 import { artUrl, styleFor, type ArtStyle } from "./art";
 import { focus } from "./focus";
-import { allowLaunch, type BeforeLaunch } from "./hooks";
+import { prepareLaunch, type BeforeLaunch } from "./hooks";
 import { input, type NavEvent } from "./input";
 import {
   CALL_METHODS,
@@ -92,7 +92,8 @@ const readyPromise = new Promise<void>((r) => (resolveReady = r));
 
 function setLibrary(entries: Entry[]) {
   library = entries;
-  byId = new Map(entries.map((e) => [e.id, e]));
+  // Any of an entry's record ids finds it, so an id a skin saved before a merge still works.
+  byId = new Map(entries.flatMap((e) => [...e.sources.map((s) => [s.gameId, e] as const), [e.id, e] as const]));
   libraryVersion++;
 }
 
@@ -377,11 +378,12 @@ export const vellum = {
   },
 
   actions: {
-    /** Launches through the preferred store, or `provider`. Hooks from `onBeforeLaunch` run
-     *  first; if one calls it off, this resolves without launching. */
+    /** Launches through the preferred store, or `provider`. An entry set to "ask me each time"
+     *  shows the store picker first. Hooks from `onBeforeLaunch` then run with the chosen store;
+     *  if the picker is cancelled or a hook calls it off, this resolves without launching. */
     launch: async (id: string, provider?: string): Promise<void> => {
-      if (!(await allowLaunch(beforeLaunch, id, provider))) return;
-      return call<void>("actions.launch", { id, provider });
+      const go = await prepareLaunch(byId.get(id), id, provider, () => call<string | null>("ui.chooseSource", { id }), beforeLaunch);
+      if (go) return call<void>("actions.launch", { id, provider: go.provider });
     },
     /** Runs `hook` before every launch this skin starts; return false to call it off. */
     onBeforeLaunch: (hook: BeforeLaunch): (() => void) => {

@@ -105,6 +105,8 @@ export function validateCall(method: CallMethod, args: unknown, h: BridgeContext
         if (!ok) return "items must be at most 6 { id, label, disabled? } with short strings";
       }
       return entry();
+    case "ui.chooseSource":
+      return entry();
     case "ui.theme": {
       if (!isObj(args.tokens)) return "tokens must be an object";
       for (const [k, v] of Object.entries(args.tokens)) {

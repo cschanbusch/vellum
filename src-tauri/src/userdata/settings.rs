@@ -49,6 +49,7 @@ pub struct Settings {
     pub plugins: PluginSettings,
     pub ui: UiSettings,
     pub art: ArtSettings,
+    pub library: LibrarySettings,
     /// Keys this version doesn't know (written by a newer Vellum) are kept, not dropped.
     #[serde(flatten)]
     pub other: Map<String, Value>,
@@ -62,6 +63,7 @@ impl Default for Settings {
             plugins: PluginSettings::default(),
             ui: UiSettings::default(),
             art: ArtSettings::default(),
+            library: LibrarySettings::default(),
             other: Map::new(),
         }
     }
@@ -123,6 +125,52 @@ impl UiSettings {
             next[k] = v.clone();
         }
         *self = serde_json::from_value(next).map_err(|e| format!("invalid UI settings: {e}"))?;
+        Ok(())
+    }
+}
+
+/// What to do when the same title turns up on another store.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum OnDuplicate {
+    #[default]
+    Ask,
+    /// One entry, playing through the first store in the priority list.
+    Merge,
+    Separate,
+}
+
+/// Settings → Library.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", default)]
+pub struct LibrarySettings {
+    pub on_duplicate: OnDuplicate,
+    /// Provider ids, most preferred first; others come after, by id.
+    pub provider_priority: Vec<String>,
+}
+
+impl Default for LibrarySettings {
+    fn default() -> Self {
+        LibrarySettings { on_duplicate: OnDuplicate::Ask, provider_priority: ["steam", "gog", "epic", "custom"].map(String::from).to_vec() }
+    }
+}
+
+impl LibrarySettings {
+    /// Merges a patch from the shell; unknown keys and wrong types are rejected.
+    pub fn apply_patch(&mut self, patch: &Value) -> Result<(), String> {
+        let obj = patch.as_object().ok_or("the patch must be an object")?;
+        let mut next = serde_json::to_value(&*self).map_err(|e| e.to_string())?;
+        for (k, v) in obj {
+            if next.get(k).is_none() {
+                return Err(format!("unknown library setting {k:?}"));
+            }
+            next[k] = v.clone();
+        }
+        let next: LibrarySettings = serde_json::from_value(next).map_err(|e| format!("invalid library settings: {e}"))?;
+        if next.provider_priority.len() > 64 {
+            return Err("That priority list is too long.".into());
+        }
+        *self = next;
         Ok(())
     }
 }

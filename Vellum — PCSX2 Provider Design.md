@@ -119,6 +119,31 @@ Nothing here loosens the security model: `readRange` uses the same path scope ch
 - The online cover set states no license. Fetching covers on the user's own machine mirrors what PCSX2's built-in downloader does, but bundling those covers with Vellum would not be appropriate.
 - Multi-disc games appear as separate entries, one per disc. Grouping them is a later improvement.
 
+## Review, 2026-11-02
+
+Checked against a real PCSX2 2.6.3 install, without running it. The design above stands, with these changes for when it's built. The file layouts, `portable.txt`, `inis/PCSX2.ini`, `[GameList] RecursivePaths`, `covers/<serial>.jpg` and `pcsx2-qt.exe` all matched.
+
+- **Serials: read PCSX2's own list first.** `cache/gamelist.cache` (signature `GLCE`, then a version number) held the path, serial and title of all 16 games on that install, so it should also cover compressed files that PCSX2 has scanned. It's undocumented, so ignore it when the version is unknown. The methods above become the fallback for games PCSX2 hasn't scanned. This was seen on one install with only `.iso` files, so confirm it with a compressed file.
+- **Title matching needs more than uniqueness.** `GameIndex.yaml` has 12,838 names but only 9,974 distinct ones, so "accept only a unique match" would often fail. Use the region from the filename, such as `(USA)`, to narrow it down.
+- **Prefer `name-en` over `name`:** `name` can be Japanese. Bracketed tags need handling too: one title reads "Gran Turismo 3 - A-Spec [PS2 Bundle]".
+- **Install folder:** that install is at `C:\PCSX2`, which the defaults above miss, while Windows' uninstall entry records the real folder. Try that before asking the user to browse.
+- **No prompt for people without PCSX2.** With `install` required and new providers enabled by default, everyone without PCSX2 would see a "couldn't find" prompt at startup. Keep it off by default, or quiet when PCSX2 isn't found.
+- **Watching must reach subfolders.** Each game on that install sits in its own subfolder, and the file watcher doesn't look inside subfolders.
+- **Core additions: `ctx.fs.readRange` only.** The provider parses the INI and `GameIndex.yaml` itself in plain JavaScript, so the core gains no YAML library. Remember that `Paths` and `RecursivePaths` can each repeat. `ctx.cache` and per-game launch options wait until something needs them, which relaxes the "reads no disc data" criterion. The derived hero and `artInfo` help every provider, so they're separate work.
+- **Duplicates (decided):** when a PS2 game shares a title with a store game, the duplicate prompt still appears, but preselects "Separate entries", because they're usually different products. That install's 16 games match no store title today.
+- **Launching:** give the launch arguments a tooltip, like other providers' options. `-fullscreen -nogui -fastboot` still needs a real launch test.
+
+## Built, 2026-11-08
+
+The provider is in `plugins/providers/pcsx2`; `docs/decisions.md` (2026-11-08) records what it does. Where it differs from the design above:
+
+- **No `GameIndex.yaml`, no disc reading, no `ctx.fs.readRange`.** PCSX2's game list cache supplies titles and serials. A file it hasn't scanned gets its serial from the filename and its title from the filename, and is listed anyway.
+- **The files PCSX2 lists, not the design's list:** `.iso`, `.bin`, `.img`, `.mdf`, `.nrg`, `.chd`, `.cso`, `.zso`, `.gz` and `.elf`, with no `.cue` handling. ELF files and PS1 discs are listed (labelled ELF and PS1), as PCSX2 lists them.
+- **Launch options are structured,** not one arguments line: Fullscreen (`-fullscreen` or `-nofullscreen`), Hide PCSX2's window (`-nogui`), Fast boot (`-fastboot` or `-slowboot`) and Extra arguments, for every game in Settings → Plugins and per game in Launch options…. All four flags were checked against `pcsx2-qt.exe` 2.6.3's own strings, not by running it.
+- **No file watching,** as Vellum no longer watches any store; a new game appears at the next scan.
+- **Same monitor as Vellum:** PCSX2's windows are moved to Vellum's monitor after they appear, windowed or fullscreen (`ctx.run`'s `sameMonitor`; see docs/decisions.md).
+- **Still to check:** a real launch, and whether `-nogui` returns the player to Vellum when the game is quit. Also whether the monitor move works with PCSX2's fullscreen.
+
 ## Sources
 
 - [PCSX2 docs: Command Line Options](https://pcsx2.net/docs/advanced/cli)

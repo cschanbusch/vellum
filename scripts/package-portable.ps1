@@ -31,10 +31,10 @@ param(
   # plugins ready to ship.
   [switch]$Zip,
   # Plugin folder names to leave out of the release zip (dist\Vellum keeps them). The default
-  # leaves out what doesn't work yet (the GOG and Custom provider stubs, the module placeholders,
-  # which wait for module hosting in Phase 6), the mock provider (a development tool) and the
-  # showcase skins, which aren't distributed in releases.
-  [string[]]$ZipWithout = @('gog', 'custom', 'mock', 'quick-launch', 'random-pick', 'frontier', 'ficsit', 'grandtour', 'calling-card')
+  # leaves out what doesn't work yet (the module placeholders, which wait for module hosting in
+  # Phase 6), the mock provider (a development tool) and the showcase skins, which aren't
+  # distributed in releases.
+  [string[]]$ZipWithout = @('mock', 'quick-launch', 'random-pick', 'frontier', 'ficsit', 'grandtour', 'calling-card')
 )
 
 $ErrorActionPreference = 'Stop'

@@ -35,6 +35,7 @@ fn content_type(path: &Path) -> &'static str {
         Some("jpg" | "jpeg") => "image/jpeg",
         Some("webp") => "image/webp",
         Some("gif") => "image/gif",
+        Some("ico") => "image/x-icon",
         _ => "application/octet-stream",
     }
 }
@@ -161,6 +162,17 @@ mod tests {
     fn cand(p: &Path) -> ArtCandidate {
         let m = std::fs::metadata(p).unwrap();
         ArtCandidate { kind: "cover".into(), file: Some(p.to_string_lossy().into()), url: None, mtime: Some(1), size: Some(m.len()) }
+    }
+
+    #[test]
+    fn icons_decode_resize_and_serve_as_icons() {
+        let t = tempfile::tempdir().unwrap();
+        let ico = t.path().join("game.ico");
+        RgbaImage::from_pixel(256, 256, Rgba([10, 200, 40, 128])).save(&ico).unwrap();
+        let small = variant(&ico, &cand(&ico), Variant::Px(160), None, &t.path().join("cache")).unwrap();
+        assert_eq!(small.content_type, "image/png", "a smaller variant is a PNG, keeping the transparency");
+        let full = variant(&ico, &cand(&ico), Variant::Full, None, &t.path().join("cache")).unwrap();
+        assert_eq!(full.content_type, "image/x-icon");
     }
 
     #[test]

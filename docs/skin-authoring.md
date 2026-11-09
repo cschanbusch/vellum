@@ -234,14 +234,15 @@ at once, so navigation feels instant.
 
 ```ts
 interface Entry {
-  id: string;                       // "steam:620"; use it in every call
+  id: string;                       // "steam:620": its oldest record; use it in every call (see below)
   title: string;
   sortTitle: string;                // "witcher 3, the"
   kind: "game" | "tool" | "dlc" | "other";
   sources: { provider: string; providerName: string; gameId: string; capabilities: string[]; installDir?: string }[];
-  preferredSource: string;          // provider id used by launch()
+  preferredSource: string;          // provider id used by launch(); sources lists it first
+  askSource?: boolean;              // Play asks which store; launch() handles it for you
   categories: { provider: string; name: string }[];   // the store's collections
-  labels: string[];                 // the store's badges: "Demo", "Playtest", "Soundtrack"…
+  labels: string[];                 // badges: "Demo", "Soundtrack"…, or a store's name (see below)
   tags: string[];                   // the user's own tags
   favorite: boolean;
   hidden: boolean;
@@ -275,6 +276,24 @@ interface Filters {
   showHidden?: boolean;
 }
 ```
+
+**Games on more than one store.** When a title is on two stores, the user chooses how it shows, so
+one game can reach your skin in either of these ways:
+
+- **One entry with several `sources`,** through a chosen store or asking each time (`askSource`).
+- **Separate entries with the same title,** each with its store's name in `labels`. Show `labels`
+  beside the title, or the two can't be told apart.
+
+Merged values are combined: `playtimeMinutes` is the sum across stores, `lastPlayed` and
+`lastLaunched` are the latest, and `favorite` is true if any copy is.
+
+**Keeping per-game data.** Key it on `entry.id`. That's the entry's oldest record, so it doesn't
+change when the user picks another store or adds a copy. It does move in one case: if the store
+behind the id is turned off or the game is uninstalled there, the id becomes the next oldest record
+until that store's copy returns. Your data under the old id isn't lost, but the entry won't find it
+until then. For the same reason, if two separate entries are merged, the newer one's data stays
+under its own id. Any record id still finds the entry: `vellum.library.get(id)` accepts any
+`sources[].gameId` and returns the entry with its current `id`, and calls accept them too.
 
 Sort keys are `title`, `lastLaunched`, `added`, `size`, `releaseDate` and `provider`. Each has a
 natural direction (titles and stores A→Z, everything else newest or largest first); prefix `-`
@@ -330,7 +349,7 @@ It also survives skin reloads and restarts.
 
 | Member | Description |
 | --- | --- |
-| `launch(id, provider?)` | Launch through the preferred store, or the named one ("Play via…"), after any `onBeforeLaunch` hooks |
+| `launch(id, provider?)` | Launch through the preferred store, or the named one ("Play via…"), after any `onBeforeLaunch` hooks. An entry set to ask shows the shell's store picker first |
 | `onBeforeLaunch(hook)` | Run `hook` before launches this skin starts; it can hold or call them off (see below) |
 | `install(id)`, `uninstall(id)`, `openStore(id)` | Only work when the store declares the capability |
 | `toggleFavorite(id)` | |
@@ -352,6 +371,10 @@ Play buttons, Enter in a collection, your own calls). The hook may be async: an 
 confirmation holds the launch until it settles. Return `false` to call the launch off; anything
 else lets it go ahead. It returns an unsubscribe function. A hook that throws is ignored, so a
 bug can't stop launches. Launches the shell starts itself (its context menu) don't run hooks.
+
+For an entry set to "ask me each time" (`askSource`), the store picker comes first, so `provider`
+holds the store the user chose and a launch ceremony only plays once they've chosen. If they cancel,
+no hooks run and `launch` resolves without launching.
 
 ```js
 vellum.actions.onBeforeLaunch(async (id) => {
@@ -682,7 +705,7 @@ A wrapping grid of covers sized by `--v-cover-width`. Home and End jump to the e
 | `art` | The cover's frame |
 | `cover` | The `<img>` |
 | `favorite` | The ★ badge |
-| `label` | The entry's first label ("Demo"…), on the art |
+| `label` | The entry's first label ("Demo", or a store's name…) on the art; with no label, "2 stores" when the entry has several |
 | `caption`, `title` | The title under the cover (`--v-cover-caption: none` hides it) |
 | `sizer` | The element that sets the scroll height |
 

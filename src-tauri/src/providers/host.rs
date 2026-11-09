@@ -28,7 +28,8 @@ const STACK_LIMIT: usize = 1024 * 1024;
 /// Side effects a provider can cause outside the sandbox, injectable for tests.
 pub trait Opener: Send + Sync {
     fn open_uri(&self, uri: &str) -> Result<(), String>;
-    fn run(&self, exe: &Path, args: &[String], cwd: Option<&Path>) -> Result<(), String>;
+    /// Starts a program; the process id when Vellum started it itself (not for a shortcut).
+    fn run(&self, exe: &Path, args: &[String], cwd: Option<&Path>) -> Result<Option<u32>, String>;
 }
 
 pub struct SystemOpener;
@@ -38,7 +39,11 @@ impl Opener for SystemOpener {
         platform::open_uri(uri).map_err(|e| e.to_string())
     }
 
-    fn run(&self, exe: &Path, args: &[String], cwd: Option<&Path>) -> Result<(), String> {
+    fn run(&self, exe: &Path, args: &[String], cwd: Option<&Path>) -> Result<Option<u32>, String> {
+        // CreateProcess can't start a shortcut; the Windows shell opens it with its own settings.
+        if crate::custom_games::is_shortcut(exe) {
+            return platform::open_uri(&exe.to_string_lossy()).map(|()| None).map_err(|e| e.to_string());
+        }
         let mut cmd = std::process::Command::new(exe);
         cmd.args(args);
         if let Some(d) = cwd.or_else(|| exe.parent()) {
@@ -51,7 +56,7 @@ impl Opener for SystemOpener {
             const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
             cmd.creation_flags(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP);
         }
-        cmd.spawn().map(|_| ()).map_err(|e| format!("could not start {}: {e}", exe.display()))
+        cmd.spawn().map(|c| Some(c.id())).map_err(|e| format!("could not start {}: {e}", exe.display()))
     }
 }
 
@@ -67,9 +72,9 @@ impl Opener for RecordingOpener {
         Ok(())
     }
 
-    fn run(&self, exe: &Path, args: &[String], _cwd: Option<&Path>) -> Result<(), String> {
+    fn run(&self, exe: &Path, args: &[String], _cwd: Option<&Path>) -> Result<Option<u32>, String> {
         self.calls.lock().unwrap().push(format!("run {} {}", exe.display(), args.join(" ")));
-        Ok(())
+        Ok(None)
     }
 }
 
@@ -124,6 +129,9 @@ pub struct Output {
     /// Folders the provider added with `ctx.fs.allow` during this call.
     pub derived: Vec<PathBuf>,
     pub logs: Vec<LogLine>,
+    /// Programs started with `ctx.run(..., { sameMonitor: true })`: their windows go to Vellum's
+    /// monitor (window_place.rs).
+    pub place: Vec<u32>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -162,6 +170,7 @@ struct HostState {
     install_dir: Option<PathBuf>,
     derived: Mutex<Vec<PathBuf>>,
     logs: Mutex<Vec<LogLine>>,
+    place: Mutex<Vec<u32>>,
     provider: String,
     /// The provider's own folder: readable (for bundled data and art), never runnable.
     own_dir: Option<PathBuf>,
@@ -242,18 +251,21 @@ globalThis.__ctx = Object.freeze({
   }),
   env: Object.freeze({ expand: (s) => h.expand(str(s)) }),
   openUri: (uri) => h.openUri(str(uri)),
-  run: (exe, args = [], cwd = null) => h.run(str(exe), JSON.stringify((args ?? []).map(str)), cwd == null ? "" : str(cwd)),
+  run: (exe, args = [], cwd = null, opts = null) =>
+    h.run(str(exe), JSON.stringify((args ?? []).map(str)), cwd == null ? "" : str(cwd), opts?.sameMonitor === true),
   settings: Object.freeze(JSON.parse(h.settingsJson)),
+  gameSettings: Object.freeze(JSON.parse(h.gameSettingsJson)),
   pluginDir: h.pluginDir,
   log: Object.freeze({ info: level("info"), warn: level("warn"), error: level("error") }),
 });
 "#;
 
-fn install_host<'js>(ctx: &Ctx<'js>, st: &Arc<HostState>, locations_json: String, settings_json: String) -> rquickjs::Result<()> {
+fn install_host<'js>(ctx: &Ctx<'js>, st: &Arc<HostState>, locations_json: String, settings_json: String, game_json: String) -> rquickjs::Result<()> {
     let h = Object::new(ctx.clone())?;
     let throw = |ctx: &Ctx<'js>, msg: String| Exception::throw_message(ctx, &msg);
     h.set("locationsJson", locations_json)?;
     h.set("settingsJson", settings_json)?;
+    h.set("gameSettingsJson", game_json)?;
     h.set("pluginDir", st.own_dir.as_deref().map(|d| simplify(d).to_string_lossy().into_owned()).unwrap_or_default())?;
 
     let s = st.clone();
@@ -390,7 +402,7 @@ fn install_host<'js>(ctx: &Ctx<'js>, st: &Arc<HostState>, locations_json: String
     let s = st.clone();
     h.set(
         "run",
-        Function::new(ctx.clone(), move |ctx: Ctx<'js>, exe: String, args: String, cwd: String| -> rquickjs::Result<()> {
+        Function::new(ctx.clone(), move |ctx: Ctx<'js>, exe: String, args: String, cwd: String, same_monitor: bool| -> rquickjs::Result<()> {
             let exe_path = PathBuf::from(&exe);
             if !exe_path.is_file() || !s.scope.contains(&exe_path, s.install_dir.as_deref()) {
                 return Err(throw(&ctx, format!("ctx.run: exe is missing or outside allowed folders: {exe}")));
@@ -401,7 +413,11 @@ fn install_host<'js>(ctx: &Ctx<'js>, st: &Arc<HostState>, locations_json: String
                 return Err(throw(&ctx, format!("ctx.run: working directory does not exist: {cwd:?}")));
             }
             s.log("info", format!("run {exe}"));
-            s.env.opener.run(&exe_path, &args, cwd.as_deref()).map_err(|e| throw(&ctx, e))
+            let pid = s.env.opener.run(&exe_path, &args, cwd.as_deref()).map_err(|e| throw(&ctx, e))?;
+            if let Some(pid) = pid.filter(|_| same_monitor) {
+                s.place.lock().unwrap().push(pid);
+            }
+            Ok(())
         })?,
     )?;
     let s = st.clone();
@@ -472,7 +488,7 @@ fn classify(message: String, timeout: Duration) -> HostError {
 pub fn invoke(inv: &Invocation, method: Method, arg: Option<&Value>) -> Result<Output, HostError> {
     let batch = invoke_each(inv, method, &[arg.cloned()])?;
     let value = batch.values.into_iter().next().expect("one call")?;
-    Ok(Output { value, derived: batch.derived, logs: batch.logs })
+    Ok(Output { value, derived: batch.derived, logs: batch.logs, place: batch.place })
 }
 
 /// Results of several calls made in one runtime.
@@ -481,6 +497,7 @@ pub struct Batch {
     pub values: Vec<Result<Value, HostError>>,
     pub derived: Vec<PathBuf>,
     pub logs: Vec<LogLine>,
+    pub place: Vec<u32>,
 }
 
 /// Calls `method` once per argument in a single runtime (used for `art`, once per game).
@@ -502,6 +519,7 @@ pub fn invoke_each(inv: &Invocation, method: Method, args: &[Option<Value>]) -> 
         install_dir,
         derived: Mutex::new(Vec::new()),
         logs: Mutex::new(Vec::new()),
+        place: Mutex::new(Vec::new()),
         provider: spec.id.clone(),
         own_dir: canonical(&spec.dir),
     });
@@ -520,12 +538,13 @@ pub fn invoke_each(inv: &Invocation, method: Method, args: &[Option<Value>]) -> 
     )
     .unwrap();
     let settings_json = Value::Object(spec.settings.clone()).to_string();
+    let game_json = Value::Object(spec.game_values.clone()).to_string();
     let source = std::fs::read(spec.dir.join(&spec.entry)).map_err(|e| HostError::Load(format!("{}: {e}", spec.entry)))?;
     let entry_name = spec.entry.replace('\\', "/");
 
     let values = context.with(|ctx| -> Result<Vec<Result<Value, HostError>>, HostError> {
         let caught = |e: rquickjs::CaughtError| classify(e.to_string(), timeout);
-        install_host(&ctx, &st, locations_json, settings_json)
+        install_host(&ctx, &st, locations_json, settings_json, game_json)
             .catch(&ctx)
             .map_err(|e| HostError::Load(e.to_string()))?;
 
@@ -572,6 +591,7 @@ pub fn invoke_each(inv: &Invocation, method: Method, args: &[Option<Value>]) -> 
     })?;
 
     let derived = std::mem::take(&mut *st.derived.lock().unwrap());
+    let place = std::mem::take(&mut *st.place.lock().unwrap());
     let logs = std::mem::take(&mut *st.logs.lock().unwrap());
-    Ok(Batch { values, derived, logs })
+    Ok(Batch { values, derived, logs, place })
 }

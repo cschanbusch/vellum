@@ -1,11 +1,19 @@
 import { LitElement, css, html } from "lit";
-import { api, type AppInfo } from "./api";
+import { api, type AppInfo, type CustomGame } from "./api";
 import { entryMenu, withSkinItems } from "./host/entry-menu";
 import { host, hostUi } from "./host/instance";
 import type { LibraryView } from "./library-view";
-import type { ContextMenu, DevErrorOverlay, TagsDialog } from "./overlays";
+import type { ContextMenu, DevErrorOverlay, StorePicker, TagsDialog } from "./overlays";
 import "./art-dialog";
 import type { ArtDialog } from "./art-dialog";
+import "./duplicates-dialog";
+import type { DuplicatesDialog } from "./duplicates-dialog";
+import "./stores-dialog";
+import type { StoresDialog } from "./stores-dialog";
+import "./launch-options-dialog";
+import type { LaunchOptionsDialog } from "./launch-options-dialog";
+import "./custom-game-dialog";
+import type { CustomGameDialog } from "./custom-game-dialog";
 import "./recommend";
 import type { RecommendDialog } from "./recommend";
 import { store } from "./store";
@@ -23,6 +31,7 @@ import "./pages/developer-page";
 import "./pages/versions-page";
 import "./pages/catalog-page";
 import "./pages/art-page";
+import "./pages/library-page";
 import "./toasts";
 
 interface PageDef {
@@ -35,7 +44,7 @@ interface PageDef {
 // The settings pages from the spec, in its order.
 const PAGES: PageDef[] = [
   { id: "general", label: "General" },
-  { id: "library", label: "Library", phase: 5 },
+  { id: "library", label: "Library" },
   { id: "plugins", label: "Plugins" },
   { id: "skins", label: "Skins" },
   { id: "catalog", label: "Get skins" },
@@ -60,6 +69,7 @@ export class VellumShell extends LitElement {
   declare info: AppInfo | null;
   declare settingsOpen: boolean;
   private onKey = (e: KeyboardEvent) => this.hotkey(e);
+  private duplicateTimer = 0;
 
   constructor() {
     super();
@@ -92,6 +102,21 @@ export class VellumShell extends LitElement {
   private get art() {
     return this.renderRoot.querySelector<ArtDialog>("vellum-art-dialog")!;
   }
+  private get customGame() {
+    return this.renderRoot.querySelector<CustomGameDialog>("vellum-custom-game-dialog")!;
+  }
+  private get duplicates() {
+    return this.renderRoot.querySelector<DuplicatesDialog>("vellum-duplicates-dialog")!;
+  }
+  private get stores() {
+    return this.renderRoot.querySelector<StoresDialog>("vellum-stores-dialog")!;
+  }
+  private get launchOptions() {
+    return this.renderRoot.querySelector<LaunchOptionsDialog>("vellum-launch-options-dialog")!;
+  }
+  private get picker() {
+    return this.renderRoot.querySelector<StorePicker>("vellum-store-picker")!;
+  }
   private get devError() {
     return this.renderRoot.querySelector<DevErrorOverlay>("vellum-dev-error")!;
   }
@@ -107,6 +132,11 @@ export class VellumShell extends LitElement {
       contextMenu: (entry: Entry, x: number, y: number, items?: MenuItem[]) => this.openMenu(entry, x, y, items),
       openSettings: (page?: string) => this.openSettings(page),
       changeArt: (entry: Entry, kind: ArtKind) => this.changeArt(entry, kind),
+      chooseSource: async (entry: Entry) => {
+        const provider = await this.picker.choose(entry);
+        if (!this.settingsOpen) this.library.focusSkin();
+        return provider;
+      },
       theme: (t: Record<string, string>) => applySkinTheme(t),
       devError: (message: string, stack: string) => {
         console.error(`[skin] ${message}\n${stack}`);
@@ -124,6 +154,50 @@ export class VellumShell extends LitElement {
     await host.start();
     this.library.attachSkin();
     void this.recommend.check();
+    host.on("library", () => this.checkDuplicates());
+    store.on("providers", () => this.checkDuplicates());
+    this.checkDuplicates();
+  }
+
+  /**
+   * Asks about new duplicates, when the moment is right: every scan finished (a provider still
+   * scanning may add a copy), Vellum in front (never over a game), and no other dialog waiting.
+   * Until then it looks again every couple of seconds.
+   */
+  private checkDuplicates(delay = 800) {
+    clearTimeout(this.duplicateTimer);
+    this.duplicateTimer = window.setTimeout(() => void this.askDuplicates(), delay);
+  }
+
+  private async askDuplicates() {
+    if (this.duplicates.isOpen) return;
+    const busy =
+      !host.focused ||
+      store.statuses.some((s) => s.state === "scanning") ||
+      this.recommend.state !== "closed" ||
+      this.menu.isOpen ||
+      !!this.tags.entry ||
+      this.art.isOpen ||
+      this.customGame.isOpen ||
+      this.stores.isOpen ||
+      this.launchOptions.isOpen ||
+      this.picker.isOpen;
+    if (busy) return this.checkDuplicates(2000);
+    const pending = await api.duplicates(false).catch(() => []);
+    if (pending.length) await this.showDuplicates(pending, true);
+  }
+
+  private async showDuplicates(list: Awaited<ReturnType<typeof api.duplicates>>, required: boolean) {
+    const answers = await this.duplicates.open(list, required);
+    if (answers?.length) await api.resolveDuplicates(answers).catch((err) => toasts().show(String(err), true));
+    if (!this.settingsOpen) this.library.focusSkin();
+  }
+
+  /** Review duplicates… in Settings. Returns how many there are to review. */
+  private async reviewDuplicates() {
+    const all = await api.duplicates(true);
+    if (all.length) await this.showDuplicates(all, false);
+    return all.length;
   }
 
   private async skinFailed(reason: string) {
@@ -140,13 +214,24 @@ export class VellumShell extends LitElement {
     const items = entryMenu(host, entry, {
       editTags: (e) => void this.editTags(e),
       changeArt: (e) => hostUi.changeArt(e, "cover"),
+      editCustomGame: (id) => void this.editCustomGameById(id),
+      stores: (e) =>
+        this.stores.open(e, host.entries, () => {
+          if (!this.settingsOpen) this.library.focusSkin();
+        }),
+      launchOptions: (e, provider) =>
+        void this.launchOptions
+          .open(e.id, provider, () => {
+            if (!this.settingsOpen) this.library.focusSkin();
+          })
+          .catch((err) => toasts().show(String(err), true)),
     });
     return withSkinItems(
       items,
       skinItems,
       (all, onClose) => this.menu.open(entry.title, all, x + (r?.left ?? 0), y + (r?.top ?? 0), onClose),
       () => {
-        if (!this.settingsOpen && !this.tags.entry && !this.art.isOpen) this.library.focusSkin();
+        if (!this.settingsOpen && !this.tags.entry && !this.art.isOpen && !this.customGame.isOpen && !this.stores.isOpen && !this.launchOptions.isOpen && !this.picker.isOpen) this.library.focusSkin();
       },
     );
   }
@@ -155,6 +240,25 @@ export class VellumShell extends LitElement {
     this.art.open(e, kind, () => {
       if (!this.settingsOpen) this.library.focusSkin();
     });
+  }
+
+  private async editCustomGameById(id: string) {
+    try {
+      const game = (await api.customGames()).find((g) => g.id === id);
+      if (game) await this.editCustomGame(game);
+    } catch (err) {
+      toasts().show(String(err), true);
+    }
+  }
+
+  /** The add/edit dialog; art it attached reaches the skin once the dialog has saved. */
+  private async editCustomGame(game?: CustomGame) {
+    const id = await this.customGame.open(game);
+    if (id) {
+      const saved = (await api.libraryEntries()).find((e) => e.id === id || e.sources.some((s) => s.gameId === id));
+      if (saved) host.entryChanged(saved);
+    }
+    if (!this.settingsOpen) this.library.focusSkin();
   }
 
   private async editTags(e: Entry) {
@@ -243,6 +347,11 @@ export class VellumShell extends LitElement {
       <vellum-context-menu></vellum-context-menu>
       <vellum-tags-dialog></vellum-tags-dialog>
       <vellum-art-dialog></vellum-art-dialog>
+      <vellum-custom-game-dialog></vellum-custom-game-dialog>
+      <vellum-stores-dialog></vellum-stores-dialog>
+      <vellum-launch-options-dialog></vellum-launch-options-dialog>
+      <vellum-store-picker></vellum-store-picker>
+      <vellum-duplicates-dialog></vellum-duplicates-dialog>
       <vellum-dev-error></vellum-dev-error>
       <vellum-recommend></vellum-recommend>
       <vellum-toasts></vellum-toasts>
@@ -265,6 +374,11 @@ export class VellumShell extends LitElement {
         return html`<vellum-versions-page></vellum-versions-page>`;
       case "art":
         return html`<vellum-art-page></vellum-art-page>`;
+      case "library":
+        return html`<vellum-library-page
+          .editGame=${(g?: CustomGame) => this.editCustomGame(g)}
+          .reviewDuplicates=${() => this.reviewDuplicates()}
+        ></vellum-library-page>`;
       case "developer":
         return html`<vellum-developer-page></vellum-developer-page>`;
     }

@@ -47,7 +47,7 @@ pub struct ArtCandidate {
     pub size: Option<u64>,
 }
 
-const IMAGE_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "webp", "gif"];
+const IMAGE_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "webp", "gif", "ico"];
 const MAX_CANDIDATES: usize = 24;
 
 pub(crate) fn mtime_ms(m: &std::fs::Metadata) -> u64 {

@@ -2,20 +2,21 @@
   "id": "gog",
   "type": "provider",
   "name": "GOG",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "apiVersion": 1,
   "author": "Vellum",
   "description": "Installed GOG games, launched through GOG Galaxy or directly",
   "entry": "provider.js",
   "settings": [
-    { "id": "launchViaGalaxy", "label": "Launch through GOG Galaxy", "type": "toggle", "default": true }
+    { "id": "skipGalaxy", "label": "Skip Galaxy launch", "tooltip": "Runs the game's own program directly, so GOG Galaxy doesn't need to open. This works because GOG games are DRM-free. Turn this off to launch through Galaxy instead, which gives you its cloud saves and playtime tracking but opens Galaxy.", "type": "toggle", "default": true }
   ],
   "provider": {
     "locations": {
       "galaxy": {
         "label": "GOG Galaxy folder",
         "required": false,
-        "defaults": ["%ProgramFiles(x86)%\\GOG Galaxy"],
+        "registry": [{ "hive": "HKLM", "key": "SOFTWARE\\WOW6432Node\\GOG.com\\GalaxyClient\\paths", "value": "client" }],
+        "defaults": ["%ProgramFiles%\\GOG Galaxy", "%ProgramFiles(x86)%\\GOG Galaxy"],
         "validate": ["GalaxyClient.exe"]
       }
     },

@@ -1,6 +1,6 @@
 import { LitElement, css, html, nothing } from "lit";
 import type { UnlistenFn } from "@tauri-apps/api/event";
-import { api, browseForLocation, type LocationResolution, type PluginKind, type PluginView } from "../api";
+import { api, browseForLocation, type LocationResolution, type PluginKind, type PluginOption, type PluginView } from "../api";
 import { providerPermissions } from "../permissions";
 import { store } from "../store";
 import { controls, tokens } from "../theme";
@@ -72,6 +72,38 @@ export class PluginsPage extends LitElement {
     `;
   }
 
+  /** A provider's own options, as its manifest declares them. */
+  private renderOption(p: PluginView, o: PluginOption) {
+    const value = p.values[o.id];
+    const set = (v: unknown) => this.run(api.setProviderOption(p.id, o.id, v));
+    const label = `${p.name}: ${o.label}`;
+    switch (o.type) {
+      case "toggle":
+        return html`<label class="option" title=${o.tooltip ?? nothing}>
+          <input type="checkbox" data-option=${o.id} .checked=${value === true} @change=${(e: Event) => set((e.target as HTMLInputElement).checked)} />
+          <span>${o.label}</span>
+        </label>`;
+      case "select":
+        return html`<label class="option" title=${o.tooltip ?? nothing}>
+          <span>${o.label}</span>
+          <select data-option=${o.id} aria-label=${label} @change=${(e: Event) => set((e.target as HTMLSelectElement).value)}>
+            ${(o.choices ?? []).map((c) => html`<option value=${c.value} ?selected=${c.value === value}>${c.label}</option>`)}
+          </select>
+        </label>`;
+      case "range":
+        return html`<label class="option" title=${o.tooltip ?? nothing}>
+          <span>${o.label}</span>
+          <input type="number" data-option=${o.id} aria-label=${label} min=${o.min ?? nothing} max=${o.max ?? nothing} step=${o.step ?? nothing} .value=${String(value)} @change=${(e: Event) => set(Number((e.target as HTMLInputElement).value))} />
+        </label>`;
+      case "text":
+        return html`<label class="option text" title=${o.tooltip ?? nothing}>
+          <span>${o.label}</span>
+          <input type="text" spellcheck="false" data-option=${o.id} aria-label=${label} .value=${String(value ?? "")} @change=${(e: Event) => set((e.target as HTMLInputElement).value)} />
+        </label>`;
+    }
+    return nothing;
+  }
+
   private async refresh() {
     try {
       this.plugins = await api.listPlugins();
@@ -141,7 +173,11 @@ export class PluginsPage extends LitElement {
           </div>
           <div class="actions">${this.renderToggle(p, broken)}</div>
         </div>
-        ${p.kind === "provider" ? html`<div class="provider-runtime">${this.renderProviderStatus(p)}</div>` : nothing}
+        ${p.kind === "provider"
+          ? html`<div class="provider-runtime">
+              ${this.renderProviderStatus(p)} ${p.enabled ? p.options.map((o) => this.renderOption(p, o)) : nothing}
+            </div>`
+          : nothing}
         ${p.errors.length
           ? html`<ul class="issues error">
               ${p.errors.map((e) => html`<li>${e}</li>`)}
@@ -326,6 +362,36 @@ export class PluginsPage extends LitElement {
       }
       .provider-runtime {
         margin: 6px 0 0 48px;
+      }
+      .option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .option input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        flex: none;
+        accent-color: var(--v-accent);
+      }
+      .option input[type="text"] {
+        flex: 1;
+        min-width: 0;
+        max-width: 420px;
+        font-family: ui-monospace, Consolas, monospace !important;
+      }
+      .option input[type="number"],
+      .option input[type="text"],
+      .option select {
+        padding: 3px 6px;
+        font: inherit;
+        color: inherit;
+        background: var(--v-surface-raised);
+        border: 1px solid #2b3246;
+        border-radius: var(--v-radius);
       }
       .pstatus {
         font-size: 13px;

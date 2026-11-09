@@ -238,7 +238,7 @@ export class VellumPlayButton extends EntryElement {
         data-vellum-focus
         ?disabled=${!launchable.length}
         @click=${() => this.play()}
-        title=${preferred ? `Play via ${preferred.providerName}` : "Play"}
+        title=${e.askSource ? "Play: choose a store" : preferred ? `Play via ${preferred.providerName}` : "Play"}
       >
         <span part="icon" aria-hidden="true">▶</span> Play
       </button>

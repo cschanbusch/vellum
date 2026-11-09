@@ -239,7 +239,7 @@ Limits: 30 seconds per `scan` call and 256 MB of memory per runtime, enforced wi
 
 ### Scan scheduling
 
-On startup the host loads the last library snapshot from disk and shows it immediately, then runs all enabled providers in parallel and swaps in fresh results as each finishes. Files returned by `watch` are monitored; changes trigger a debounced (2 second) rescan of that provider only. A manual Refresh rescans everything.
+On startup the host loads the last library snapshot from disk and shows it immediately, then runs all enabled providers in parallel and swaps in fresh results as each finishes. A launch, install or uninstall rescans that provider, and a manual Refresh rescans everything. Store files aren't watched: the library doesn't change by itself while someone is browsing it (see docs/decisions.md, 2026-11-03).
 
 ## Store provider reference
 
@@ -284,17 +284,17 @@ Ship five providers: Steam, Epic, GOG, Custom and Mock. All read installed games
 
 ### GOG
 
-**Locations.** No required folder. Games are listed in the registry under `HKLM\SOFTWARE\WOW6432Node\GOG.com\Games\<gameId>` (values include `gameName`, `path`, `exe`). Each `path` is allowed as a derived location. Optional location `galaxy`: default `%ProgramFiles(x86)%\GOG Galaxy`, validate `GalaxyClient.exe`; if it is skipped, the provider still works.
+**Locations.** No required folder. Games are listed in the registry under `HKLM\SOFTWARE\WOW6432Node\GOG.com\Games\<gameId>` (values include `gameName`, `path`, `exe`, `launchParam`, `workingDir`, `dependsOn`). Each `path` is allowed as a derived location. Optional location `galaxy`: the registry's `HKLM\SOFTWARE\WOW6432Node\GOG.com\GalaxyClient\paths` `client` first, then `%ProgramFiles%\GOG Galaxy` and `%ProgramFiles(x86)%\GOG Galaxy`, validate `GalaxyClient.exe`; if it is skipped, the provider still works.
 
-**Installed games.** For each registry entry, read `<path>/goggame-<gameId>.info` (JSON) when present for the canonical `name` and `playTasks`; the primary task is the one with `isPrimary: true`.
+**Installed games.** For each registry entry whose folder exists, read `<path>/goggame-<gameId>.info` (JSON) when present for the canonical `name` and `playTasks`; the primary task is the one with `isPrimary: true` (the others are manuals and links). A `rootGameId` other than the game's own id, or a `dependsOn` value, marks DLC. Without a readable info file, the registry's values are used.
 
-**Actions.** If Galaxy was located and the provider setting "Launch through GOG Galaxy" is on (default on), run `GalaxyClient.exe /command=runGame /gameId=<gameId> /path="<path>"`. Otherwise run the primary play task's exe directly with its arguments and working directory. GOG games are DRM-free, so direct launch is valid.
+**Actions.** GOG games are DRM-free, so by default the primary play task's exe runs directly with its arguments and working directory, and Galaxy never opens. With the provider setting "Skip Galaxy launch" off, and Galaxy located, run `GalaxyClient.exe /command=runGame /gameId=<gameId> /path=<path>`, which adds Galaxy's cloud saves and playtime tracking.
 
-**Art.** Galaxy's local database (`%ProgramData%\GOG.com\Galaxy\storage\galaxy-2.0.db`) may hold image URLs; treat reading it as a later improvement that needs research. Until then, SteamGridDB and the placeholder.
+**Art.** `goggame-<gameId>.ico` from the game's folder as the icon. Galaxy's local database (`%ProgramData%\GOG.com\Galaxy\storage\galaxy-2.0.db`) may hold image URLs; treat reading it as a later improvement that needs research. Otherwise, SteamGridDB and the placeholder.
 
 ### Custom games
 
-For anything else: emulators, standalone exes, shortcuts. An **Add game** dialog in the shell collects title, exe, arguments, working directory and optional art files; entries are stored in this provider's settings. Paths the user picks through the host's file dialog become allowed paths for this provider. Launch uses `ctx.run`.
+For anything else: emulators, standalone exes, shortcuts. An **Add game** dialog in the shell (Settings → Library) collects the program or shortcut (`.exe`, `.lnk`, `.url`), title, arguments, working directory and optional art files; entries are stored in this provider's settings by shell commands that check each path. Each game's `installDir` is its program's folder, which is what lets `ctx.run` start it. Shortcuts open through the Windows shell and take no arguments. A file that has gone keeps its entry, labeled "Missing".
 
 ### Mock
 
@@ -319,12 +319,13 @@ The backend turns provider results into **entries**: one entry per game as the u
 
 ```ts
 interface Entry {
-  id: string;                  // id of the entry's primary game record, e.g. "steam:620"
+  id: string;                  // id of the entry's oldest game record, e.g. "steam:620"
   title: string;
   sortTitle: string;           // leading "The "/"A " moved, case-folded
   kind: "game" | "tool" | "dlc" | "other";
   sources: Source[];           // one per store record merged into this entry
   preferredSource: string;     // provider id used by launch()
+  askSource?: boolean;         // Play asks which store instead
   categories: { provider: string; name: string }[];  // store collections
   tags: string[];              // user tags (Vellum's own)
   favorite: boolean;
@@ -348,9 +349,11 @@ Game record ids are `<providerId>:<sourceId>`. All user data is keyed by game re
 
 ### Merging duplicates
 
-- Automatic: two records of `kind: "game"` from different providers merge when their normalized titles match exactly. Normalize by case-folding, removing ™ ® © and punctuation, and collapsing whitespace. Do not strip words such as "Edition" or "Remastered": a false merge is worse than a missed one.
-- Manual: the user can select entries and **Merge**, or **Unmerge** an entry. Manual choices are stored as overrides and always beat automatic matching. A setting turns automatic merging off.
-- The preferred source defaults to the first provider in a user-orderable provider priority list (default Steam, GOG, Epic, Custom). Each entry can override it, and launch UIs offer **Play via…** for the others.
+- Detection: two records of `kind: "game"` with no labels, from different providers, are duplicates when their normalized titles match exactly. Normalize by case-folding, removing ™ ® © and punctuation, and collapsing whitespace. Do not strip words such as "Edition" or "Remastered": a false match is worse than a missed one.
+- Nothing merges silently. A required dialog asks how each duplicate shows: one entry through a chosen store, one entry that asks which store on each Play, or separate entries marked with the store's name. A new copy of a decided game asks again. A setting can change the default to merging by store priority or keeping separate.
+- Manual: **Stores…** in the game menu changes the answer, separates one copy, or joins any two entries with **Merge with…** (one copy per store in an entry). Settings → Library offers **Review duplicates…**. Answers are stored as merge rules and always apply.
+- The first provider in a user-orderable priority list (default Steam, GOG, Epic, Custom) is the store suggested in the dialog. Launch UIs offer **Play via…** for the others.
+- An entry's id is its oldest record (earliest first seen), so changing store or adding a copy doesn't move it; any record id still finds the entry. Writes go to every record in the entry, including disabled providers', and reads combine them, so unmerging or disabling loses nothing.
 
 ### Last launched
 
@@ -367,7 +370,7 @@ Data lives in `%APPDATA%\Vellum\`, or in `data\` beside the exe when `portable.f
 | File | Contents |
 | --- | --- |
 | `settings.json` | App settings, plugin enabled states and settings, resolved locations, view order and hotkeys, active skin and its option values |
-| `userdata.json` | Per game record: favorite, hidden, tags, last launched, notes, art overrides, preferred source; merge overrides |
+| `userdata.json` | Per game record: favorite, hidden, tags, last launched, notes, art overrides; merge rules and which records have been decided |
 | `library-cache.json` | Last library snapshot, for instant startup |
 | `cache/art/`, `cache/metadata/` | Downloaded and resized art; fetched metadata |
 | `logs/` | Rolling logs, 7 days |

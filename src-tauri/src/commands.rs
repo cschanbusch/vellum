@@ -5,13 +5,13 @@ use serde::Serialize;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager, State};
 
-use crate::library::Entry;
+use crate::library::{merge, Entry};
 use crate::plugins::{PluginKind, PluginRecord, API_VERSION};
 use crate::scanner::{self, Action, ActionResult, Notice, ProviderStatus};
 use crate::userdata::games::GameUserData;
-use crate::userdata::settings::{Settings, UiSettings};
+use crate::userdata::settings::{LibrarySettings, OnDuplicate, Settings, UiSettings};
 use crate::skins::{self, SkinInfo};
-use crate::{catalog, platform, versions, AppState, APP_NAME, APP_VERSION, EVENT_PLUGINS_CHANGED};
+use crate::{catalog, custom_games, platform, versions, AppState, APP_NAME, APP_VERSION, EVENT_PLUGINS_CHANGED};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -59,11 +59,26 @@ pub struct PluginView {
     warnings: Vec<String>,
     /// The manifest's type section; the page derives declared permissions from it.
     section: Value,
+    /// The options the manifest declares, and each one's value now.
+    options: Vec<Value>,
+    values: serde_json::Map<String, Value>,
 }
 
 fn view(rec: &PluginRecord, settings: &Settings) -> PluginView {
     let m = rec.manifest.as_ref();
+    let options = m.map(|m| m.settings.clone()).unwrap_or_default();
+    let saved = if rec.kind == PluginKind::Provider { settings.plugins.providers.get(&rec.id) } else { None };
+    let values = options
+        .iter()
+        .filter_map(|o| {
+            let id = o.get("id")?.as_str()?;
+            let value = saved.and_then(|e| e.values.get(id)).or_else(|| o.get("default"))?;
+            Some((id.to_string(), value.clone()))
+        })
+        .collect();
     PluginView {
+        options,
+        values,
         id: rec.id.clone(),
         kind: rec.kind,
         name: rec.name.clone(),
@@ -123,6 +138,25 @@ pub fn set_plugin_enabled(
             scanner::deactivate(&app, &id);
         }
     }
+    let _ = app.emit(EVENT_PLUGINS_CHANGED, ());
+    Ok(())
+}
+
+/// Changes one of a provider's options (Settings → Plugins) and rescans, as some affect the scan.
+/// Launch options apply from the next launch: every provider call reads the saved values.
+#[tauri::command]
+pub fn set_provider_option(app: AppHandle, state: State<AppState>, id: String, key: String, value: Value) -> Result<(), String> {
+    let declared = {
+        let plugins = state.plugins.read().unwrap();
+        let rec = plugins.iter().find(|p| p.kind == PluginKind::Provider && p.id == id && p.is_valid()).ok_or("No such provider.")?;
+        rec.manifest.as_ref().map(|m| m.settings.clone()).unwrap_or_default()
+    };
+    crate::providers::model::check_setting(&declared, &key, &value)?;
+    state.settings.update(|s| {
+        s.plugins.providers.entry(id.clone()).or_default().values.insert(key.clone(), value);
+    });
+    tracing::info!(provider = %id, %key, "provider option changed");
+    scanner::spawn_scan(&app, id);
     let _ = app.emit(EVENT_PLUGINS_CHANGED, ());
     Ok(())
 }
@@ -201,11 +235,14 @@ pub fn open_data_folder(state: State<AppState>) -> Result<(), String> {
 
 /// Applies a change to one game's user data and returns the updated entry. The shell pushes
 /// that entry to the skin itself, so no full library reload is needed.
-fn update_game(state: &AppState, entry_id: &str, f: impl FnOnce(&mut GameUserData)) -> Result<Entry, String> {
-    if state.entry(entry_id).is_none() {
-        return Err("That game is no longer in the library.".into());
-    }
-    state.userdata.update(|ud| f(ud.games.entry(entry_id.to_string()).or_default()));
+fn update_game(state: &AppState, entry_id: &str, f: impl Fn(&mut GameUserData)) -> Result<Entry, String> {
+    let records = state.group_records(entry_id).ok_or("That game is no longer in the library.")?;
+    state.userdata.update(|ud| {
+        // Every copy, so the entry reads the same after an unmerge or with a store turned off.
+        for r in records {
+            f(ud.games.entry(r).or_default());
+        }
+    });
     state.entry(entry_id).ok_or_else(|| "That game is no longer in the library.".into())
 }
 
@@ -222,7 +259,8 @@ pub fn set_hidden(state: State<AppState>, entry_id: String, hidden: bool) -> Res
 /// Tags are trimmed, de-duplicated case-insensitively, at most 40 characters, 32 per game.
 #[tauri::command(async)]
 pub fn set_tags(state: State<AppState>, entry_id: String, tags: Vec<String>) -> Result<Entry, String> {
-    update_game(&state, &entry_id, |g| g.tags = clean_tags(tags))
+    let tags = clean_tags(tags);
+    update_game(&state, &entry_id, |g| g.tags = tags.clone())
 }
 
 pub fn clean_tags(tags: Vec<String>) -> Vec<String> {
@@ -604,4 +642,201 @@ pub fn set_art_override(app: AppHandle, state: State<AppState>, entry_id: String
 #[tauri::command(async)]
 pub fn set_art_override_file(state: State<AppState>, entry_id: String, kind: String, path: String) -> Result<Entry, String> {
     crate::net::choices::set_file(&state, &entry_id, &kind, &path)
+}
+
+// ---- launch options (the game menu's Launch options…; a provider's `gameSettings`) -----------
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GameSettingsView {
+    provider_name: String,
+    title: String,
+    options: Vec<Value>,
+    values: serde_json::Map<String, Value>,
+}
+
+/// The record of `entry_id` that comes from `provider`, and that provider's spec.
+fn copy_of(state: &AppState, entry_id: &str, provider: &str) -> Result<(String, String, crate::providers::model::ProviderSpec), String> {
+    let (record, title) = state
+        .with_groups(|g, _| {
+            let rec = g.shown(entry_id)?.records.iter().find(|r| r.provider == provider)?;
+            Some((rec.id.clone(), rec.game.title.clone()))
+        })
+        .ok_or("That game is no longer in the library.")?;
+    let spec = state.provider_spec(provider).ok_or("That provider is not enabled.")?;
+    if spec.game_settings.is_empty() {
+        return Err(format!("{} has no launch options.", spec.name));
+    }
+    Ok((record, title, spec))
+}
+
+#[tauri::command(async)]
+pub fn game_settings(state: State<AppState>, entry_id: String, provider: String) -> Result<GameSettingsView, String> {
+    let (record, title, spec) = copy_of(&state, &entry_id, &provider)?;
+    let mut values = spec.game_values.clone();
+    values.extend(state.userdata.read(|ud| ud.games.get(&record).map(|g| g.launch_options.clone()).unwrap_or_default()));
+    Ok(GameSettingsView { provider_name: spec.name, title, options: spec.game_settings, values })
+}
+
+/// Saves one copy's launch options. They apply from its next launch; nothing is redrawn.
+#[tauri::command(async)]
+pub fn set_game_settings(state: State<AppState>, entry_id: String, provider: String, values: serde_json::Map<String, Value>) -> Result<(), String> {
+    let (record, _, spec) = copy_of(&state, &entry_id, &provider)?;
+    for (k, v) in &values {
+        crate::providers::model::check_setting(&spec.game_settings, k, v)?;
+    }
+    let kept: serde_json::Map<String, Value> = values.into_iter().filter(|(k, v)| spec.game_values.get(k) != Some(v)).collect();
+    tracing::info!(%record, options = kept.len(), "launch options changed");
+    state.userdata.update(|ud| ud.games.entry(record).or_default().launch_options = kept);
+    Ok(())
+}
+
+// ---- duplicates and merging (the duplicates and Stores dialogs; see library/merge.rs) ------
+
+/// Duplicates to show: with `all`, every one (Review duplicates…); otherwise those waiting for
+/// an answer, and none at all when the setting says not to ask.
+#[tauri::command(async)]
+pub fn duplicates(state: State<AppState>, all: bool) -> Vec<merge::DuplicateView> {
+    let active = state.active_providers();
+    let lib = state.settings.read(|s| s.library.clone());
+    let mut found = state.with_groups(|g, ud| merge::duplicates(g, ud, &lib, &|p| active.contains(p)));
+    for d in &mut found {
+        d.suggest_separate = d.copies.iter().any(|c| state.provider_spec(&c.provider).is_some_and(|s| s.separate_duplicates));
+    }
+    if !all {
+        found.retain(|d| d.pending);
+        if lib.on_duplicate != OnDuplicate::Ask {
+            found.clear();
+        }
+    }
+    found
+}
+
+#[derive(serde::Deserialize)]
+pub struct DuplicateChoice {
+    records: Vec<String>,
+    mode: merge::ChoiceMode,
+    preferred: Option<String>,
+}
+
+fn library_changed(app: &AppHandle) {
+    let _ = app.emit(scanner::EVENT_LIBRARY_CHANGED, ());
+    crate::net::sweep(app); // an entry's id or sources may have changed what its art needs
+}
+
+/// The answers from the duplicates dialog. Checked first, so a bad row changes nothing.
+#[tauri::command(async)]
+pub fn resolve_duplicates(app: AppHandle, state: State<AppState>, choices: Vec<DuplicateChoice>) -> Result<(), String> {
+    let known = |id: &str| state.library.read(|snap| crate::library::find(snap, id).is_some());
+    for c in &choices {
+        if c.mode != merge::ChoiceMode::Separate && !merge::distinct_providers(&c.records) {
+            return Err("One entry can hold only one copy per store.".into());
+        }
+        if !c.records.iter().all(|r| known(r)) {
+            return Err("That game is no longer in the library.".into());
+        }
+    }
+    state.userdata.update(|ud| {
+        for c in &choices {
+            merge::apply_choice(ud, &c.records, c.mode, c.preferred.as_deref());
+        }
+    });
+    tracing::info!(answers = choices.len(), "duplicates resolved");
+    library_changed(&app);
+    Ok(())
+}
+
+/// The Stores dialog's choice for an entry: which store Play uses, ask each time, or separate.
+#[tauri::command(async)]
+pub fn set_source_choice(app: AppHandle, state: State<AppState>, entry_id: String, mode: merge::ChoiceMode, preferred: Option<String>) -> Result<(), String> {
+    let records = state.group_records(&entry_id).ok_or("That game is no longer in the library.")?;
+    state.userdata.update(|ud| merge::apply_choice(ud, &records, mode, preferred.as_deref()));
+    library_changed(&app);
+    Ok(())
+}
+
+/// Merge with…: joins two entries, whatever their titles. The first keeps its preferred store.
+#[tauri::command(async)]
+pub fn merge_entries(app: AppHandle, state: State<AppState>, entry_id: String, other_id: String) -> Result<Entry, String> {
+    let (a, b, preferred) = state.with_groups(|g, _| {
+        let (a, b) = (g.shown(&entry_id)?, g.shown(&other_id)?);
+        let ids = |x: &merge::Group| x.all_ids().map(str::to_string).collect::<Vec<_>>();
+        Some((ids(a), ids(b), a.preferred()?.provider.to_string()))
+    })
+    .ok_or("That game is no longer in the library.")?;
+    if a.iter().any(|r| b.contains(r)) {
+        return Err("Those are already one entry.".into());
+    }
+    let records: Vec<String> = a.into_iter().chain(b).collect();
+    if !merge::distinct_providers(&records) {
+        return Err("One entry can hold only one copy per store, and both of these have a copy on the same one.".into());
+    }
+    state.userdata.update(|ud| merge::apply_choice(ud, &records, merge::ChoiceMode::One, Some(&preferred)));
+    library_changed(&app);
+    state.entry(&entry_id).ok_or_else(|| "That game is no longer in the library.".into())
+}
+
+/// Takes one copy out of an entry; the others stay together with the same choice.
+#[tauri::command(async)]
+pub fn separate_source(app: AppHandle, state: State<AppState>, entry_id: String, record: String) -> Result<(), String> {
+    let (records, mode, preferred) = state
+        .with_groups(|g, _| {
+            let group = g.shown(&entry_id)?;
+            let mode = if group.ask { merge::ChoiceMode::Ask } else { merge::ChoiceMode::One };
+            Some((group.all_ids().map(str::to_string).collect::<Vec<_>>(), mode, group.preferred()?.provider.to_string()))
+        })
+        .ok_or("That game is no longer in the library.")?;
+    if !records.contains(&record) {
+        return Err("That copy isn't part of this entry.".into());
+    }
+    state.userdata.update(|ud| merge::separate(ud, &records, &record, mode, Some(&preferred)));
+    library_changed(&app);
+    Ok(())
+}
+
+#[tauri::command(async)]
+pub fn library_settings(state: State<AppState>) -> LibrarySettings {
+    state.settings.read(|s| s.library.clone())
+}
+
+/// Changes Settings → Library, then redraws: the priority list can change an entry's store.
+#[tauri::command(async)]
+pub fn set_library_settings(app: AppHandle, state: State<AppState>, patch: Value) -> Result<LibrarySettings, String> {
+    let next = state.settings.update(|s| s.library.apply_patch(&patch).map(|()| s.library.clone()))?;
+    tracing::info!(%patch, "library settings changed");
+    library_changed(&app);
+    Ok(next)
+}
+
+// ---- hand-added games (Settings → Library, the game menu; see custom_games.rs) ------------
+
+#[tauri::command(async)]
+pub fn custom_games(state: State<AppState>) -> Vec<custom_games::CustomGame> {
+    state.settings.read(custom_games::list)
+}
+
+/// Adds or edits a game and rescans, so the returned record id is in the library straight away
+/// (the shell then attaches any art the dialog collected).
+#[tauri::command(async)]
+pub fn custom_game_save(app: AppHandle, state: State<AppState>, game: custom_games::CustomGame) -> Result<String, String> {
+    if state.provider_spec(custom_games::PROVIDER).is_none() {
+        return Err("Turn on the Custom games provider first (Settings → Plugins).".into());
+    }
+    let game = custom_games::validate(game)?;
+    let id = state.settings.update(|s| custom_games::upsert(s, game))?;
+    tracing::info!(%id, "custom game saved");
+    scanner::scan_one(&app, custom_games::PROVIDER);
+    Ok(crate::library::record_id(custom_games::PROVIDER, &id))
+}
+
+/// Removes a game for good, along with what the user recorded about it.
+#[tauri::command(async)]
+pub fn custom_game_remove(app: AppHandle, state: State<AppState>, id: String) -> Result<(), String> {
+    if !state.settings.update(|s| custom_games::remove(s, &id)) {
+        return Err("That game is no longer in the list.".into());
+    }
+    state.userdata.update(|ud| ud.games.remove(&crate::library::record_id(custom_games::PROVIDER, &id)));
+    tracing::info!(%id, "custom game removed");
+    scanner::scan_one(&app, custom_games::PROVIDER);
+    Ok(())
 }

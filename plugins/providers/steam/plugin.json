@@ -8,8 +8,8 @@
   "description": "Installed games from Steam",
   "entry": "provider.js",
   "settings": [
-    { "id": "respectHidden", "label": "Respect Steam's hidden collection", "type": "toggle", "default": true },
-    { "id": "silentLaunch", "label": "Start games without opening Steam's window", "type": "toggle", "default": true }
+    { "id": "respectHidden", "label": "Respect Steam's hidden collection", "tooltip": "Games you've hidden in Steam start out hidden here too, so they stay out of the way. You can still show or hide any game yourself in Vellum.", "type": "toggle", "default": true },
+    { "id": "silentLaunch", "label": "Open silently", "tooltip": "Starts the game with Steam in the background, so Steam's window doesn't come up over your library. Steam itself still runs, because its games need it. Turn this off if you want Steam's window to open.", "type": "toggle", "default": true }
   ],
   "provider": {
     "locations": {

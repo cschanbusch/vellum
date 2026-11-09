@@ -1,0 +1,90 @@
+{
+  "id": "pcsx2",
+  "type": "provider",
+  "name": "PCSX2",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "author": "Vellum",
+  "description": "PlayStation 2 games from PCSX2's game list, launched in PCSX2",
+  "entry": "provider.js",
+  "settings": [
+    { "id": "fullscreen", "label": "Fullscreen", "tooltip": "Starts games fullscreen. Turn this off to play in a window; PCSX2's own fullscreen setting is then overridden too.", "type": "toggle", "default": true },
+    { "id": "noGui", "label": "Hide PCSX2's window", "tooltip": "Starts the game without PCSX2's game list, and closes PCSX2 when you quit the game, so you come straight back to Vellum. Turn this off to keep PCSX2's main window open alongside the game.", "type": "toggle", "default": true },
+    { "id": "fastBoot", "label": "Fast boot", "tooltip": "Skips the PlayStation 2 start-up screens and goes straight to the game. A few games only work with the full boot: turn it off here, or for just those games in their Launch options.", "type": "toggle", "default": true },
+    { "id": "extraArgs", "label": "Extra arguments", "tooltip": "More PCSX2 command-line options for every game, separated by spaces, such as -bigpicture. Use double quotes around a value with spaces. They go before the game's file.", "type": "text", "default": "" },
+    {
+      "id": "onlineCovers",
+      "label": "Online covers",
+      "tooltip": "Covers for games PCSX2 has no cover for are fetched by serial from the community cover set PCSX2's own cover downloader uses. Flat is the front of the case; 3D is a rendered box. Off uses only PCSX2's covers folder and SteamGridDB.",
+      "type": "select",
+      "default": "flat",
+      "choices": [
+        { "value": "flat", "label": "Flat" },
+        { "value": "3d", "label": "3D box" },
+        { "value": "off", "label": "Off" }
+      ]
+    }
+  ],
+  "provider": {
+    "locations": {
+      "install": {
+        "label": "PCSX2 folder",
+        "required": false,
+        "registry": [
+          { "hive": "HKLM", "key": "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{13CEE6E5-8EB3-47D3-882E-E9DBB6A3251C}}_is1", "value": "InstallLocation" },
+          { "hive": "HKCU", "key": "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{13CEE6E5-8EB3-47D3-882E-E9DBB6A3251C}}_is1", "value": "InstallLocation" }
+        ],
+        "defaults": ["%ProgramFiles%\\PCSX2", "%SystemDrive%\\PCSX2", "%LOCALAPPDATA%\\Programs\\PCSX2"],
+        "validate": ["pcsx2-qt.exe"]
+      },
+      "data": {
+        "label": "PCSX2 data folder",
+        "required": false,
+        "defaults": ["%USERPROFILE%\\Documents\\PCSX2"],
+        "validate": ["inis/PCSX2.ini"]
+      }
+    },
+    "derivedLocations": true,
+    "artHosts": ["raw.githubusercontent.com"],
+    "capabilities": ["launch"],
+    "duplicates": "separate",
+    "gameSettings": [
+      {
+        "id": "fullscreen",
+        "label": "Fullscreen",
+        "type": "select",
+        "default": "default",
+        "choices": [
+          { "value": "default", "label": "As set for PCSX2" },
+          { "value": "on", "label": "On" },
+          { "value": "off", "label": "Off (in a window)" }
+        ]
+      },
+      {
+        "id": "noGui",
+        "label": "Hide PCSX2's window",
+        "tooltip": "On starts the game without PCSX2's game list and closes PCSX2 when the game ends.",
+        "type": "select",
+        "default": "default",
+        "choices": [
+          { "value": "default", "label": "As set for PCSX2" },
+          { "value": "on", "label": "On" },
+          { "value": "off", "label": "Off" }
+        ]
+      },
+      {
+        "id": "fastBoot",
+        "label": "Fast boot",
+        "tooltip": "Off plays the PlayStation 2 start-up screens first, which a few games need.",
+        "type": "select",
+        "default": "default",
+        "choices": [
+          { "value": "default", "label": "As set for PCSX2" },
+          { "value": "on", "label": "On" },
+          { "value": "off", "label": "Off (full boot)" }
+        ]
+      },
+      { "id": "args", "label": "Extra arguments", "tooltip": "PCSX2 command-line options for this game only, added after the ones set for PCSX2. For example -gamecfg <file> for a settings file. Use double quotes around a value with spaces.", "type": "text", "default": "" }
+    ]
+  }
+}

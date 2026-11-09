@@ -15,11 +15,16 @@ anywhere.
 ## What it does today
 
 - **One library across stores.** Installed games from Steam (every library folder, every account
-  on the PC, collections, demos and soundtracks told apart) and the Epic Games Launcher. Store
-  metadata (developer, genres, release date) and Steam playtime are read from the stores' local
-  caches. GOG Galaxy and custom entries are planned; their providers are placeholders for now.
-- **Launch through the store.** Play (and, where the store supports them, its own actions such as
-  properties or uninstall) is handed to the store's client. Vellum records when you last launched each game.
+  on the PC, collections, demos and soundtracks told apart), the Epic Games Launcher and GOG, plus
+  any program or shortcut you add by hand. Store metadata (developer, genres, release date) and
+  Steam playtime are read from the stores' local caches.
+- **You decide about duplicates.** A game on two stores never merges by itself: Vellum asks whether
+  it should be one entry through a store you pick, one entry that asks each time, or separate entries
+  marked by store. You can change that later, or join any two games by hand.
+- **Launchers stay out of the way.** Steam and Epic games open silently, and GOG games run without
+  starting Galaxy at all. Each has an option in Settings → Plugins, and Play (and, where the store
+  supports them, its own actions such as uninstall) still goes through the store where it has to.
+  Vellum records when you last launched each game.
 - **Skins change everything visual.** A skin is a folder of plain HTML, CSS and JavaScript: layout,
   typography, how art is used, animation, sound, even the window frame. No rebuild of the app is
   needed, and a dev harness runs a skin in a browser with a mock library.
@@ -66,8 +71,8 @@ Vellum needs no installer and no admin rights.
    **Not `Program Files`:** Vellum installs updates into its own folder, which Program Files
    doesn't allow without admin rights.
 4. Run **`Vellum Game Launcher.exe`** in the top of the extracted `Vellum` folder (the app itself
-   lives in `versions\<version>\`; always start it from the top). Steam and Epic are found
-   automatically; if a store is installed somewhere unusual, Vellum asks you to point at it.
+   lives in `versions\<version>\`; always start it from the top). Steam, Epic and GOG are found
+   automatically; if Steam or Epic is installed somewhere unusual, Vellum asks you to point at it.
 
 **Requirements:** Windows 10 or 11 (64-bit) and Microsoft's WebView2 runtime, which Windows 11
 includes and nearly every Windows 10 PC already has through Edge. If it's missing, Vellum says so
@@ -99,8 +104,9 @@ by WebView2, compiled into one exe. Everything else is a plugin folder beside it
 Providers know nothing about skins, and skins know nothing about stores: a skin sees one merged
 library with art URLs on its own origin. The full specification is
 [vellum_design_overview.md](vellum_design_overview.md); choices made while building it are in
-[docs/decisions.md](docs/decisions.md), and skin authors start with
-[docs/skin-authoring.md](docs/skin-authoring.md).
+[docs/decisions.md](docs/decisions.md). Skin authors start with
+[docs/skin-authoring.md](docs/skin-authoring.md), and provider authors with
+[docs/provider-authoring.md](docs/provider-authoring.md).
 
 ### Current design state
 
@@ -109,7 +115,7 @@ library with art URLs on its own origin. The full specification is
 | Plugin discovery, manifests, settings, portable mode, logging | Done |
 | Provider host (QuickJS), location detection and prompts, `--diagnose` | Done |
 | Steam and Epic providers | Done (installed games; local metadata; Steam playtime) |
-| GOG and custom-games providers | Planned (Phase 5; placeholders for now) |
+| GOG and custom-games providers | Done (Phase 5) |
 | Modules (Quick Launch, Random Pick) | Planned (Phase 6; placeholders for now) |
 | Version management from GitHub releases | Done |
 | Skin catalog (Settings → Get skins, from `vellum-skins`) | Done (0.2.1) |
@@ -118,7 +124,7 @@ library with art URLs on its own origin. The full specification is
 | Views: List, Covers (shelves), Spotlight, and skin-defined views with placement and hotkeys | Done |
 | Art pipeline: local candidates, resizing, caching, placeholders, art styles | Done |
 | Remote art (Steam CDN, SteamGridDB), Change art dialog, Steam store details | Done (Phase 4) |
-| Merging one game owned on several stores | Planned (Phase 5) |
+| Games on several stores: the duplicate prompt, store choice, merging and separating | Done (Phase 5) |
 | Controller input, couch mode polish, `.vplugin` install, global hotkeys | Partly done (Phase 6) |
 | Further stores (Ubisoft Connect, Battle.net, EA app, Xbox) | Planned (Phase 7) |
 

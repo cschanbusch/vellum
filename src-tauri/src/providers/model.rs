@@ -67,6 +67,27 @@ pub struct ProviderGame {
     pub last_played: Option<String>,
 }
 
+/// Checks a value for one of a plugin's declared `settings`: only declared options can be set, and
+/// only to a value of their kind. That also keeps data a provider stores in its values (the custom
+/// provider's games) out of reach of this path.
+pub fn check_setting(declared: &[Value], key: &str, value: &Value) -> Result<(), String> {
+    let opt = declared.iter().find(|o| o.get("id").and_then(Value::as_str) == Some(key)).ok_or_else(|| format!("Unknown option {key:?}."))?;
+    let ok = match opt.get("type").and_then(Value::as_str) {
+        Some("toggle") => value.is_boolean(),
+        Some("text") => value.as_str().is_some_and(|t| t.chars().count() <= 2000),
+        Some("select") => opt.get("choices").and_then(Value::as_array).is_some_and(|c| c.iter().any(|x| x.get("value") == Some(value))),
+        Some("range") => value.as_f64().is_some_and(|v| {
+            opt.get("min").and_then(Value::as_f64).is_none_or(|m| v >= m) && opt.get("max").and_then(Value::as_f64).is_none_or(|m| v <= m)
+        }),
+        _ => false,
+    };
+    if ok {
+        Ok(())
+    } else {
+        Err(format!("That isn't a valid value for {key:?}."))
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct ScanResult {
     pub games: Vec<ProviderGame>,
@@ -121,6 +142,25 @@ pub struct ProviderSpec {
     pub deny_files: Vec<String>,
     /// Manifest defaults overlaid with saved values.
     pub settings: Map<String, Value>,
+    /// Per-game options (`provider.gameSettings`), edited from the game menu's Launch options.
+    pub game_settings: Vec<Value>,
+    /// `ctx.gameSettings` for this call: the defaults, overlaid with the game's saved values at
+    /// launch.
+    pub game_values: Map<String, Value>,
+    /// The duplicates dialog suggests separate entries for this provider's games (an emulator's
+    /// game is usually a different product from a store game of the same name).
+    pub separate_duplicates: bool,
+}
+
+/// Each option's `default`, by id.
+pub fn defaults(options: &[Value]) -> Map<String, Value> {
+    let mut out = Map::new();
+    for opt in options {
+        if let (Some(id), Some(default)) = (opt.get("id").and_then(Value::as_str), opt.get("default")) {
+            out.insert(id.to_string(), default.clone());
+        }
+    }
+    out
 }
 
 fn strings(section: &Value, key: &str) -> Vec<String> {
@@ -136,14 +176,15 @@ impl ProviderSpec {
     pub fn from_record(rec: &PluginRecord, saved: &Map<String, Value>) -> Option<Self> {
         let m = rec.manifest.as_ref().filter(|m| m.kind == crate::plugins::PluginKind::Provider)?;
         let s = &m.section;
-        let mut settings = Map::new();
-        for opt in &m.settings {
-            if let (Some(id), Some(default)) = (opt.get("id").and_then(Value::as_str), opt.get("default")) {
-                settings.insert(id.to_string(), default.clone());
-            }
-        }
+        let mut settings = defaults(&m.settings);
         for (k, v) in saved {
             settings.insert(k.clone(), v.clone());
+        }
+        let game_settings = s.get("gameSettings").and_then(Value::as_array).cloned().unwrap_or_default();
+        let mut capabilities = strings(s, "capabilities");
+        // Entries carry their store's capabilities, so this tells the game menu to offer the dialog.
+        if !game_settings.is_empty() && !capabilities.iter().any(|c| c == "launchOptions") {
+            capabilities.push("launchOptions".into());
         }
         Some(ProviderSpec {
             id: m.id.clone(),
@@ -155,9 +196,12 @@ impl ProviderSpec {
             registry_read: strings(s, "registryRead"),
             uri_schemes: strings(s, "uriSchemes"),
             art_hosts: strings(s, "artHosts"),
-            capabilities: strings(s, "capabilities"),
+            capabilities,
             deny_files: strings(s, "denyFiles"),
             settings,
+            game_values: defaults(&game_settings),
+            game_settings,
+            separate_duplicates: s.get("duplicates").and_then(Value::as_str) == Some("separate"),
         })
     }
 
@@ -170,6 +214,24 @@ impl ProviderSpec {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn only_declared_settings_with_fitting_values_can_be_set() {
+        let declared = [
+            json!({ "id": "silent", "type": "toggle", "default": true }),
+            json!({ "id": "count", "type": "range", "min": 10, "max": 50, "default": 20 }),
+            json!({ "id": "mode", "type": "select", "default": "a", "choices": [{ "value": "a", "label": "A" }] }),
+            json!({ "id": "tint", "type": "color", "default": "#000" }),
+        ];
+        assert!(check_setting(&declared, "silent", &json!(false)).is_ok());
+        assert!(check_setting(&declared, "silent", &json!("no")).is_err());
+        assert!(check_setting(&declared, "count", &json!(50)).is_ok());
+        assert!(check_setting(&declared, "count", &json!(51)).is_err());
+        assert!(check_setting(&declared, "mode", &json!("a")).is_ok());
+        assert!(check_setting(&declared, "mode", &json!("b")).is_err());
+        assert!(check_setting(&declared, "tint", &json!("#fff")).is_err(), "the page doesn't offer this type");
+        assert!(check_setting(&declared, "games", &json!([])).is_err(), "undeclared: the custom provider's list stays safe");
+    }
 
     #[test]
     fn scan_results_are_validated_per_game() {

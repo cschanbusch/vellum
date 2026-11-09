@@ -1,17 +1,19 @@
-//! Scan scheduling, provider status, location prompts, file watching and actions.
+//! Scan scheduling, provider status, location prompts and actions.
 //!
 //! Startup shows the last snapshot immediately, then every enabled provider scans on its own
 //! thread and its results replace its part of the library as soon as it finishes. A provider
 //! that throws or times out keeps its previous results and gets an error status; nothing
 //! else is affected.
+//!
+//! Scans follow the player, never the stores: at startup, on a refresh, after a change in
+//! settings, and after a launch, install or uninstall. Store files aren't watched, because a
+//! library that redraws by itself while someone is browsing it is jarring.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
-use notify_debouncer_mini::notify::{RecommendedWatcher, RecursiveMode};
-use notify_debouncer_mini::{new_debouncer, DebounceEventResult, Debouncer};
 use serde::Serialize;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager};
@@ -21,13 +23,12 @@ use crate::plugins::PluginKind;
 use crate::providers::host::{self, HostError, Invocation, Method};
 use crate::providers::locations::{self, Resolution};
 use crate::providers::model::{parse_scan, ProviderSpec};
-use crate::providers::scope::{glob_match, Scope};
+use crate::providers::scope::Scope;
 use crate::util::now_iso;
 use crate::AppState;
 
 pub const EVENT_LIBRARY_CHANGED: &str = "vellum://library-changed";
 pub const EVENT_PROVIDERS_CHANGED: &str = "vellum://providers-changed";
-const WATCH_DEBOUNCE: Duration = Duration::from_secs(2);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -103,7 +104,6 @@ pub struct Notices {
 pub struct Runtime {
     pub providers: Mutex<HashMap<String, ProviderRuntime>>,
     pub notices: Mutex<Notices>,
-    watchers: Mutex<HashMap<String, Debouncer<RecommendedWatcher>>>,
 }
 
 fn notice_id(provider: &str, key: &str) -> String {
@@ -147,11 +147,31 @@ impl AppState {
     pub fn entries(&self) -> Vec<library::Entry> {
         let active = self.active_providers();
         let view = crate::net::NetView::new(self);
-        self.library.read(|snap| self.userdata.read(|ud| library::build_entries(snap, ud, &|p| active.contains(p), &view)))
+        let lib = self.settings.read(|s| s.library.clone());
+        self.library.read(|snap| self.userdata.read(|ud| library::build_entries(snap, ud, &lib, &|p| active.contains(p), &view)))
     }
 
+    /// The entry holding a record: any of its record ids finds it, so old ids keep working.
     pub fn entry(&self, id: &str) -> Option<library::Entry> {
-        self.entries().into_iter().find(|e| e.id == id)
+        let want = self.with_groups(|g, _| g.shown(id).map(|x| x.id.clone()))?;
+        self.entries().into_iter().find(|e| e.id == want)
+    }
+
+    /// Runs `f` with the current groups and user data, holding the library and user data locks.
+    pub fn with_groups<R>(&self, f: impl FnOnce(&library::merge::Groups, &crate::userdata::games::UserData) -> R) -> R {
+        let active = self.active_providers();
+        let lib = self.settings.read(|s| s.library.clone());
+        self.library.read(|snap| {
+            self.userdata.read(|ud| {
+                let groups = library::merge::groups(snap, ud, &lib, &|p| active.contains(p));
+                f(&groups, ud)
+            })
+        })
+    }
+
+    /// Every record of the shown entry holding `id`, including disabled providers' copies.
+    pub fn group_records(&self, id: &str) -> Option<Vec<String>> {
+        self.with_groups(|g, _| g.shown(id).map(|x| x.all_ids().map(str::to_string).collect()))
     }
 
     pub fn provider_statuses(&self) -> Vec<ProviderStatus> {
@@ -255,7 +275,6 @@ pub fn scan_one(app: &AppHandle, id: &str) {
             r.status.locations = resolutions;
             r.locations.clear();
         });
-        stop_watch(&state, id);
         emit_providers(app);
         emit_library(app);
         return;
@@ -283,8 +302,7 @@ pub fn scan_one(app: &AppHandle, id: &str) {
             state.userdata.update(|ud| {
                 library::note_first_seen(ud, id, &scan.games, &now);
             });
-            // Watched store files change often (Steam rewrites its config while games run); a
-            // rescan that finds the same games isn't a library change, so views aren't redrawn.
+            // A rescan that finds the same games isn't a library change, so views aren't redrawn.
             let changed = state.library.read(|snap| match snap.providers.get(id) {
                 Some(prev) => prev.games != scan.games || prev.provider_name != spec.name || prev.capabilities != spec.capabilities,
                 None => true,
@@ -320,9 +338,6 @@ pub fn scan_one(app: &AppHandle, id: &str) {
             refresh_art(app, &spec, &games, generation);
             // Downloads, lookups and store details for whatever the candidates leave missing.
             crate::net::sweep(app);
-            if spec.can("watch") {
-                start_watch(app, &spec);
-            }
         }
         Err(e) => {
             tracing::error!(provider = id, error = %e, "scan failed");
@@ -400,75 +415,9 @@ fn refresh_art(app: &AppHandle, spec: &ProviderSpec, games: &[crate::providers::
     }
 }
 
-/// Watches the files a provider names in `watch()`; changes trigger a debounced rescan of
-/// that provider only.
-fn start_watch(app: &AppHandle, spec: &ProviderSpec) {
-    let state = app.state::<AppState>();
-    let (locs, derived) = state.with_runtime(&spec.id, |r| (r.locations.clone(), r.derived.clone()));
-    let inv = Invocation { spec, locations: &locs, derived: &derived, env: &state.env, timeout: None };
-    let targets = match host::invoke(&inv, Method::Watch, None) {
-        Ok(out) => out.value,
-        Err(e) => {
-            tracing::warn!(provider = %spec.id, error = %e, "watch() failed; file changes won't trigger rescans");
-            return;
-        }
-    };
-    let scope = Scope::new(locs.values().cloned().chain(derived.iter().cloned()), &[]);
-    let mut by_dir: HashMap<PathBuf, Vec<String>> = HashMap::new();
-    for t in targets.as_array().into_iter().flatten() {
-        let (Some(path), glob) = (t.get("path").and_then(Value::as_str), t.get("glob").and_then(Value::as_str)) else {
-            continue;
-        };
-        if scope.check(path).is_err() {
-            tracing::warn!(provider = %spec.id, path, "watch path outside the provider's locations; ignored");
-            continue;
-        }
-        by_dir.entry(PathBuf::from(path)).or_default().push(glob.unwrap_or("*").to_string());
-    }
-
-    let id = spec.id.clone();
-    let handle = app.clone();
-    let globs = by_dir.clone();
-    let debouncer = new_debouncer(WATCH_DEBOUNCE, move |res: DebounceEventResult| {
-        let Ok(events) = res else { return };
-        let relevant = events.iter().any(|e| {
-            let name = e.path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-            e.path.parent().and_then(|dir| globs.iter().find(|(d, _)| same_dir(d, dir))).is_some_and(|(_, pats)| {
-                pats.iter().any(|p| glob_match(p, &name))
-            })
-        });
-        if relevant {
-            tracing::info!(provider = %id, "store files changed; rescanning");
-            spawn_scan(&handle, id.clone());
-        }
-    });
-    let mut debouncer = match debouncer {
-        Ok(d) => d,
-        Err(e) => {
-            tracing::warn!(error = %e, "file watcher unavailable");
-            return;
-        }
-    };
-    for dir in by_dir.keys() {
-        if let Err(e) = debouncer.watcher().watch(dir, RecursiveMode::NonRecursive) {
-            tracing::warn!(provider = %spec.id, dir = %dir.display(), error = %e, "cannot watch folder");
-        }
-    }
-    state.runtime.watchers.lock().unwrap().insert(spec.id.clone(), debouncer);
-}
-
-fn same_dir(a: &Path, b: &Path) -> bool {
-    a == b || a.to_string_lossy().eq_ignore_ascii_case(&b.to_string_lossy())
-}
-
-pub fn stop_watch(state: &AppState, id: &str) {
-    state.runtime.watchers.lock().unwrap().remove(id);
-}
-
-/// Called when a provider is disabled: forget its status, prompts and watcher.
+/// Called when a provider is disabled: forget its status and prompts.
 pub fn deactivate(app: &AppHandle, id: &str) {
     let state = app.state::<AppState>();
-    stop_watch(&state, id);
     state.runtime.providers.lock().unwrap().remove(id);
     state.runtime.notices.lock().unwrap().list.retain(|n| n.provider != id);
     emit_providers(app);
@@ -548,31 +497,44 @@ pub struct ActionResult {
 /// Runs a provider action for an entry. Launch success records "last launched".
 pub fn run_action(app: &AppHandle, entry_id: &str, provider: Option<&str>, action: Action) -> Result<ActionResult, String> {
     let state = app.state::<AppState>();
-    let (provider_id, game) = state.library.read(|snap| {
-        library::find(snap, entry_id).map(|(p, _, g)| (p.to_string(), g.clone())).ok_or_else(|| "That game is no longer in the library.".to_string())
+    // The preferred store unless the caller named one ("Play via…").
+    let (provider_id, record, game) = state.with_groups(|groups, _| {
+        let group = groups.shown(entry_id).ok_or_else(|| "That game is no longer in the library.".to_string())?;
+        let rec = match provider {
+            Some(p) => group.records.iter().find(|r| r.provider == p).ok_or_else(|| format!("{entry_id} has no source from {p}"))?,
+            None => group.preferred().ok_or_else(|| "That game is no longer in the library.".to_string())?,
+        };
+        Ok::<_, String>((rec.provider.to_string(), rec.id.clone(), rec.game.clone()))
     })?;
-    if provider.is_some_and(|p| p != provider_id) {
-        return Err(format!("{entry_id} has no source from {}", provider.unwrap()));
+    let mut spec = state.provider_spec(&provider_id).ok_or("That provider is not enabled.")?;
+    if action == Action::Launch {
+        let saved = state.userdata.read(|ud| ud.games.get(&record).map(|g| g.launch_options.clone()).unwrap_or_default());
+        spec.game_values.extend(saved);
     }
-    if !state.active_providers().contains(&provider_id) {
-        return Err(format!("{provider_id} is not active."));
-    }
-    let spec = state.provider_spec(&provider_id).ok_or("That provider is not enabled.")?;
     if !spec.can(action.capability()) {
         return Err(format!("{} does not support {}.", spec.name, action.capability()));
     }
     let (locs, derived) = state.with_runtime(&provider_id, |r| (r.locations.clone(), r.derived.clone()));
     let arg = serde_json::to_value(&game).map_err(|e| e.to_string())?;
     let inv = Invocation { spec: &spec, locations: &locs, derived: &derived, env: &state.env, timeout: None };
-    host::invoke(&inv, action.method(), Some(&arg)).map_err(|e| match e {
+    let out = host::invoke(&inv, action.method(), Some(&arg)).map_err(|e| match e {
         HostError::Missing(_) => format!("{} does not implement {}.", spec.name, action.capability()),
         other => format!("{}: {other}", spec.name),
     })?;
+    for pid in out.place {
+        crate::window_place::follow(app, pid);
+    }
 
     if action == Action::Launch {
         let now = now_iso();
-        state.userdata.update(|ud| ud.games.entry(entry_id.to_string()).or_default().last_launched = Some(now));
+        // The copy that actually ran: it's a fact about that store, so it stays with it on unmerge.
+        state.userdata.update(|ud| ud.games.entry(record).or_default().last_launched = Some(now));
         emit_library(app);
+    }
+    // The library catches up with its store when the player does something with it: this is
+    // where a launch picks up the playtime from the last session, for instance.
+    if action != Action::OpenStore {
+        spawn_scan(app, provider_id);
     }
     tracing::info!(entry = entry_id, action = action.capability(), "action dispatched");
     Ok(ActionResult { title: game.title, provider_name: spec.name })

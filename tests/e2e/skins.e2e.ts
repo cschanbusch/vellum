@@ -56,6 +56,138 @@ test.afterEach(() => {
   expect(errors, "no console errors in the shell or the skin").toEqual([]);
 });
 
+test.describe("games on more than one store", () => {
+  type Harnessed = HarnessEl & {
+    duplicateAnswers: unknown;
+    backend: { launches: { id: string; provider?: string }[] };
+  };
+  const launches = (page: Page) => page.evaluate(() => (document.querySelector("vellum-harness") as unknown as Harnessed).backend.launches);
+
+  /** The harness with its duplicate games, past the required dialog. */
+  async function withDuplicates(page: Page) {
+    errors.length = 0;
+    page.on("console", (m) => {
+      if (m.type() === "error") errors.push(m.text());
+    });
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.goto(`http://localhost:${BASIS}/?dupes`);
+    const dialog = page.locator("vellum-duplicates-dialog .dialog");
+    await expect(dialog).toBeVisible();
+    return dialog;
+  }
+
+  async function pastDialog(page: Page) {
+    const dialog = await withDuplicates(page);
+    await dialog.getByRole("button", { name: "Apply" }).click();
+    await expect(dialog).toBeHidden();
+    return page.frameLocator("iframe");
+  }
+
+  test("the duplicates dialog must be answered, and reports each choice", async ({ page }) => {
+    const dialog = await withDuplicates(page);
+    await expect(dialog.getByRole("button", { name: "Cancel" })).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(dialog, "Escape doesn't dismiss a required dialog").toBeVisible();
+
+    const rows = dialog.locator("li select");
+    await expect(rows.nth(0), "the first store listed is suggested").toHaveValue("one:steam");
+    await rows.nth(0).selectOption("separate");
+    await rows.nth(1).selectOption("ask");
+    await dialog.getByRole("button", { name: "Apply" }).click();
+    await expect(dialog).toBeHidden();
+    const answers = await page.evaluate(() => (document.querySelector("vellum-harness") as unknown as Harnessed).duplicateAnswers);
+    expect(answers).toEqual([
+      { records: ["steam:twin", "gog:twin"], mode: "separate" },
+      { records: ["gog:second", "custom:second"], mode: "ask" },
+    ]);
+  });
+
+  test("set all fills every row", async ({ page }) => {
+    const dialog = await withDuplicates(page);
+    await dialog.locator("#all").selectOption("ask");
+    await expect(dialog.locator("li select").nth(0)).toHaveValue("ask");
+    await expect(dialog.locator("li select").nth(1)).toHaveValue("ask");
+    await dialog.locator("#all").selectOption("first");
+    await expect(dialog.locator("li select").nth(1)).toHaveValue("one:gog");
+    await dialog.getByRole("button", { name: "Apply" }).click();
+  });
+
+  test("an entry set to ask shows the picker: cancelling launches nothing, choosing uses that store", async ({ page }) => {
+    await pastDialog(page);
+    const skin = page.frames().find((f) => f.url().includes("127.0.0.1"))!;
+    await skin.waitForFunction(() => window.vellum?.library.all().length > 0);
+    const picker = page.locator("vellum-store-picker .dialog");
+
+    // Hooks run after the choice, and not at all after a cancel.
+    await skin.evaluate(() => {
+      (window as unknown as { hooked: unknown[] }).hooked = [];
+      window.vellum.actions.onBeforeLaunch((_id, provider) => void (window as unknown as { hooked: unknown[] }).hooked.push(provider));
+      void window.vellum.actions.launch("steam:ask");
+    });
+    await expect(picker).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(picker).toBeHidden();
+    expect(await launches(page)).toEqual([]);
+    expect(await skin.evaluate(() => (window as unknown as { hooked: unknown[] }).hooked)).toEqual([]);
+
+    await skin.evaluate(() => void window.vellum.actions.launch("steam:ask"));
+    await picker.locator('button[data-provider="gog"]').click();
+    await expect.poll(() => launches(page)).toEqual([{ id: "steam:ask", provider: "gog" }]);
+    expect(await skin.evaluate(() => (window as unknown as { hooked: unknown[] }).hooked)).toEqual(["gog"]);
+  });
+
+  test("a key held down from the skin can't pick a store", async ({ page }) => {
+    await pastDialog(page);
+    const skin = page.frames().find((f) => f.url().includes("127.0.0.1"))!;
+    await skin.waitForFunction(() => window.vellum?.library.all().length > 0);
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.keyboard.down("Enter"); // held, as on a hold-to-launch
+    await skin.evaluate(() => void window.vellum.actions.launch("steam:ask"));
+    const picker = page.locator("vellum-store-picker .dialog");
+    await expect(picker.locator("button.store").first()).toBeFocused();
+    await page.keyboard.down("Enter"); // pressing again while down is an auto-repeat
+    await page.keyboard.down("Enter");
+    await page.waitForTimeout(150);
+    await expect(picker, "repeats don't choose").toBeVisible();
+    expect(await launches(page)).toEqual([]);
+    await page.keyboard.up("Enter");
+    await page.keyboard.press("Enter"); // a real press does
+    await expect.poll(() => launches(page)).toEqual([{ id: "steam:ask", provider: "steam" }]);
+  });
+
+  test("an entry that isn't set to ask launches straight away, and old record ids still find it", async ({ page }) => {
+    await pastDialog(page);
+    const skin = page.frames().find((f) => f.url().includes("127.0.0.1"))!;
+    await skin.waitForFunction(() => window.vellum?.library.all().length > 0);
+    expect(await skin.evaluate(() => window.vellum.library.get("steam:one")?.id), "the second copy's id").toBe("gog:one");
+    await skin.evaluate(() => void window.vellum.actions.launch("gog:one"));
+    await expect.poll(() => launches(page)).toEqual([{ id: "gog:one" }]);
+    await expect(page.locator("vellum-store-picker .dialog")).toHaveCount(0);
+  });
+
+  test("every view marks stores, and the store filter reaches a merged game's second store", async ({ page }) => {
+    const frame = await pastDialog(page);
+    await expect(frame.locator(".v-view")).toBeVisible();
+
+    await show(page, "list");
+    const twins = frame.locator('vellum-list .row[data-id="steam:twin"]');
+    await expect(twins).toContainText("Steam");
+
+    await show(page, "covers");
+    const tile = (id: string) => frame.locator(`vellum-grid .cell[data-id="${id}"]`);
+    await expect(tile("gog:twin")).toContainText("GOG");
+    await expect(tile("gog:one"), "a merged game counts its stores").toContainText("2 stores");
+    await expect(tile("gog:one")).toHaveAttribute("title", "GOG, Steam");
+
+    await host(page, (h) => h.setState({ selectedId: "gog:one" }));
+    await show(page, "spotlight");
+    await expect(frame.locator("vellum-source-badges .badge").first()).toBeAttached();
+
+    await host(page, (h) => h.setState({ filters: { providers: ["steam"] } }));
+    await expect.poll(async () => (await queryIds(page)).sort()).toEqual(["gog:one", "steam:ask", "steam:twin"]);
+  });
+});
+
 test("every built-in view renders", async ({ page }) => {
   const frame = await open(page, BASIS);
   for (const view of ["list", "covers", "spotlight"]) {
@@ -634,6 +766,44 @@ test("FICSIT's HUB: games sit in Tiers by lifetime hours; arrows change Tier and
 });
 
 test.describe("Grand Tour", () => {
+  test("the Garage's cases stay put through a store's scan and an unchanged refresh", async ({ page }) => {
+    const frame = await open(page, 5226);
+    await show(page, "garage");
+    const skin = page.frames().find((f) => f.url().includes("127.0.0.1"))!;
+    type Stage = { center?: { model?: unknown }; models: Map<string, unknown> };
+    type Win = { __rlCaseStage: Stage; __marked?: unknown };
+    await expect.poll(() => skin.evaluate(() => !!(window as unknown as Win).__rlCaseStage?.center)).toBe(true);
+    await skin.evaluate(() => {
+      const w = window as unknown as Win;
+      w.__marked = w.__rlCaseStage.center;
+    });
+    const sameCase = () => skin.evaluate(() => {
+      const w = window as unknown as Win;
+      return w.__rlCaseStage.center === w.__marked;
+    });
+    type Mock = HTMLElement & { backend: { setProviderState(s: string): void; refresh(): Promise<void> } };
+    const scan = (state: string) =>
+      page.evaluate((s) => (document.querySelector("vellum-harness") as unknown as Mock).backend.setProviderState(s), state);
+
+    // A scan's status changes reach the skin, and leave the case on the turntable alone.
+    await scan("scanning");
+    await expect.poll(() => skin.evaluate(() => window.vellum.providers.list()[0].state)).toBe("scanning");
+    await scan("ready");
+    await expect.poll(() => skin.evaluate(() => window.vellum.providers.list()[0].state)).toBe("ready");
+    expect(await sameCase()).toBe(true);
+
+    // A refresh that finds the same library doesn't reach the skin at all.
+    await skin.evaluate(() => {
+      (window as unknown as { __heard: number }).__heard = 0;
+      window.vellum.library.on("change", () => (window as unknown as { __heard: number }).__heard++);
+    });
+    await page.evaluate(() => (document.querySelector("vellum-harness") as unknown as Mock).backend.refresh());
+    await page.waitForTimeout(200);
+    expect(await skin.evaluate(() => (window as unknown as { __heard: number }).__heard)).toBe(0);
+    expect(await sameCase()).toBe(true);
+    await expect(frame.locator(".rl-gar-thumb").first()).toBeVisible();
+  });
+
   test("Grand Tour's ignition: a worn game can stall; a service restores it; a start wears it", async ({ page }) => {
     const frame = await open(page, 5226);
     await show(page, "garage");

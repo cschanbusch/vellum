@@ -28,8 +28,10 @@ export interface Entry {
   kind: EntryKind;
   sources: Source[];
   preferredSource: string;
+  /** Play asks which store to use (`vellum.actions.launch` handles it) rather than using `preferredSource`. */
+  askSource?: boolean;
   categories: { provider: string; name: string }[];
-  /** The store's labels, such as "Demo", "Playtest" or "Soundtrack"; shown as badges. */
+  /** The store's labels, such as "Demo", "Playtest" or "Soundtrack", and a store's name when another entry holds a copy of this title; shown as badges. */
   labels: string[];
   tags: string[];
   favorite: boolean;

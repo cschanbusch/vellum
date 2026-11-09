@@ -330,6 +330,114 @@ export class TagsDialog extends LitElement {
 }
 customElements.define("vellum-tags-dialog", TagsDialog);
 
+/** "Ask me each time": which store should this launch use? */
+export class StorePicker extends LitElement {
+  static properties = { entry: { state: true } };
+  declare entry: Entry | null;
+  private resolve: ((provider: string | null) => void) | null = null;
+
+  constructor() {
+    super();
+    this.entry = null;
+  }
+
+  get isOpen() {
+    return !!this.entry;
+  }
+
+  /** Resolves with the chosen provider id, or null when cancelled. */
+  choose(entry: Entry): Promise<string | null> {
+    this.resolve?.(null);
+    this.entry = entry;
+    void this.updateComplete.then(() => this.renderRoot.querySelector<HTMLElement>("button")?.focus());
+    return new Promise((r) => (this.resolve = r));
+  }
+
+  private finish(provider: string | null) {
+    const r = this.resolve;
+    this.resolve = null;
+    this.entry = null;
+    r?.(provider);
+  }
+
+  private onKey(e: KeyboardEvent) {
+    // A key still held from the skin (Enter on a hold-to-launch) mustn't pick the first store.
+    if (e.repeat && (e.key === "Enter" || e.key === " ")) {
+      e.preventDefault();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      this.finish(null);
+    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const buttons = [...this.renderRoot.querySelectorAll<HTMLElement>("button")];
+      const at = buttons.indexOf((this.renderRoot as ShadowRoot).activeElement as HTMLElement);
+      buttons[(at + (e.key === "ArrowDown" ? 1 : buttons.length - 1)) % buttons.length]?.focus();
+    }
+  }
+
+  render() {
+    const e = this.entry;
+    if (!e) return nothing;
+    const stores = e.sources.filter((s) => s.capabilities.includes("launch"));
+    return html`<div class="scrim" @pointerdown=${() => this.finish(null)}></div>
+      <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="t" @keydown=${this.onKey}>
+        <h2 id="t">Play ${e.title} through</h2>
+        ${stores.map((s) => html`<button class="store" data-provider=${s.provider} @click=${() => this.finish(s.provider)}>${s.providerName}</button>`)}
+        <button class="cancel" @click=${() => this.finish(null)}>Cancel</button>
+      </div>`;
+  }
+
+  static styles = [
+    tokens,
+    controls,
+    css`
+      :host {
+        position: fixed;
+        inset: 0;
+        z-index: 72;
+        display: grid;
+        place-items: center;
+        pointer-events: none;
+      }
+      .scrim {
+        position: fixed;
+        inset: 0;
+        background: #0008;
+        pointer-events: auto;
+      }
+      .dialog {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        width: min(360px, 92vw);
+        padding: 20px;
+        border-radius: calc(var(--v-radius) + 4px);
+        background: var(--v-surface);
+        color: var(--v-text);
+        font: 14px var(--v-font-body);
+        box-shadow: 0 20px 60px #000a;
+        pointer-events: auto;
+      }
+      h2 {
+        margin: 0 0 8px;
+        font-size: 17px;
+        overflow-wrap: anywhere;
+      }
+      .store {
+        padding: 10px 12px;
+        text-align: left;
+      }
+      .cancel {
+        margin-top: 6px;
+        align-self: flex-end;
+      }
+    `,
+  ];
+}
+customElements.define("vellum-store-picker", StorePicker);
+
 /** Developer mode: the latest error thrown by skin code. */
 export class DevErrorOverlay extends LitElement {
   static properties = { message: { state: true }, stack: { state: true }, count: { state: true } };

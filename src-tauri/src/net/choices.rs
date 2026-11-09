@@ -44,30 +44,40 @@ pub struct ArtChoices {
 }
 
 struct Context {
-    provider_name: String,
+    /// The entry's id, whichever of its record ids was asked for: SteamGridDB results key on it.
+    entry_id: String,
+    /// Candidates from every source, preferred store first, and the store each came from.
     cands: Vec<ArtCandidate>,
+    cand_sources: Vec<String>,
     overrides: serde_json::Map<String, Value>,
     title: String,
-    is_steam: bool,
-    source_id: String,
+    /// The appid, when the entry has a Steam copy.
+    steam_id: Option<String>,
+    /// Every record of the entry, which all receive a choice.
+    records: Vec<String>,
 }
 
 fn context(state: &AppState, entry_id: &str) -> Result<Context, String> {
-    let active = state.active_providers();
-    let found = state.library.read(|snap| {
-        let (pid, recs, g) = library::find(snap, entry_id)?;
-        active.contains(pid).then(|| Context {
-            provider_name: recs.provider_name.clone(),
-            cands: recs.art.get(&g.source_id).cloned().unwrap_or_default(),
-            overrides: Default::default(),
-            title: g.title.clone(),
-            is_steam: pid == "steam",
-            source_id: g.source_id.clone(),
+    let found = state.with_groups(|groups, ud| {
+        let group = groups.shown(entry_id)?;
+        let (mut cands, mut cand_sources) = (Vec::new(), Vec::new());
+        for r in &group.records {
+            for c in r.recs.art.get(&r.game.source_id).into_iter().flatten() {
+                cands.push(c.clone());
+                cand_sources.push(r.recs.provider_name.clone());
+            }
+        }
+        Some(Context {
+            entry_id: group.id.clone(),
+            cands,
+            cand_sources,
+            overrides: group.overrides(ud),
+            title: group.preferred()?.game.title.clone(),
+            steam_id: group.records.iter().find(|r| r.provider == "steam").map(|r| r.game.source_id.clone()),
+            records: group.all_ids().map(str::to_string).collect(),
         })
     });
-    let mut c = found.ok_or("That game is no longer in the library.")?;
-    c.overrides = state.userdata.read(|ud| ud.games.get(entry_id).map(|u| u.art_overrides.clone()).unwrap_or_default());
-    Ok(c)
+    Ok(found.ok_or("That game is no longer in the library.")?)
 }
 
 fn check_kind(kind: &str) -> Result<(), String> {
@@ -83,7 +93,10 @@ fn ensure_lookup(state: &AppState, entry_id: &str, kind: &str, c: &Context) {
     if NetView::new(state).lookup(entry_id, kind) != LookupState::Unknown {
         return;
     }
-    let target = if c.is_steam { super::LookupTarget::Steam(c.source_id.clone()) } else { super::LookupTarget::Title(c.title.clone()) };
+    let target = match &c.steam_id {
+        Some(id) => super::LookupTarget::Steam(id.clone()),
+        None => super::LookupTarget::Title(c.title.clone()),
+    };
     let job = super::LookupJob { entry_id: entry_id.to_string(), target, kinds: vec![kind.to_string()] };
     super::run_lookup(&state.net, &super::agent(), &job);
 }
@@ -99,6 +112,7 @@ fn state_name(s: &RemoteState) -> &'static str {
 pub fn choices(state: &AppState, entry_id: &str, kind: &str) -> Result<ArtChoices, String> {
     check_kind(kind)?;
     let c = context(state, entry_id)?;
+    let entry_id = c.entry_id.as_str();
     if state.net.sgdb_on() {
         ensure_lookup(state, entry_id, kind, &c);
     }
@@ -136,17 +150,17 @@ pub fn choices(state: &AppState, entry_id: &str, kind: &str) -> Result<ArtChoice
             in_use: used(Some(&file_s), None),
         });
     }
-    for cand in c.cands.iter().filter(|x| x.kind == kind) {
+    for (cand, source) in c.cands.iter().zip(&c.cand_sources).filter(|(x, _)| x.kind == kind) {
         if let Some(f) = &cand.file {
             let (w, h) = image::image_dimensions(f).map_or((None, None), |(w, h)| (Some(w), Some(h)));
-            push(ArtOption { id: format!("file:{f}"), source: c.provider_name.clone(), width: w, height: h, state: "ready", chosen: false, in_use: used(Some(f), None) });
+            push(ArtOption { id: format!("file:{f}"), source: source.clone(), width: w, height: h, state: "ready", chosen: false, in_use: used(Some(f), None) });
         } else if let Some(u) = &cand.url {
             let (w, h) = dims(u);
             let id = format!("url:{u}");
             push(ArtOption {
                 chosen: chosen_id.as_deref() == Some(id.as_str()),
                 id,
-                source: c.provider_name.clone(),
+                source: source.clone(),
                 width: w,
                 height: h,
                 state: state_name(&view.remote(u)),
@@ -201,6 +215,7 @@ fn sgdb_thumb(state: &AppState, entry_id: &str, kind: &str, url: &str) -> Option
 pub fn thumb(state: &AppState, entry_id: &str, kind: &str, id: &str) -> Result<Option<String>, String> {
     check_kind(kind)?;
     let c = context(state, entry_id)?;
+    let entry_id = c.entry_id.as_str();
     let file = if let Some(name) = id.strip_prefix("custom:") {
         Some(state.net.custom.join(name)).filter(|p| p.is_file() && !name.contains(['/', '\\']))
     } else if let Some(f) = id.strip_prefix("file:") {
@@ -259,15 +274,18 @@ pub fn import_file(state: &AppState, path: &Path) -> Result<String, String> {
     Ok(name)
 }
 
-fn save(state: &AppState, entry_id: &str, kind: &str, value: Option<Value>) -> Result<Entry, String> {
+fn save(state: &AppState, c: &Context, kind: &str, value: Option<Value>) -> Result<Entry, String> {
+    let entry_id = c.entry_id.as_str();
     state.userdata.update(|ud| {
-        let g = ud.games.entry(entry_id.to_string()).or_default();
-        match value {
-            Some(v) => {
-                g.art_overrides.insert(kind.to_string(), v);
-            }
-            None => {
-                g.art_overrides.remove(kind);
+        for record in &c.records {
+            let g = ud.games.entry(record.clone()).or_default();
+            match &value {
+                Some(v) => {
+                    g.art_overrides.insert(kind.to_string(), v.clone());
+                }
+                None => {
+                    g.art_overrides.remove(kind);
+                }
             }
         }
     });
@@ -279,6 +297,7 @@ fn save(state: &AppState, entry_id: &str, kind: &str, value: Option<Value>) -> R
 pub fn set(state: &AppState, entry_id: &str, kind: &str, id: Option<&str>) -> Result<Entry, String> {
     check_kind(kind)?;
     let c = context(state, entry_id)?;
+    let entry_id = c.entry_id.as_str();
     let value = match id {
         None => None,
         Some(id) => Some(if let Some(name) = id.strip_prefix("custom:") {
@@ -304,14 +323,14 @@ pub fn set(state: &AppState, entry_id: &str, kind: &str, id: Option<&str>) -> Re
             return Err("Unknown option.".into());
         }),
     };
-    save(state, entry_id, kind, value)
+    save(state, &c, kind, value)
 }
 
 /// Uses an image file from disk for one kind.
 pub fn set_file(state: &AppState, entry_id: &str, kind: &str, path: &str) -> Result<Entry, String> {
     check_kind(kind)?;
-    context(state, entry_id)?;
+    let c = context(state, entry_id)?;
     let name = import_file(state, Path::new(path))?;
-    save(state, entry_id, kind, Some(json!({ "custom": name })))
+    save(state, &c, kind, Some(json!({ "custom": name })))
 }
 

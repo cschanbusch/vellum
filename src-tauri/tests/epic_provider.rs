@@ -66,6 +66,18 @@ fn launches_through_the_launcher_uri() {
 }
 
 #[test]
+fn the_launcher_window_can_be_allowed() {
+    let manifests = repo("tests/fixtures/epic/Manifests");
+    let mut settings = Map::new();
+    settings.insert("silentLaunch".into(), json!(false));
+    let mut h = Harness::new(shipped_provider("epic", settings), &[("manifests", &manifests)], FakeRegistry::default());
+    let scan = parse_scan(h.call(Method::Scan, None).unwrap().value).unwrap();
+    let game = serde_json::to_value(scan.games.iter().find(|g| g.source_id == "Fowl").unwrap()).unwrap();
+    h.call(Method::Launch, Some(&game)).unwrap();
+    assert!(h.opened()[0].ends_with("?action=launch"), "{:?}", h.opened());
+}
+
+#[test]
 fn watches_the_manifests_folder() {
     let mut h = harness();
     let targets = h.call(Method::Watch, None).unwrap().value;

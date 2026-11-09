@@ -9,7 +9,9 @@ import type { Entry, ProviderInfo, SkinOption } from "../../sdk/src/types";
 import type { Backend, SkinRecord, UiSettings } from "../src/host/backend";
 import { SkinHostController } from "../src/host/controller";
 import { entryMenu, withSkinItems } from "../src/host/entry-menu";
-import type { ContextMenu, DevErrorOverlay, TagsDialog } from "../src/overlays";
+import type { DuplicateAnswer, DuplicatesDialog, DuplicateView } from "../src/duplicates-dialog";
+import "../src/duplicates-dialog";
+import type { ContextMenu, DevErrorOverlay, StorePicker, TagsDialog } from "../src/overlays";
 import { applySkinTheme, controls, tokens } from "../src/theme";
 import { registerToasts, toasts, type ToastHost } from "../src/toasts";
 import "../src/overlays";
@@ -42,10 +44,58 @@ const load = <T>(k: string, fallback: T): T => {
 const save = (k: string, v: unknown) => localStorage.setItem(`${KEY}:${k}`, JSON.stringify(v));
 
 /** The mock backend: library from the harness server, user data and settings in localStorage. */
+/** `?dupes` adds games on two stores and the duplicates dialog, none of which the mock library has. */
+const DUPES = new URLSearchParams(location.search).has("dupes");
+
+function duplicateFixtures(like: Entry): Entry[] {
+  const source = (provider: string, providerName: string, id: string) => ({ provider, providerName, gameId: `${provider}:${id}`, capabilities: ["launch"] });
+  const make = (id: string, title: string, sources: Entry["sources"], extra: Partial<Entry> = {}): Entry => ({
+    ...like,
+    id,
+    title,
+    sortTitle: title.toLowerCase(),
+    kind: "game",
+    sources,
+    preferredSource: sources[0].provider,
+    labels: [],
+    hidden: false,
+    ...extra,
+  });
+  return [
+    make("steam:ask", "Aaa Ask Game", [source("steam", "Steam", "ask"), source("gog", "GOG", "ask")], { askSource: true }),
+    make("gog:one", "Aaa One Game", [source("gog", "GOG", "one"), source("steam", "Steam", "one")]),
+    make("steam:twin", "Aaa Twin Game", [source("steam", "Steam", "twin")], { labels: ["Steam"] }),
+    make("gog:twin", "Aaa Twin Game", [source("gog", "GOG", "twin")], { labels: ["GOG"] }),
+  ];
+}
+
+const DUPLICATE_FIXTURES: DuplicateView[] = [
+  {
+    title: "Aaa Twin Game",
+    pending: true,
+    current: "separate",
+    preferred: "steam",
+    copies: [
+      { record: "steam:twin", provider: "steam", providerName: "Steam", title: "Aaa Twin Game" },
+      { record: "gog:twin", provider: "gog", providerName: "GOG", title: "Aaa Twin Game" },
+    ],
+  },
+  {
+    title: "Second Duplicate",
+    pending: true,
+    current: "separate",
+    preferred: "gog",
+    copies: [
+      { record: "gog:second", provider: "gog", providerName: "GOG", title: "Second Duplicate" },
+      { record: "custom:second", provider: "custom", providerName: "Custom games", title: "Second Duplicate" },
+    ],
+  },
+];
+
 class MockBackend implements Backend {
   private base: Entry[] = [];
   private games: Record<string, GameData> = load("games", {});
-  private listeners = { library: [] as (() => void)[], skin: [] as (() => void)[], file: [] as ((p: string) => void)[] };
+  private listeners = { library: [] as (() => void)[], skin: [] as (() => void)[], file: [] as ((p: string) => void)[], providers: [] as (() => void)[] };
   count: number;
 
   constructor(private cfg: Config) {
@@ -76,12 +126,15 @@ class MockBackend implements Backend {
   }
 
   async entries() {
-    if (!this.base.length) this.base = await (await fetch(`/__harness/library?count=${this.count}`)).json();
+    if (!this.base.length) {
+      this.base = await (await fetch(`/__harness/library?count=${this.count}`)).json();
+      if (DUPES) this.base = [...duplicateFixtures(this.base[0]), ...this.base];
+    }
     return this.base.map((e) => this.apply(e));
   }
 
   async providers(): Promise<ProviderInfo[]> {
-    return [{ id: "mock", name: "Mock library", icon: null, state: "ready", message: null, games: this.base.length }];
+    return [{ id: "mock", name: "Mock library", icon: null, state: this.providerState, message: null, games: this.base.length }];
   }
 
   async skin(): Promise<SkinRecord | null> {
@@ -109,8 +162,19 @@ class MockBackend implements Backend {
     return this.apply(e);
   }
 
-  async runAction(id: string, kind: string) {
+  /** What a store's scan does to its status, for tests of what that redraws. */
+  providerState: ProviderInfo["state"] = "ready";
+  setProviderState(state: ProviderInfo["state"]) {
+    this.providerState = state;
+    this.listeners.providers.forEach((cb) => cb());
+  }
+
+  /** Launches asked for, for tests of which store was used. */
+  launches: { id: string; provider?: string }[] = [];
+
+  async runAction(id: string, kind: string, provider?: string) {
     const e = this.base.find((x) => x.id === id)!;
+    if (kind === "launch") this.launches.push({ id, provider });
     if (kind === "launch") {
       this.update(id, (g) => (g.lastLaunched = new Date().toISOString()));
       setTimeout(() => this.listeners.library.forEach((cb) => cb()), 50);
@@ -139,7 +203,7 @@ class MockBackend implements Backend {
   }
 
   onLibraryChanged = (cb: () => void) => void this.listeners.library.push(cb);
-  onProvidersChanged = () => {};
+  onProvidersChanged = (cb: () => void) => void this.listeners.providers.push(cb);
   onSkinChanged = (cb: () => void) => void this.listeners.skin.push(cb);
   onSkinFileChanged = (cb: (p: string) => void) => void this.listeners.file.push(cb);
   onWindowChanged = () => {};
@@ -214,6 +278,11 @@ export class Harness extends LitElement {
         toasts().show("Settings open in the app; the harness panel stands in for them.");
       },
       changeArt: () => toasts().show("Change art isn't available in the harness."),
+      chooseSource: async (entry) => {
+        const provider = await this.renderRoot.querySelector<StorePicker>("vellum-store-picker")!.choose(entry);
+        this.frame?.focus();
+        return provider;
+      },
       theme: (t) => applySkinTheme(t),
       devError: (m, s) => devError.show(m, s),
       skinFailed: (r) => toasts().show(`The skin didn't start: ${r}`, true),
@@ -223,7 +292,14 @@ export class Harness extends LitElement {
     await host.start();
     host.attach(this.frame!, this.cfg.skinOrigin, `${this.cfg.skinOrigin}/index.html`);
     this.tick++;
+    if (DUPES) {
+      const dialog = this.renderRoot.querySelector<DuplicatesDialog>("vellum-duplicates-dialog")!;
+      this.duplicateAnswers = await dialog.open(DUPLICATE_FIXTURES, true);
+    }
   }
+
+  /** What the `?dupes` dialog answered, for tests. */
+  duplicateAnswers: DuplicateAnswer[] | null | undefined;
 
   private option(o: SkinOption, value: unknown) {
     const id = this.host.skin!.id;
@@ -295,6 +371,8 @@ export class Harness extends LitElement {
       <button class="toggle" @click=${() => (this.panel = !this.panel)}>${this.panel ? "Hide panel" : "Panel"}</button>
       <vellum-context-menu></vellum-context-menu>
       <vellum-tags-dialog></vellum-tags-dialog>
+      <vellum-store-picker></vellum-store-picker>
+      <vellum-duplicates-dialog></vellum-duplicates-dialog>
       <vellum-dev-error></vellum-dev-error>
       <vellum-toasts></vellum-toasts>
     `;

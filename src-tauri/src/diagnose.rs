@@ -310,6 +310,37 @@ fn epic_probe(manifests: &Path, summary: &mut Vec<String>) -> Value {
     json!({ "itemFiles": files, "unreadable": bad, "itemShape": item_shape })
 }
 
+/// Which registry values GOG's games have, and the shape of their info files. The Registry trait
+/// reads values by name, so this asks about the names seen so far; a new one wouldn't show.
+fn gog_probe(registry: &dyn Registry, summary: &mut Vec<String>) -> Value {
+    const GAMES: &str = r"SOFTWARE\WOW6432Node\GOG.com\Games";
+    const VALUES: [&str; 8] = ["gameName", "path", "exe", "launchParam", "workingDir", "launchCommand", "dependsOn", "DLC"];
+    let ids = registry.subkeys(crate::platform::Hive::LocalMachine, GAMES);
+    let mut counts: BTreeMap<&str, u64> = BTreeMap::new();
+    let (mut info_shape, mut with_info, mut folders): (Option<Value>, u64, u64) = (None, 0, 0);
+    for id in &ids {
+        let key = format!(r"{GAMES}\{id}");
+        for v in VALUES {
+            if registry.get(crate::platform::Hive::LocalMachine, &key, v).is_some_and(|x| !x.is_empty()) {
+                *counts.entry(v).or_default() += 1;
+            }
+        }
+        let Some(path) = registry.get(crate::platform::Hive::LocalMachine, &key, "path") else { continue };
+        let path = Path::new(&path);
+        folders += u64::from(path.is_dir());
+        if let Some(v) = std::fs::read(path.join(format!("goggame-{id}.info"))).ok().and_then(|b| serde_json::from_slice::<Value>(&b).ok()) {
+            with_info += 1;
+            let s = shape(&v);
+            info_shape = Some(match info_shape.take() {
+                Some(prev) => merge(prev, s),
+                None => s,
+            });
+        }
+    }
+    summary.push(format!("gog: {} game(s) in the registry, {folders} with their folder, {with_info} with an info file", ids.len()));
+    json!({ "games": ids.len(), "foldersPresent": folders, "infoFiles": with_info, "registryValuesSet": counts, "infoShape": info_shape })
+}
+
 /// Builds the report. Never writes anything except the caller's output file.
 pub fn report(paths: &AppPaths, registry: &dyn Registry) -> (Value, Vec<String>) {
     let saved = settings::load(&paths.data_dir.join("settings.json"), std::fs::read(paths.data_dir.join("settings.json")).ok());
@@ -348,6 +379,7 @@ pub fn report(paths: &AppPaths, registry: &dyn Registry) -> (Value, Vec<String>)
         let probe = match (spec.id.as_str(), found.get("root"), found.get("manifests")) {
             ("steam", Some(root), _) => steam_probe(root, &scope, &mut summary),
             ("epic", _, Some(m)) => epic_probe(m, &mut summary),
+            ("gog", _, _) => gog_probe(registry, &mut summary),
             _ => Value::Null,
         };
         providers.push(json!({ "id": spec.id, "version": rec.version, "locations": locs, "probe": probe }));
@@ -374,6 +406,26 @@ mod tests {
         assert_eq!(name_pattern("0a1b2c3d4e5f60718293a4b5c6d7e8f9.jpg"), "<hash>.jpg");
         assert_eq!(name_pattern("libraryfolders.vdf"), "libraryfolders.vdf");
         assert_eq!(key_pattern("user-collections.uc-x1"), "user-collections.<id>");
+    }
+
+    #[test]
+    fn the_gog_probe_reports_structure_without_names() {
+        let dir = tempfile::tempdir().unwrap();
+        let folder = dir.path().join("Secret Game Folder");
+        std::fs::create_dir_all(&folder).unwrap();
+        std::fs::write(folder.join("goggame-77.info"), r#"{"gameId":"77","name":"Secret Game","playTasks":[{"path":"secret.exe","isPrimary":true}]}"#).unwrap();
+        let mut reg = crate::providers::locations::FakeRegistry::default();
+        let key = r"SOFTWARE\WOW6432Node\GOG.com\Games\77";
+        reg.set(crate::platform::Hive::LocalMachine, key, "gameName", "Secret Game");
+        reg.set(crate::platform::Hive::LocalMachine, key, "path", folder.to_str().unwrap());
+        reg.set(crate::platform::Hive::LocalMachine, key, "dependsOn", "");
+        let mut summary = Vec::new();
+        let out = gog_probe(&reg, &mut summary);
+        assert_eq!((out["games"].as_u64(), out["foldersPresent"].as_u64(), out["infoFiles"].as_u64()), (Some(1), Some(1), Some(1)));
+        assert_eq!(out["registryValuesSet"], json!({ "gameName": 1, "path": 1 }), "an empty value doesn't count");
+        assert!(out["infoShape"]["playTasks"].is_array());
+        let text = format!("{out} {summary:?}");
+        assert!(!text.contains("Secret") && !text.contains("secret"), "{text}");
     }
 
     #[test]

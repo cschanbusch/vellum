@@ -13,6 +13,12 @@ In a full run, `music: a scene per view...` (test global `__scenes` undefined) a
 layout works...` (`link[href="/covers.css"]` missing) can also fail once. Each passed 10 of 10
 alone on 0.6.1, so they look like timing under load, possibly the same race as above.
 
+On the Phase 5 code (2026-11-02), the music test failed once in a full run (55 of 56 passed, the
+`__scenes` error) and 1 of 10 alone, at a different step: after `music.pause()` the state stayed
+"running" (also seen on 2026-10-25). Both come before the test's launch step, so they don't touch
+the launch code Phase 5 changed, but no baseline comparison was run and the cause isn't known.
+`__scenes` going undefined after being set suggests the skin page reloaded mid-test.
+
 ## Grand Tour: turning off motion removes menus (open, 2026-10-23; still mode disabled)
 
 Reported by the user: with the skin's Motion option off, Spotlight's information panel and the
@@ -21,6 +27,23 @@ never runs under `data-rl-still` (or reduced motion), leaving it at its hidden s
 investigated yet. For now still mode is switched off: `moving()` in skin.js always returns true
 and the Motion option is gone from plugin.json, so `data-rl-still` is never set (reduced motion in
 Windows included). To restore: bring back the option and the old `moving()`, then fix the panels.
+
+## Phase 5: still to try in a real window (closed, 2026-11-09)
+
+Tried by the user before 0.7.0: the options and tooltips on Settings → Plugins ("functional and
+helpful"), Open silently for Steam and Epic (Epic's window stays hidden), GOG launches, and a custom
+game added through the Add game dialog and launched. Not separately confirmed: the route through
+Galaxy (**Skip Galaxy launch** off), where the risk was Windows quoting `/path=<path>` differently
+from GOG's usual `/path="<path>"`; and Grand Tour keeping a game's condition after a merge (the
+entry id it depends on is confirmed not to move).
+
+## Garage cases reset by themselves (closed, 2026-11-03)
+
+**Reported:** every so often the Garage's textures reloaded and the keep cases' rotation reset.
+
+**Cause:** the Garage rebuilt every case whenever it heard about providers, and each scan's status changes (scanning, then ready) sent that twice, even if no game had changed. Steam rewriting its files triggered those scans, so one 7-minute session on 2026-10-30 had 15 of them.
+
+**Fixed three ways:** Vellum no longer watches store files, so scans follow the player's actions; the shell tells skins only what changed; and the Garage (Grand Tour 2.1.1) rebuilds its cases only when a store's name or icon changes, and redraws only when something on show changes.
 
 ## Frontier Catalogue arrow-key flake is back (open, 2026-10-23)
 
@@ -42,7 +65,8 @@ release zip.
 
 **Cause:** every library update rebuilt the book, even when nothing on its pages had changed, and
 a rebuild arriving during a leaf turn reset it. Vellum also announced a library change after every
-rescan, including the frequent ones triggered by Steam rewriting its config. Fixed both ways: the
+rescan, including the frequent ones triggered by Steam rewriting its config (store files are no
+longer watched at all; see 2026-11-03). Fixed both ways: the
 backend only announces a change when a scan's results differ, and the Catalogue (Frontier 1.3.1)
 skips updates that don't change what its pages print. The test then passed 16 times in a row.
 

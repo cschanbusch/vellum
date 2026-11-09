@@ -15,7 +15,7 @@ real store installs.
 | 2 | Provider host, Steam, library, diagnostics | Done |
 | 3 | Skin system, SDK, views, input model, local art | Done |
 | 4 | Remote art and metadata | Done (0.4.0) |
-| 5 | GOG and Custom providers, merging games across stores, provider authoring guide | Planned (Epic, pulled forward, is done) |
+| 5 | GOG and Custom providers, games on several stores, provider authoring guide | Built, not yet released |
 | 6 | Controllers, couch mode, modules, plugin install | Partly done |
 | 7 | Further stores | Planned |
 | — | Release engineering | Ongoing |
@@ -28,10 +28,9 @@ real store installs.
 - The QuickJS provider host with a scoped `ctx` API, location detection and the locate prompt,
   and `--diagnose`, a structure-only report for checking store formats on real installs.
 - Providers for Steam and Epic (Epic pulled forward from Phase 5), with local store metadata
-  (Steam `appinfo.vdf`, Epic's catalogue cache) and Steam playtime. GOG and Custom are still
-  placeholders.
-- The library model (entries with `sources[]` from day one, so merging needs no refactor),
-  search, filters, sorting, groups, favorites and tags.
+  (Steam `appinfo.vdf`, Epic's catalogue cache) and Steam playtime.
+- The library model (entries with `sources[]` from day one), search, filters, sorting, groups,
+  favorites and tags.
 - The skin system: the `skin` protocol and CSP, the SDK, kit components, tokens, options, the
   `nav` input model with spatial focus, developer mode with hot reload, and the browser dev harness.
 - Built-in List, Covers (with shelves) and Spotlight views; skin views with placement and hotkeys.
@@ -79,35 +78,39 @@ and what is cached keeps working offline.
 **Done when:** every entry shows all five kinds, custom Steam grid art takes precedence, and the
 library still looks complete with the network unplugged.
 
-## Phase 5: GOG, custom games, merging and the provider guide
+## Phase 5: GOG, custom games, games on several stores and the provider guide (released in 0.7.0)
 
-**Goal:** GOG and hand-added games join the library, and a game installed from two stores shows
-once and launches through the store you prefer.
+**Goal:** GOG and hand-added games join the library, and the user decides how a game installed from
+two stores shows and launches.
 
-**Design:**
+**Design, as built** (reasons in [docs/decisions.md](docs/decisions.md)):
 
-- **GOG provider:** installed games from GOG Galaxy's local data (and standalone GOG installers'
-  registry entries), launched through Galaxy. Its provider is a placeholder today.
-- **Custom games:** add any exe or shortcut by hand, with its own art and arguments. Also a
-  placeholder today.
+- **GOG provider:** installed games from the registry, which Galaxy and standalone installers both
+  write. Games run directly by default, so Galaxy doesn't open; turning off **Skip Galaxy launch**
+  goes through Galaxy for its cloud saves and playtime tracking.
+- **Custom games:** add any program or shortcut by hand in Settings → Library, with its own
+  arguments, working folder and art.
+- **Duplicates ask; they never merge silently.** Records of kind `game` from different providers
+  with the same normalized title (case-folded; ™, ®, © and punctuation removed; whitespace
+  collapsed; words such as "Edition" kept) open a required dialog with three answers: always play
+  via one store (one entry), ask each time (one entry, Play opens a store picker), or list
+  separately (one entry per store, marked by store). Settings → Library can change that default to
+  merging by store priority or keeping them separate.
+- **Stores…** in the game menu changes the answer, separates one copy, or joins any two games with
+  **Merge with…**. Settings → Library has **Review duplicates…** and the store priority list
+  (default Steam, GOG, Epic, Custom), which sets the store suggested in the dialog.
+- **Entry identity:** an entry's id is its oldest record, so changing store or adding a copy doesn't
+  move it, and any record id still finds the entry.
+- **Source badges and filters:** List and Spotlight name every store; Covers marks separated copies
+  by store and merged games with "2 stores". Disabling a provider hides its games, and re-enabling
+  it restores their favorites and tags.
+- **Provider options on screen:** Settings → Plugins shows each provider's options with tooltips,
+  including **Open silently** for Steam and Epic.
+- **[docs/provider-authoring.md](docs/provider-authoring.md):** the manifest, the `ctx` API,
+  location resolution and the `--diagnose` workflow, using the shipped providers as examples.
 
-- **Automatic merging** joins two records of the same kind from different providers when their
-  normalized titles match exactly (case-folded; ™, ®, © and punctuation removed; whitespace
-  collapsed). Words such as "Edition" or "Remastered" are kept: a false merge is worse than a
-  missed one. A setting turns automatic merging off.
-- **Manual Merge and Unmerge** are stored as overrides and always beat automatic matching.
-- **Preferred source** comes from an orderable provider priority list (default Steam, GOG, Epic,
-  Custom), with a per-entry override and **Play via…** for the other stores.
-- **Entry identity:** because an entry's id is its primary record's id, changing the preferred
-  source changes the id. Selection, shelf order, favorites, tags and skin storage must follow the
-  merge group; settle the rule in `docs/decisions.md` before building.
-- **Source badges and filters** in every view; disabling a provider hides its games and
-  re-enabling it restores their favorites and tags.
-- **`docs/provider-authoring.md`**: the manifest, the `ctx` API, location resolution and the
-  `--diagnose` workflow, using the shipped providers as examples.
-
-**Done when:** a game installed on two stores shows once and launches through the preferred
-store, and disabling then re-enabling a provider loses nothing.
+**Done when:** a duplicate always prompts, every choice produces the number of entries chosen, Play
+follows that choice, and disabling then re-enabling a provider loses nothing.
 
 ## Phase 6: controllers, couch mode, modules and plugin install
 
@@ -150,8 +153,9 @@ Each store is its own plugin, checked with `--diagnose` on a real install before
 | EA app | Registry and per-game install data (format to verify) | EA's URI scheme (to verify) | Low |
 | Xbox / Microsoft Store | Needs a new host API to list installed app packages | `shell:AppsFolder\<AUMID>` | Medium |
 
-Emulators (a PCSX2 provider listing a ROM folder, for example) fit the same model; Grand Tour
-already has a case style ready for PCSX2 games.
+Emulators fit the same model. The PCSX2 provider is built (`plugins/providers/pcsx2`; design in
+[Vellum — PCSX2 Provider Design.md](Vellum%20—%20PCSX2%20Provider%20Design.md)), with per-game
+launch options any provider can use. Grand Tour already has a case style ready for its games.
 
 ## Skins and views
 
@@ -184,7 +188,12 @@ system itself. Concepts on the list:
   window (`steam.exe -silent`,
   with a setting), and Grand Tour's id becomes `grandtour`, with settings, saved data and downloaded
   copies moved over. Changing skin no longer un-maximizes the window.
-- **Next:** a changelog.
+- **0.7.0** (released): Phase 5. GOG and custom games, the duplicate prompt with Stores…
+  and the store picker, Settings → Library, provider options with tooltips on the Plugins page
+  (Open silently for Steam and Epic, Skip Galaxy launch for GOG), and the provider guide. Also the
+  PCSX2 provider with per-game launch options, store details for GOG games, rendering on the
+  high-performance GPU, and a library that updates only when the player does something.
+- **Then:** a changelog.
 - **Continuous integration:** run the Rust, unit and end-to-end tests and build the release zips on
   each push to `main`.
 - **Later:** code signing, so SmartScreen stops warning; an installer and auto-update remain out of

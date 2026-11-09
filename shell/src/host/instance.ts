@@ -11,6 +11,7 @@ export const hostUi: HostUi = {
   contextMenu: () => {},
   openSettings: () => {},
   changeArt: () => {},
+  chooseSource: async () => null,
   theme: () => {},
   devError: (m) => console.error(m),
   skinFailed: (r) => console.error(r),

@@ -20,6 +20,7 @@ import {
 } from "../../../sdk/src/types";
 import { availableViews, orderViews, type OrderedView, type SkinViewSection } from "../../../sdk/src/view-order";
 import { SkinBridge } from "../bridge";
+import { libraryChange } from "./library-change";
 import type { ActionKind, Backend, SkinRecord, UiSettings, WindowState } from "./backend";
 
 /** What the host page draws on the controller's behalf. */
@@ -30,6 +31,8 @@ export interface HostUi {
   contextMenu(entry: Entry, x: number, y: number, items?: MenuItem[]): Promise<string | null> | void;
   openSettings(page?: string): void;
   changeArt(entry: Entry, kind: ArtKind): void;
+  /** "Ask me each time": resolves with the chosen provider id, or null when cancelled. */
+  chooseSource(entry: Entry): Promise<string | null>;
   theme(tokens: Record<string, string>): void;
   devError(message: string, stack: string): void;
   /** The skin page never said hello: it is broken. */
@@ -105,7 +108,7 @@ export class SkinHostController {
     this.state = {
       ...DEFAULT_STATE,
       view: ui.startView === "last" ? (last.view ?? DEFAULT_STATE.view) : ui.startView,
-      selectedId: last.selectedId && this.byId.has(last.selectedId) ? last.selectedId : null,
+      selectedId: this.currentId(last.selectedId),
       sort: (last.sort as Sort) ?? DEFAULT_STATE.sort,
       groupBy: (last.groupBy as GroupKey | null) ?? null,
       filters: (last.filters as Filters) ?? {},
@@ -134,7 +137,13 @@ export class SkinHostController {
 
   private setEntries(entries: Entry[]) {
     this.entries = entries;
-    this.byId = new Map(entries.map((e) => [e.id, e]));
+    // Any of an entry's record ids finds it: an id saved before a merge still works.
+    this.byId = new Map(entries.flatMap((e) => [...e.sources.map((s) => [s.gameId, e] as const), [e.id, e] as const]));
+  }
+
+  /** The current id of an entry known by any of its record ids. */
+  private currentId(id: string | null | undefined) {
+    return id ? (this.byId.get(id)?.id ?? null) : null;
   }
 
   entry(id: string): Entry | undefined {
@@ -299,14 +308,22 @@ export class SkinHostController {
   // ---- reloads -------------------------------------------------------------------------------
 
   async reloadLibrary() {
-    this.setEntries(await this.backend.entries());
-    this.push({ name: "library", data: this.entries });
-    if (this.state.selectedId && !this.byId.has(this.state.selectedId)) this.setState({ selectedId: null });
+    const next = await this.backend.entries();
+    const change = libraryChange(this.entries, next);
+    if (change.kind === "none") return;
+    this.setEntries(next);
+    if (change.kind === "entries") this.push({ name: "entries", data: change.changed });
+    else this.push({ name: "library", data: this.entries });
+    // A merge can change the selected entry's id; the selection follows it.
+    const selected = this.currentId(this.state.selectedId);
+    if (selected !== this.state.selectedId) this.setState({ selectedId: selected });
     this.emit("library");
   }
 
   async reloadProviders() {
-    this.providers = await this.backend.providers();
+    const next = await this.backend.providers();
+    if (JSON.stringify(next) === JSON.stringify(this.providers)) return;
+    this.providers = next;
     this.push({ name: "providers", data: this.providers });
     this.emit("providers");
   }
@@ -378,6 +395,7 @@ export class SkinHostController {
       if (f === this.focused) return;
       this.focused = f;
       this.push({ name: "window", data: this.windowInfo() });
+      this.emit("window");
     };
     if (this.backend.onFocusChanged) {
       this.backend.onFocusChanged(set);
@@ -430,6 +448,13 @@ export class SkinHostController {
     this.patch(await this.backend.setTags(id, tags));
   }
 
+  /** Play from the shell's own menu: asks which store first when the entry is set to. */
+  async play(e: Entry) {
+    const provider = e.askSource ? await this.hostUi.chooseSource(e) : undefined;
+    if (e.askSource && !provider) return;
+    return this.runAction("launch", e.id, provider ?? undefined);
+  }
+
   async runAction(kind: ActionKind, id: string, provider?: string) {
     const title = this.byId.get(id)?.title ?? id;
     try {
@@ -476,6 +501,8 @@ export class SkinHostController {
         return this.hostUi.toast(a.text as string);
       case "ui.contextMenu":
         return (await this.hostUi.contextMenu(this.byId.get(id)!, a.x as number, a.y as number, a.items as MenuItem[] | undefined)) ?? null;
+      case "ui.chooseSource":
+        return this.hostUi.chooseSource(this.byId.get(id)!);
       case "ui.theme":
         return this.hostUi.theme(a.tokens as Record<string, string>);
       case "window.minimize":

@@ -90,6 +90,7 @@ export const CALL_METHODS = [
   "actions.openSettings",
   "ui.toast",
   "ui.contextMenu",
+  "ui.chooseSource",
   "ui.theme",
   "window.minimize",
   "window.toggleMaximize",

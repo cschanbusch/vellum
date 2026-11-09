@@ -2,7 +2,9 @@
 pub mod catalog;
 pub mod cli;
 mod commands;
+pub mod custom_games;
 pub mod diagnose;
+pub mod window_place;
 pub mod formats;
 pub mod library;
 pub mod logging;
@@ -153,6 +155,7 @@ pub fn run() {
             commands::app_info,
             commands::list_plugins,
             commands::set_plugin_enabled,
+            commands::set_provider_option,
             commands::activate_skin,
             commands::reload_plugins,
             commands::open_plugins_folder,
@@ -198,6 +201,18 @@ pub fn run() {
             commands::art_thumb,
             commands::set_art_override,
             commands::set_art_override_file,
+            commands::duplicates,
+            commands::game_settings,
+            commands::set_game_settings,
+            commands::resolve_duplicates,
+            commands::set_source_choice,
+            commands::merge_entries,
+            commands::separate_source,
+            commands::library_settings,
+            commands::set_library_settings,
+            commands::custom_games,
+            commands::custom_game_save,
+            commands::custom_game_remove,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

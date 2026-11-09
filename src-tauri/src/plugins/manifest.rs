@@ -10,7 +10,7 @@ use serde_json::{Map, Value};
 use super::{PluginKind, API_VERSION, MIN_API_VERSION};
 
 const PROVIDER_CAPABILITIES: &[&str] = &["launch", "install", "uninstall", "openStore", "watch"];
-const OPTION_TYPES: &[&str] = &["color", "range", "select", "toggle", "font", "image"];
+const OPTION_TYPES: &[&str] = &["color", "range", "select", "toggle", "font", "image", "text"];
 
 /// A manifest that passed validation.
 #[derive(Debug, Clone, Serialize)]
@@ -163,6 +163,7 @@ impl Checker<'_> {
                 }
             }
             self.required_str(o, "label", &here);
+            self.optional_str(o, "tooltip", &here);
             let Some(ty) = self.required_str(o, "type", &here) else { continue };
             if !OPTION_TYPES.contains(&ty) {
                 self.err(format!("{here}\"type\" \"{ty}\" is not one of: {}.", OPTION_TYPES.join(", ")));
@@ -235,6 +236,14 @@ impl Checker<'_> {
             if !PROVIDER_CAPABILITIES.contains(&cap.as_str()) {
                 self.warn(format!("provider.\"capabilities\" has unknown entry \"{cap}\"; it will be ignored."));
             }
+        }
+        match s.get("gameSettings") {
+            None => {}
+            Some(Value::Array(items)) => self.options(items, "provider.gameSettings"),
+            Some(_) => self.err("provider.\"gameSettings\" must be an array."),
+        }
+        if s.get("duplicates").is_some_and(|d| !matches!(d.as_str(), Some("separate" | "merge"))) {
+            self.err("provider.\"duplicates\" must be \"separate\" or \"merge\".");
         }
     }
 
